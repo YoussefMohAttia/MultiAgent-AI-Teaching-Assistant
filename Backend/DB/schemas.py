@@ -26,8 +26,9 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False)
     name = Column(String(255))
-    role = Column(String(50))
+    role = Column(String(50) ,nullable=False, default="student")
     created_at = Column(DateTime, default=datetime.utcnow)
+    password = Column(String(255), nullable=False)
 
     # Relationships
     lms_accounts = relationship("LMSAccount", back_populates="user")
