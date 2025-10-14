@@ -3,15 +3,18 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from authlib.integrations.starlette_client import OAuth
+
+
+
 from starlette.config import Config
 import psycopg2
 import os
 
-# Database connection
+from DB.models import User, Post, Token, ErrorResponse
+from datetime import datetime, timedelta
+from Core.security import *
+
+
 def get_db_connection():
     return psycopg2.connect(
         dbname="Ai_Teaching_Assistant",
@@ -20,62 +23,21 @@ def get_db_connection():
         host="localhost"
     )
 
-# Pydantic models
-class User(BaseModel):
-    name: str
-    email: str
-    password: str
-    role: str
-    created_at: datetime
 
-class Post(BaseModel):
-    title: str
-    subjectName: str
-    content: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    message: Optional[str] = None
-
-class ErrorResponse(BaseModel):
-    error: str
     
 # FastAPI app setup
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# OAuth2 and JWT setup
-config = Config(".env")
-oauth = OAuth(config)
-oauth.register(
-    name="google",
-    client_id=os.getenv("GOOGLE_CLIENT_ID"),
-    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-    client_kwargs={"scope": "openid email profile"},
-)
+
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # JWT functions
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=30))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return {"email": email}
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
 
 # Routes
 @app.get("/")
@@ -90,23 +52,7 @@ async def signup_page(request: Request):
 async def login_page_get(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.get("/login/google")
-async def login_google(request: Request):
-    redirect_uri = request.url_for("auth_callback")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@app.get("/auth/callback")
-async def auth_callback(request: Request):
-    try:
-        token = await oauth.google.authorize_access_token(request)
-        user_info = token.get("userinfo")
-        if not user_info:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to get user info from Google")
-        
-        access_token = create_access_token({"sub": user_info["email"]})
-        return JSONResponse({"access_token": access_token, "user": user_info})
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @app.post("/login", response_model=Token | ErrorResponse)
 async def login(user: User):
