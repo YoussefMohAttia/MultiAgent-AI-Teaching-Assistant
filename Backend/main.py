@@ -24,9 +24,9 @@ app = FastAPI()
 
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(lms.router, prefix="/lms", tags=["LMS"])
-app.include_router(courses.router, prefix="/courses", tags=["Courses"])
+app.include_router(courses.router, prefix=f"/courses", tags=["Courses"])
 app.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
-app.include_router(posts.router, prefix="/posts", tags=["Posts"])
+app.include_router(posts.router, prefix=f"/courses/{{student_id}}/posts", tags=["Posts"])
 
 
 
