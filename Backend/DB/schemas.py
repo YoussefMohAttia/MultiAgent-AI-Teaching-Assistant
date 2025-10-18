@@ -36,6 +36,12 @@ class User(Base):
     comments = relationship("Comment", back_populates="user")
     quizzes_created = relationship("Quiz", back_populates="creator")
 
+class UserCourse(Base):
+    __tablename__ = "user_courses"
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
+
+
 
 class LMSAccount(Base):
     __tablename__ = "lms_accounts"
@@ -144,8 +150,8 @@ class QuizQuestion(Base):
     id = Column(Integer, primary_key=True)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
     question = Column(Text, nullable=False)
-    type = Column(String(50))  # e.g. "mcq", "true_false", etc.
-    options = Column(JSON)  # store list of choices
+    type = Column(String(50)) 
+    options = Column(JSON)  
     correct_answer = Column(String(255))
 
     # Relationships

@@ -1,2 +1,6 @@
 import os 
-SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+# os.getenv("DATABASE_URL")
+
+
+
+SQLALCHEMY_DATABASE_URI = "postgresql://postgres:1111@localhost/AiTeachingAssistantDB"

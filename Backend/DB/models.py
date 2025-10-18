@@ -2,6 +2,7 @@
 
 
 from pydantic import BaseModel
+from sympy import use
 
 from .session import Base
 
@@ -17,10 +18,22 @@ class User(BaseModel):
     role: str
     created_at: datetime
 
-class Post(BaseModel):
-    title: str
+class PostCreate(BaseModel):
+    user_id: int
     subjectName: str
     content: str
+
+
+
+class PostOut(BaseModel):
+    id: int
+    subject: str
+    content: str
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
 
 class Token(BaseModel):
     access_token: str
