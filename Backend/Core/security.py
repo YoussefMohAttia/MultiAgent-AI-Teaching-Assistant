@@ -1,21 +1,19 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
-from ..DB.session import get_db
+from DB.session import get_db
 from sqlalchemy.orm import Session
-from ..DB.schemas import User
-from ..DB.crud import get_user
+
+
+
 
 
 # ======================================================
 # BASIC SETUP
 # ======================================================
-
-app = FastAPI()
-
 
 SECRET_KEY = "keep-it-secret-keep-it-safe"  
 ALGORITHM = "HS256"
@@ -45,14 +43,16 @@ def hash_password(password :str):
 
 
 
-def authenticate_user(email: str, password: str):
+def authenticate_user(email: str, password: str, db: Session):
     """Authenticate user credentials."""
-    user = get_user(email)
+    from ..DB.crud import get_user_by_email
+    user = get_user_by_email(email, db)
     if not user:
         return None
     if not verify_password(password, user.password):
         return None
     return user
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Create JWT token."""
@@ -62,15 +62,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Decode JWT token and return the user."""
+    from ..DB.crud import get_user_by_email
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+        if email is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: no username found"
+                detail="Invalid token: no email found"
             )
     except JWTError:
         raise HTTPException(
@@ -78,7 +80,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             detail="Invalid or expired token"
         )
 
-    user = get_user(username)
+    user = get_user_by_email(email, db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

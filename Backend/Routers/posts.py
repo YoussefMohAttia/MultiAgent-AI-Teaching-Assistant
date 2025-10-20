@@ -5,42 +5,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import insert
 from typing import List
 
-from ..DB.models import  PostOut
-from ..DB.session import get_db
-from ..DB.schemas import Post
+from DB.models import PostOut
+from DB.session import get_db
+from DB.schemas import  Post
 router = APIRouter()
-
-
-
-# class PostCreate(BaseModel):
-#     user_id: int
-#     subjectName: str
-#     content: str
-
-
-
-# class PostOut(BaseModel):
-#     id: int
-#     subject: str
-#     content: str
-#     user_id: int
-#     created_at: datetime
-
-#     class Config:
-#         orm_mode = True
-
-# class Post(Base):
-#     __tablename__ = "posts"
-
-#     id = Column(Integer, primary_key=True)
-#     subject = Column(String(255))
-#     content = Column(Text)
-#     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-#     created_at = Column(DateTime, default=datetime.utcnow)
-
-#     # Relationships
-#     user = relationship("User", back_populates="posts")
-#     comments = relationship("Comment", back_populates="post")
 
 
 
