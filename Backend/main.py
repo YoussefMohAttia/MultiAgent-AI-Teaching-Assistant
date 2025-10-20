@@ -18,7 +18,7 @@ from Core.security import *
 
 from fastapi import FastAPI
 
-from Routers import users , lms, courses, quizzes, posts
+from Routers import users , lms, courses, quizzes, posts,login,signup
 
 app = FastAPI()
 
@@ -27,6 +27,8 @@ app.include_router(lms.router, prefix="/lms", tags=["LMS"])
 app.include_router(courses.router, prefix=f"/courses", tags=["Courses"])
 app.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
 app.include_router(posts.router, prefix=f"/courses/{{student_id}}/posts", tags=["Posts"])
+app.include_router(login.router, prefix="/login", tags=["Authentication"])
+app.include_router(signup.router, prefix="/signup", tags=["Authentication"])
 
 
 
@@ -104,35 +106,3 @@ app.include_router(posts.router, prefix=f"/courses/{{student_id}}/posts", tags=[
 #             except Exception as e:
 #                 conn.rollback()
 #                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user")
-
-# @app.post("/subjects/posts", response_model=dict)
-# async def create_post(post: Post, current_user: dict = Depends(get_current_user)):
-#     with get_db_connection() as conn:
-#         with conn.cursor() as cur:
-#             try:
-#                 cur.execute(
-#                     "SELECT id FROM Users WHERE email = %s",
-#                     (current_user["email"],)
-#                 )
-                
-#                 user_id = cur.fetchone()
-#                 if not user_id:
-#                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-                
-#                 cur.execute(
-#                     "INSERT INTO Posts (subject, title, content, user_id, created_at) VALUES (%s, %s, %s, %s, %s)",
-#                     (post.subjectName, post.title, post.content, user_id[0], datetime.utcnow())
-#                 )
-#                 conn.commit()
-#                 return {"message": "Post created successfully"}
-#             except Exception as e:
-#                 conn.rollback()
-#                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create post")
-
-# @app.get("/subjects/{subjectId}/posts")
-# async def get_posts(subjectId: str):
-#     with get_db_connection() as conn:
-#         with conn.cursor() as cur:
-#             cur.execute("SELECT * FROM Posts WHERE subject = %s", (subjectId,))
-#             posts = cur.fetchall()
-#             return {"posts": posts}

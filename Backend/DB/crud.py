@@ -3,59 +3,32 @@ from sqlalchemy.orm import Session
 import typing as t
 
 from . import models, schemas
-from Core.security import get_password_hash, verify_password 
+from ..Core.security import hash_password, create_access_token
 from .session import get_db
+from ..DB.schemas import User
+from ..DB.models import UserCreate
 
-# class User(Base):
-#     __tablename__ = "users"
+from datetime import datetime, timedelta
 
-#     id = Column(Integer, primary_key=True)
-#     email = Column(String(255), unique=True, nullable=False)
-#     name = Column(String(255))
-#     role = Column(String(50))
-#     created_at = Column(DateTime, default=datetime.utcnow)
+from fastapi import  Depends
 
-#     # Relationships
-#     lms_accounts = relationship("LMSAccount", back_populates="user")
-#     posts = relationship("Post", back_populates="user")
-#     comments = relationship("Comment", back_populates="user")
-#     quizzes_created = relationship("Quiz", back_populates="creator")
+def get_user(email:str , db: Session = Depends(get_db)) :
+    user = db.query(User).filter(User.email == email).first() #row
+    return user 
 
+    
+#                 Pydantic model
+def create_user(user:UserCreate,db: Session = Depends(get_db)):
+    hashed_password = hash_password(user.password)
+    new_user = User(name=user.name, email=user.email, password=hashed_password, role=user.role, created_at=datetime.utcnow())
 
-
-def get_user(db: Session, user_id: int) -> models.User:
-    user = db.query(schemas.User).filter(schemas.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-
-
-def get_user_by_email(db: Session, email: str) -> models.User:
-    return db.query(schemas.User).filter(schemas.User.email == email).first()
-
-
-#                            Pydantic model
-def create_user(db: Session, user: models.User):
-
-    hashed_password = get_password_hash(user.password)
-    db_user = schemas.User(
-        name=user.first_name + " " + user.last_name,        
-        email=user.email,
-        password=hashed_password,
-    )
-    db.add(db_user)
+    db.add(new_user)
     db.commit()
-    db.refresh(db_user)
-    return db_user
+    db.refresh(new_user)
+    access_token = create_access_token(data={"sub": new_user.email})
+    return {"message": "User created successfully", "access_token": access_token}
 
 
-def delete_user(db: Session, user_id: int):
-    user = get_user(db, user_id)
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
-    db.delete(user)
-    db.commit()
-    return user
+
+
 

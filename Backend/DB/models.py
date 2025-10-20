@@ -1,6 +1,4 @@
 #pydantic models for request and response bodies
-
-
 from pydantic import BaseModel
 from sympy import use
 
@@ -9,19 +7,14 @@ from .session import Base
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-
-
-class User(BaseModel):
+class UserCreate(BaseModel):
     name: str
     email: str
     password: str
     role: str
-    created_at: datetime
 
-class PostCreate(BaseModel):
-    user_id: int
-    subjectName: str
-    content: str
+
+
 
 
 
