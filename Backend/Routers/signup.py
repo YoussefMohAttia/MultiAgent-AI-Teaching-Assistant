@@ -16,9 +16,6 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     # Check if user already exists in the db
     existing_user = get_user_by_email(user.email, db)
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+        raise HTTPException(status_code=400,detail="Email already registered")
     
     return create_user(user, db)  # user is created successfully
