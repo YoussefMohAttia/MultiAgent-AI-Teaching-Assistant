@@ -34,8 +34,3 @@ def create_user(user: UserCreate, db: Session):
     db.refresh(new_user)
     access_token = create_access_token(data={"sub": new_user.email})
     return {"message": "User created successfully", "access_token": access_token}
-
-
-
-
-
