@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 import typing as t
 
 from . import models, schemas
-from Core.security import hash_password, create_access_token
+
 from .session import get_db
 from DB.schemas import User
 from DB.models import UserCreate
+
 
 from datetime import datetime, timedelta
 
@@ -20,6 +21,7 @@ def get_user_by_email(email: str, db: Session):
 
 #                 Pydantic model
 def create_user(user: UserCreate, db: Session):
+    from Core.security import hash_password, create_access_token
     hashed_password = hash_password(user.password)
     new_user = User(
         name=user.name,

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from DB.session import get_db
 from sqlalchemy.orm import Session
 
-
+from DB.crud import get_user_by_email
 
 
 
@@ -45,7 +45,7 @@ def hash_password(password :str):
 
 def authenticate_user(email: str, password: str, db: Session):
     """Authenticate user credentials."""
-    from ..DB.crud import get_user_by_email
+    
     user = get_user_by_email(email, db)
     if not user:
         return None
