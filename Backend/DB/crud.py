@@ -3,24 +3,31 @@ from sqlalchemy.orm import Session
 import typing as t
 
 from . import models, schemas
-from ..Core.security import hash_password, create_access_token
+from Core.security import hash_password, create_access_token
 from .session import get_db
-from ..DB.schemas import User
-from ..DB.models import UserCreate
+from DB.schemas import User
+from DB.models import UserCreate
 
 from datetime import datetime, timedelta
 
-from fastapi import  Depends
+from fastapi import Depends
 
-def get_user(email:str , db: Session = Depends(get_db)) :
-    user = db.query(User).filter(User.email == email).first() #row
-    return user 
 
-    
+def get_user_by_email(email: str, db: Session):
+    user = db.query(User).filter(User.email == email).first()
+    return user
+
+
 #                 Pydantic model
-def create_user(user:UserCreate,db: Session = Depends(get_db)):
+def create_user(user: UserCreate, db: Session):
     hashed_password = hash_password(user.password)
-    new_user = User(name=user.name, email=user.email, password=hashed_password, role=user.role, created_at=datetime.utcnow())
+    new_user = User(
+        name=user.name,
+        email=user.email,
+        password=hashed_password,
+        role=user.role,
+        created_at=datetime.utcnow()
+    )
 
     db.add(new_user)
     db.commit()

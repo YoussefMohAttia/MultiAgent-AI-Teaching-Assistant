@@ -1,37 +1,25 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel
-
-
-
-from starlette.config import Config
-import psycopg2
-import os
-
-from DB.models import User, Post, Token, ErrorResponse
-from datetime import datetime, timedelta
-from Core.security import *
+from fastapi import FastAPI
 
 
 
 from fastapi import FastAPI
 
-from Routers import users , lms, courses, quizzes, posts,login,signup
+from Routers import lms, courses, quizzes, posts, login, signup
 
 app = FastAPI()
 
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(lms.router, prefix="/lms", tags=["LMS"])
-app.include_router(courses.router, prefix=f"/courses", tags=["Courses"])
-app.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
-app.include_router(posts.router, prefix=f"/courses/{{student_id}}/posts", tags=["Posts"])
 app.include_router(login.router, prefix="/login", tags=["Authentication"])
 app.include_router(signup.router, prefix="/signup", tags=["Authentication"])
 
+app.include_router(courses.router, prefix="/courses", tags=["Courses"])
+
+app.include_router(posts.router, prefix="/courses/{student_id}/posts", tags=["Posts"])
 
 
+@app.get("/")
+async def root():
+    return {"name":"Yousef"}
+    
 
 # def get_db_connection():
 #     return psycopg2.connect(

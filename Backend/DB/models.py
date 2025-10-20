@@ -1,6 +1,5 @@
 #pydantic models for request and response bodies
 from pydantic import BaseModel
-from sympy import use
 
 from .session import Base
 
@@ -14,7 +13,15 @@ class UserCreate(BaseModel):
     role: str
 
 
+class UserCourse(BaseModel):
+    user_id: int
+    course_id: int
+class Course(BaseModel):
+    id: int
+    title: str
 
+    class Config:
+        orm_mode = True
 
 
 

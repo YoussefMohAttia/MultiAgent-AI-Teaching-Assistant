@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import insert, select
 from typing import List
 
-from ..DB.session import get_db
-from ..DB.schemas import UserCourse, Course
+
+from DB.session import get_db
+from DB.models import  UserCourse, Course
 router = APIRouter()
 
 # to get student's courses based on student_id
