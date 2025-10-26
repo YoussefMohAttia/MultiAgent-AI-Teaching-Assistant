@@ -9,7 +9,7 @@ from Routers import lms, courses, quizzes, posts, login, signup
 app = FastAPI()
 
 app.include_router(login.router, prefix="/login", tags=["Authentication"])
-app.include_router(signup.router, prefix="/signup", tags=["Authentication"])
+
 
 app.include_router(courses.router, prefix="/courses", tags=["Courses"])
 

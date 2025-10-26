@@ -1,0 +1,17 @@
+
+from pydantic import BaseModel
+
+from Core.utils import OptStr, StrsDict
+
+
+class BearerToken(BaseModel):
+    access_token: str
+    token_type: str = "bearer"  # noqa: S105
+
+    def generate_header(self) -> StrsDict:
+        return {"Authorization": f"{self.token_type} {self.access_token}"}
+
+
+class AuthResponse(BaseModel):
+    state: OptStr = None
+    code: OptStr = None
