@@ -7,7 +7,8 @@ from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security.base import SecurityBase
 from fastapi.security.utils import get_authorization_scheme_param
 
-from fastapi_msal.models import AuthToken, IDTokenClaims, TokenStatus
+from models.auth_token import AuthToken
+from models.id_token_claims import IDTokenClaims , TokenStatus
 
 from .msal_auth_code_handler import MSALAuthCodeHandler
 
@@ -57,7 +58,7 @@ class MSALScheme(SecurityBase):
             if session_token:
                 token_claims = session_token.id_token_claims
 
-        # 2. validate token
+      
         if not token_claims:
             http_exception.detail = "No token found"
             raise http_exception

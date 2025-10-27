@@ -50,19 +50,11 @@ class MSALClientConfig(BaseSettings):
             raise ValueError(msg)
 
         
-        if MSALPolicies.AAD_SINGLE == self.policy:
-            authority_url = f"https://login.microsoftonline.com/{self.tenant}"
-            return authority_url
-
-        if MSALPolicies.AAD_MULTI == self.policy:
-            authority_url = "https://login.microsoftonline.com/common/"
-            return authority_url
-
-        
-        policy = self.b2c_policy or self.policy.value
-        authority_url = f"https://{self.tenant}.b2clogin.com/{self.tenant}.onmicrosoft.com/{policy}"
-
+       
+        authority_url = f"https://login.microsoftonline.com/{self.tenant}"
         return authority_url
+
+
 
     @property
     def login_full_path(self) -> str:
