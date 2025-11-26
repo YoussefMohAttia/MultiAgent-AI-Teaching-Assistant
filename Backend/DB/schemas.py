@@ -1,5 +1,5 @@
 
-from .session import Base
+from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from sqlalchemy import (
     Column,
@@ -13,7 +13,7 @@ from sqlalchemy import (
     JSON
 )
 from sqlalchemy.orm import relationship
-
+Base = declarative_base()
 # ---------------------------
 # User and Teams Account
 # ---------------------------

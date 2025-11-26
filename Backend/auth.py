@@ -74,8 +74,46 @@ class MSALAuthorization:
         return await self.handler.authorize_redirect(request=request, redirec_uri=redirect_uri, state=state)
 
     async def _get_token_route(self, request: Request, code: str, state: OptStr) -> RedirectResponse:
-        await self.handler.authorize_access_token(request=request, code=code, state=state)
-        return RedirectResponse(url=f"{self.return_to_path}", headers=dict(request.headers.items()))
+        token: AuthToken = await self.handler.authorize_access_token(request=request, code=code, state=state)
+
+        # FINAL BOSS CODE — SAVE USER + JWT
+        from DB.schemas import User
+        from DB.session import get_db
+        from sqlalchemy import select
+        from datetime import datetime, timedelta
+        import jwt
+        from Core.config import settings
+
+        claims = token.id_token_claims.__dict__
+        azure_id = claims.get("subject") or claims.get("sub")
+        email = claims.get("preferred_username")
+        name = claims.get("display_name") or email.split("@")[0]
+
+        async for db in get_db():
+            result = await db.execute(select(User).where(User.azure_id == azure_id))
+            user = result.scalars().first()
+            if not user:
+                user = User(
+                    azure_id=azure_id,
+                    email=email,
+                    name=name,
+                    created_at=datetime.utcnow()
+                )
+                db.add(user)
+            user.last_login = datetime.utcnow()
+            await db.commit()
+            break
+
+        # 30-day JWT cookie
+        jwt_token = jwt.encode(
+            {"sub": azure_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
+            settings.SECRET_KEY,
+            algorithm="HS256"
+        )
+
+        response = RedirectResponse(url="/")
+        response.set_cookie("jwt_token", jwt_token, httponly=True, samesite="lax", max_age=2592000)
+        return response
 
     async def _post_token_route(
         self, request: Request, code: Annotated[str, Form()], state: Annotated[OptStr, Form()] = None
