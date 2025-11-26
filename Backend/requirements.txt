@@ -17,6 +17,7 @@ requests==2.31.0
 
 # Data Validation
 pydantic>=2.9.0
+pydantic-settings==2.0.3
 
 # Form data handling
 python-multipart==0.0.9
