@@ -1,3 +1,4 @@
 import os 
 
-SQLALCHEMY_DATABASE_URI = "postgresql://postgres:1111@localhost/test"
+# Use environment variable or default to docker-compose settings
+SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "postgresql://myuser:mypass@localhost:5432/mydb")

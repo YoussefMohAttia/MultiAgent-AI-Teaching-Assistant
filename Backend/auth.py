@@ -3,14 +3,14 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Form, Header
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
-from sympy import im
-from .Core import MSALClientConfig 
-from .Core.utils import OptStr
+
+from Core.msal_client_config import MSALClientConfig
+from Core.utils import OptStr
 from models.auth_token import AuthToken
 from models.id_token_claims import IDTokenClaims
 from models.common import BearerToken
-from .security.msal_auth_code_handler import MSALAuthCodeHandler 
-from .security.msal_scheme import MSALScheme
+from security.msal_auth_code_handler import MSALAuthCodeHandler 
+from security.msal_scheme import MSALScheme
 from models.id_token_claims import TokenStatus
 
 

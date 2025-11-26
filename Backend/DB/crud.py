@@ -21,18 +21,17 @@ def get_user_by_email(email: str, db: Session):
 
 #                 Pydantic model
 def create_user(user: UserCreate, db: Session):
-    from Core.security import hash_password, create_access_token
-    hashed_password = hash_password(user.password)
+    # from Core.security import hash_password, create_access_token
+    # hashed_password = hash_password(user.password)
     new_user = User(
         name=user.name,
         email=user.email,
-        password=hashed_password,
-        role=user.role,
+        azure_id=user.azure_id,
         created_at=datetime.utcnow()
     )
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    access_token = create_access_token(data={"sub": new_user.email})
-    return {"message": "User created successfully", "access_token": access_token}
+    # access_token = create_access_token(data={"sub": new_user.email})
+    return new_user

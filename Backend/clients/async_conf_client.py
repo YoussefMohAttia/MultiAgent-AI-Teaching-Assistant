@@ -3,11 +3,11 @@ from typing import Any, Callable, Optional, TypeVar
 from msal import ConfidentialClientApplication, SerializableTokenCache
 from starlette.concurrency import run_in_threadpool
 
-from Core.msal_client_config import MSALClientConfig ,OptStr ,StrsDict
+from Core.msal_client_config import MSALClientConfig
+from Core.utils import OptStr, StrsDict, OptStrsDict
 
 from models.auth_code import AuthCode 
 from models.auth_token import AuthToken 
-
 from models.local_account import LocalAccount
 from models.common import AuthResponse
 

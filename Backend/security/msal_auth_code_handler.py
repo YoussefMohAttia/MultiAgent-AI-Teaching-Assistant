@@ -1,12 +1,13 @@
 from typing import Optional, Union
 
 from fastapi import HTTPException, Request, status
-from Backend.Core import msal_client_config
 from msal import SerializableTokenCache
 from starlette.responses import RedirectResponse
 
 from clients.async_conf_client import AsyncConfClient
-from Core.msal_client_config import MSALClientConfig ,OptStr ,SessionManager ,StrsDict
+from Core.msal_client_config import MSALClientConfig
+from Core.utils import OptStr, StrsDict
+from Core.session_manager import SessionManager
 from models.auth_code import AuthCode 
 from models.auth_token import AuthToken 
 from models.id_token_claims import IDTokenClaims

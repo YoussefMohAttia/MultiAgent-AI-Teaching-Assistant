@@ -12,29 +12,26 @@ from sqlalchemy import (
     Enum,
     JSON
 )
-from sqlalchemy.orm import relationship, declarative_base
-
-Base = declarative_base()
-
+from sqlalchemy.orm import relationship
 
 # ---------------------------
-# User and LMS Account
+# User and Teams Account
 # ---------------------------
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    email = Column(String(255), unique=True, nullable=False)
-    name = Column(String(255))
-    role = Column(String(50) ,nullable=False, default="student")
+    azure_id = Column(String(255), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    password = Column(String(255), nullable=False)
 
     # Relationships
-    lms_accounts = relationship("LMSAccount", back_populates="user")
+    teams_accounts = relationship("TeamsAccount", back_populates="user")
     posts = relationship("Post", back_populates="user")
     comments = relationship("Comment", back_populates="user")
     quizzes_created = relationship("Quiz", back_populates="creator")
+
 
 class UserCourse(Base):
     __tablename__ = "user_courses"
@@ -42,19 +39,17 @@ class UserCourse(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
 
 
-
-class LMSAccount(Base):
-    __tablename__ = "lms_accounts"
+class TeamsAccount(Base):
+    __tablename__ = "teams_accounts"
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    platform = Column(String(100), nullable=False)
     encrypted_refresh_token = Column(Text)
     access_token_expiry = Column(DateTime)
     status = Column(String(50), default="active")
 
     # Relationships
-    user = relationship("User", back_populates="lms_accounts")
+    user = relationship("User", back_populates="teams_accounts")
 
 
 # ---------------------------
@@ -66,7 +61,6 @@ class Course(Base):
     id = Column(Integer, primary_key=True)
     lms_id = Column(String(255))
     title = Column(String(255), nullable=False)
-    platform = Column(String(100))
 
     # Relationships
     documents = relationship("Document", back_populates="course")
