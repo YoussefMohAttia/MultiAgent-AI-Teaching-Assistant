@@ -76,7 +76,6 @@ class MSALAuthorization:
     async def _get_token_route(self, request: Request, code: str, state: OptStr) -> RedirectResponse:
         token: AuthToken = await self.handler.authorize_access_token(request=request, code=code, state=state)
 
-        # FINAL BOSS CODE — SAVE USER + JWT
         from DB.schemas import User
         from DB.session import get_db
         from sqlalchemy import select
@@ -84,11 +83,19 @@ class MSALAuthorization:
         import jwt
         from Core.config import settings
 
-        claims = token.id_token_claims.__dict__
-        azure_id = claims.get("subject") or claims.get("sub")
-        email = claims.get("preferred_username")
-        name = claims.get("display_name") or email.split("@")[0]
+        claims = token.id_token_claims.__dict__ if token.id_token_claims else {}
 
+        # THIS IS THE CORRECT WAY — WORKS WITH YOUR TOKEN
+        azure_id = (
+            claims.get("oid") or 
+            claims.get("sub") or 
+            claims.get("subject") or 
+            claims.get("user_id")
+        )
+        email = claims.get("preferred_username") or claims.get("email", "unknown@alexu.edu.eg")
+        name = claims.get("display_name") or claims.get("name") or email.split("@")[0]
+
+        # Save to DB
         async for db in get_db():
             result = await db.execute(select(User).where(User.azure_id == azure_id))
             user = result.scalars().first()
@@ -104,7 +111,7 @@ class MSALAuthorization:
             await db.commit()
             break
 
-        # 30-day JWT cookie
+        # Set JWT cookie
         jwt_token = jwt.encode(
             {"sub": azure_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
             settings.SECRET_KEY,
