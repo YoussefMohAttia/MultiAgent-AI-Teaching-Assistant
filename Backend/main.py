@@ -44,7 +44,8 @@ async def test_auth(request: Request):
         "user_email": claims.get("preferred_username") or claims.get("email"),
         "user_name": claims.get("display_name"), 
         "azure_id": claims.get("sub"),
-        "raw_claims": claims
+        "raw_claims": claims,
+        "token": token
     }
 
 
