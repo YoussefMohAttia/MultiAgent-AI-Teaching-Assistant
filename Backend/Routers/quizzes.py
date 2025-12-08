@@ -1,46 +1,43 @@
-#quizzes
+# Routers/quizzes.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from DB.session import get_db
-from DB.schemas import Quiz, QuizQuestion, Course
 from DB.models import QuizOut, QuizCreate
+from DB import crud
 
 router = APIRouter()
 
 @router.get("/{subject_name}/quizzes", response_model=List[QuizOut])
-def get_quizzes_by_subject(subject_name: str, db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.title == subject_name).first()
+async def get_quizzes_by_subject(
+    subject_name: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. Logic: Get Course ID first
+    course = await crud.get_course_by_title(db=db, title=subject_name)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    quizzes = db.query(Quiz).filter(Quiz.course_id == course.id).all()
+    # 2. Logic: Get Quizzes
+    quizzes = await crud.get_quizzes_by_course_id(db=db, course_id=course.id)
     return quizzes
 
 @router.post("/{subject_name}/quizzes", response_model=QuizOut)
-def create_quiz_for_subject(subject_name: str, quiz: QuizCreate, db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.title == subject_name).first()
+async def create_quiz_for_subject(
+    subject_name: str, 
+    quiz: QuizCreate, 
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. Logic: Get Course ID
+    course = await crud.get_course_by_title(db=db, title=subject_name)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    
-    db_quiz = Quiz(course_id=course.id, created_by=quiz.created_by)
-    db.add(db_quiz)
-    db.commit()
-    db.refresh(db_quiz)
-
-    
-    for q in quiz.questions:
-        db_question = QuizQuestion(
-            quiz_id=db_quiz.id,
-            question=q.question,
-            type=q.type,
-            options=q.options,
-            correct_answer=q.correct_answer
-        )
-        db.add(db_question)
-    
-    db.commit()
-    db.refresh(db_quiz)
+    # 2. Logic: Create Quiz
+    db_quiz = await crud.create_new_quiz(
+        db=db, 
+        course_id=course.id, 
+        quiz_data=quiz
+    )
     return db_quiz

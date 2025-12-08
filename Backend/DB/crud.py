@@ -1,37 +1,100 @@
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-import typing as t
-
-from . import models, schemas
-
-from .session import get_db
-from DB.schemas import User
-from DB.models import UserCreate
+# DB/crud.py
+from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from .schemas import Post, Quiz, QuizQuestion, Course, UserCourse,User
+from .models import QuizCreate
+from datetime import datetime
 
 
-from datetime import datetime, timedelta
+# ---------------------------
+# USER OPERATIONS (Add this section)
+# ---------------------------
+async def get_user_by_azure_id(db: AsyncSession, azure_id: str) -> User | None:
+    """
+    Check if a user exists based on their Microsoft ID.
+    """
+    result = await db.execute(select(User).filter(User.azure_id == azure_id))
+    return result.scalars().first()
 
-from fastapi import Depends
-
-
-def get_user_by_email(email: str, db: Session):
-    user = db.query(User).filter(User.email == email).first()
-    return user
-
-
-#                 Pydantic model
-def create_user(user: UserCreate, db: Session):
-    # from Core.security import hash_password, create_access_token
-    # hashed_password = hash_password(user.password)
+async def create_new_user(db: AsyncSession, azure_id: str, email: str, name: str) -> User:
+    """
+    Register a new user from Microsoft login data.
+    """
     new_user = User(
-        name=user.name,
-        email=user.email,
-        azure_id=user.azure_id,
+        azure_id=azure_id, 
+        email=email, 
+        name=name, 
         created_at=datetime.utcnow()
     )
-
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    # access_token = create_access_token(data={"sub": new_user.email})
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
+
+# ---------------------------
+# POSTS OPERATIONS
+# ---------------------------
+async def create_new_post(db: AsyncSession, subject: str, content: str, user_id: int) -> Post:
+    new_post = Post(subject=subject, content=content, user_id=user_id)
+    db.add(new_post)
+    await db.commit()
+    await db.refresh(new_post)
+    return new_post
+
+async def get_posts_by_subject(db: AsyncSession, subject: str):
+    # We filter by the subject column
+    result = await db.execute(select(Post).filter(Post.subject == subject))
+    return result.scalars().all()
+
+# ---------------------------
+# COURSES OPERATIONS
+# ---------------------------
+async def get_course_by_title(db: AsyncSession, title: str) -> Course:
+    result = await db.execute(select(Course).filter(Course.title == title))
+    return result.scalars().first()
+
+async def get_student_courses(db: AsyncSession, student_id: int):
+    # Joins Course and UserCourse to find what the student is enrolled in
+    stmt = (
+        select(Course)
+        .join(UserCourse, Course.id == UserCourse.course_id)
+        .filter(UserCourse.user_id == student_id)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+# ---------------------------
+# QUIZZES OPERATIONS
+# ---------------------------
+async def get_quizzes_by_course_id(db: AsyncSession, course_id: int):
+    # We use selectinload to fetch the questions along with the quiz if needed
+    result = await db.execute(
+        select(Quiz)
+        .options(selectinload(Quiz.questions))
+        .filter(Quiz.course_id == course_id)
+    )
+    return result.scalars().all()
+
+async def create_new_quiz(db: AsyncSession, course_id: int, quiz_data: QuizCreate) -> Quiz:
+    # 1. Create the Quiz Parent
+    db_quiz = Quiz(course_id=course_id, created_by=quiz_data.created_by)
+    db.add(db_quiz)
+    await db.commit()
+    await db.refresh(db_quiz)
+
+    # 2. Create the Questions
+    for q in quiz_data.questions:
+        db_question = QuizQuestion(
+            quiz_id=db_quiz.id,
+            question=q.question,
+            type=q.type,
+            options=q.options,
+            correct_answer=q.correct_answer
+        )
+        db.add(db_question)
+    
+    await db.commit()
+    # Refresh to load the questions back into the object for the response
+    await db.refresh(db_quiz, attribute_names=["questions"])
+    return db_quiz

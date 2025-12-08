@@ -1,18 +1,18 @@
-#courses
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+# Routers/courses.py
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from DB.session import get_db
-from DB.schemas import UserCourse, Course
 from DB.models import Course as CourseModel
+from DB import crud
 
 router = APIRouter()
 
-# to get student's courses based on student_id  56
 @router.get("/{student_id}", response_model=List[CourseModel])
-def get_subjects(student_id: int, db: Session = Depends(get_db)):
-    courses = db.query(Course).join(UserCourse, Course.id == UserCourse.course_id).filter(UserCourse.user_id == student_id).all()
+async def get_subjects(
+    student_id: int, 
+    db: AsyncSession = Depends(get_db)
+):
+    courses = await crud.get_student_courses(db=db, student_id=student_id)
     return courses
-
-

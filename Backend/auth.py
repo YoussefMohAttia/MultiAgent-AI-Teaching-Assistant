@@ -12,7 +12,7 @@ from models.common import BearerToken
 from security.msal_auth_code_handler import MSALAuthCodeHandler 
 from security.msal_scheme import MSALScheme
 from models.id_token_claims import TokenStatus
-
+from DB import crud 
 
 class MSALAuthorization:
     def __init__(
@@ -74,44 +74,34 @@ class MSALAuthorization:
         return await self.handler.authorize_redirect(request=request, redirec_uri=redirect_uri, state=state)
 
     async def _get_token_route(self, request: Request, code: str, state: OptStr) -> RedirectResponse:
+        # 1. Exchange Code for Token
         token: AuthToken = await self.handler.authorize_access_token(request=request, code=code, state=state)
 
-        from DB.schemas import User
+        # 2. Extract Data from Token
+        claims = token.id_token_claims.__dict__
+        azure_id = claims.get("subject") or claims.get("sub")
+        email = claims.get("preferred_username")
+        name = claims.get("display_name") or email.split("@")[0]
+
+        # 3. DATABASE SYNC (The New Clean Way)
         from DB.session import get_db
-        from sqlalchemy import select
-        from datetime import datetime, timedelta
-        import jwt
-        from Core.config import settings
-
-        claims = token.id_token_claims.__dict__ if token.id_token_claims else {}
-
-        # THIS IS THE CORRECT WAY — WORKS WITH YOUR TOKEN
-        azure_id = (
-            claims.get("oid") or 
-            claims.get("sub") or 
-            claims.get("subject") or 
-            claims.get("user_id")
-        )
-        email = claims.get("preferred_username") or claims.get("email", "unknown@alexu.edu.eg")
-        name = claims.get("display_name") or claims.get("name") or email.split("@")[0]
-
-        # Save to DB
+        
         async for db in get_db():
-            result = await db.execute(select(User).where(User.azure_id == azure_id))
-            user = result.scalars().first()
+            # Check if user exists using CRUD
+            user = await crud.get_user_by_azure_id(db, azure_id)
+            
             if not user:
-                user = User(
-                    azure_id=azure_id,
-                    email=email,
-                    name=name,
-                    created_at=datetime.utcnow()
-                )
-                db.add(user)
-            user.last_login = datetime.utcnow()
-            await db.commit()
+                # Create new user if they don't exist
+                user = await crud.create_new_user(db, azure_id, email, name)
+            
+            # We break because we only need to do this once
             break
 
-        # Set JWT cookie
+        # 4. Issue Session Cookie
+        from datetime import timedelta, datetime
+        import jwt
+        from Core.config import settings
+        
         jwt_token = jwt.encode(
             {"sub": azure_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
             settings.SECRET_KEY,

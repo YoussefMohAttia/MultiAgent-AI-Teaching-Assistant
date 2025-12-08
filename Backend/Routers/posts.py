@@ -1,25 +1,26 @@
-#posts
+# Routers/posts.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from DB.models import PostOut
 from DB.session import get_db
-from DB.schemas import Post
+from DB import crud  
 
 router = APIRouter()
 
-# url is /courses/{student_id}/posts/{subject_name}
 @router.post("/{subject_name}", response_model=dict)
-def create_post(student_id: int, subject_name: str, content: str, db: Session = Depends(get_db)):
-    new_post = Post(subject=subject_name, content=content, user_id=student_id)
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
+async def create_post(student_id: int, subject_name: str, content: str, db: AsyncSession = Depends(get_db)):
+    new_post = await crud.create_new_post(
+        db=db, 
+        subject=subject_name, 
+        content=content, 
+        user_id=student_id
+    )
     return {"message": "Post created successfully", "id": new_post.id}
 
 
 @router.get("/{subject_name}", response_model=List[PostOut])
-def get_posts(student_id: int, subject_name: str, db: Session = Depends(get_db)):
-    posts = db.query(Post).filter(Post.subject == subject_name).all()
+async def get_posts(subject_name: str, db: AsyncSession = Depends(get_db)):
+    posts = await crud.get_posts_by_subject(db=db, subject=subject_name)
     return posts
