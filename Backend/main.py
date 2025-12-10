@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
 
-from Routers import login, courses, posts, quizzes
+from Routers import login, courses, posts, quizzes , documents
 from Routers.login import msal_auth
 from DB.session import create_all_tables
 
@@ -19,6 +19,7 @@ app.include_router(login.router, prefix="/login", tags=["Authentication"])
 app.include_router(courses.router, prefix="/courses", tags=["Courses"])
 app.include_router(posts.router, prefix="/posts", tags=["Posts"])
 app.include_router(quizzes.router, tags=["Quizzes"])
+app.include_router(documents.router, prefix="/documents", tags=["Documents"])
 
 
 @app.get("/")
