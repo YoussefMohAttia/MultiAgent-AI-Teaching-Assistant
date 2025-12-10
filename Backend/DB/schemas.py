@@ -65,6 +65,7 @@ class Course(Base):
     # Relationships
     documents = relationship("Document", back_populates="course")
     quizzes = relationship("Quiz", back_populates="course")
+    posts = relationship("Post", back_populates="course") # le nafs elsabab 
 
 
 class Document(Base):
@@ -161,13 +162,14 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     subject = Column(String(255))
     content = Column(Text)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False) # zawedto 3shan a3ml route ygeb all posts for a course
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="posts")
+    course = relationship("Course", back_populates="posts") # le nafs elsabab
     comments = relationship("Comment", back_populates="post")
-
 
 class Comment(Base):
     __tablename__ = "comments"
