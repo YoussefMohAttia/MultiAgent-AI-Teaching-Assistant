@@ -2,7 +2,7 @@
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .schemas import Post, Quiz, QuizQuestion, Course, UserCourse,User
+from .schemas import Post, Quiz, QuizQuestion, Course, UserCourse,User,Comment
 from .models import QuizCreate
 from datetime import datetime
 
@@ -98,3 +98,44 @@ async def create_new_quiz(db: AsyncSession, course_id: int, quiz_data: QuizCreat
     # Refresh to load the questions back into the object for the response
     await db.refresh(db_quiz, attribute_names=["questions"])
     return db_quiz
+
+# ---------------------------
+# COMMENTS OPERATIONS
+# ---------------------------
+
+async def add_comment_to_post(db: AsyncSession, post_id: int, user_id: int, content: str):
+    new_comment = Comment(post_id=post_id, user_id=user_id, content=content)
+    db.add(new_comment)
+    await db.commit()
+    await db.refresh(new_comment)
+    return new_comment
+async def get_comments_by_post_id(db: AsyncSession, post_id: int):
+    result = await db.execute(
+        select(Comment).filter(Comment.post_id == post_id)
+    )
+    return result.scalars().all()
+async def edit_comment(db: AsyncSession, comment_id: int, user_id: int,new_content: str):
+    result = await db.execute(select(Comment).filter(Comment.id == comment_id))
+    comment = result.scalars().first()
+    if not comment:
+        return None
+    if comment.user_id != user_id:
+        return None
+    
+    if comment:
+        comment.content = new_content
+        await db.commit()
+        await db.refresh(comment)
+    return comment
+async def delete_comment(db: AsyncSession, comment_id: int,user_id: int):
+    result = await db.execute(select(Comment).filter(Comment.id == comment_id))
+    comment = result.scalars().first()
+    if not comment:
+        return None
+    if comment.user_id != user_id:
+        return None
+    
+    if comment:
+        await db.delete(comment)
+        await db.commit()
+    return comment
