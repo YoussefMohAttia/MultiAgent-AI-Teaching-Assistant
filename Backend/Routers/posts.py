@@ -1,39 +1,34 @@
 # backend/Routers/posts.py
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from datetime import datetime
+
 from DB.session import get_db
 from DB.schemas import Post, User, Course
-from datetime import datetime
+from DB.request_models import PostCreate
+from Core.dependencies import get_current_user
 
 router = APIRouter()
 
-# POST /posts — Create a post (in a course)
+
+# POST /posts — Create a post (protected)
 @router.post("/")
 async def create_post(
-    request: Request,
-    course_id: int,
-    subject: str,
-    content: str,
+    post_data: PostCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Optional: protect with login later
-    # user = request.state.user
-    # if not user: raise HTTPException(401)
-
-    # Hardcode user_id = 1 for now (your account)
-    user_id = 1  # ← change later when auth is connected
-
     # Check if course exists
-    course_check = await db.execute(select(Course).where(Course.id == course_id))
+    course_check = await db.execute(select(Course).where(Course.id == post_data.course_id))
     if not course_check.scalars().first():
-        raise HTTPException(404, "Course not found")
+        raise HTTPException(status_code=404, detail="Course not found")
 
     new_post = Post(
-        subject=subject,
-        content=content,
-        user_id=user_id,
-        course_id=course_id,
+        subject=post_data.subject,
+        content=post_data.content,
+        user_id=current_user.id,
+        course_id=post_data.course_id,
         created_at=datetime.utcnow()
     )
     db.add(new_post)
@@ -44,7 +39,8 @@ async def create_post(
         "message": "Post created!",
         "post_id": new_post.id,
         "subject": new_post.subject,
-        "course_id": course_id
+        "course_id": post_data.course_id,
+        "author": current_user.name
     }
 
 # GET /posts — All posts

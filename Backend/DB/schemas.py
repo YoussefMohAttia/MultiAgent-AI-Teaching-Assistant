@@ -35,15 +35,15 @@ class User(Base):
 
 class UserCourse(Base):
     __tablename__ = "user_courses"
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True)
 
 
 class TeamsAccount(Base):
     __tablename__ = "teams_accounts"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     encrypted_refresh_token = Column(Text)
     access_token_expiry = Column(DateTime)
     status = Column(String(50), default="active")
@@ -72,7 +72,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50))
     title = Column(String(255))
     s3_path = Column(String(500))
@@ -88,7 +88,7 @@ class Chunk(Base):
     __tablename__ = "chunks"
 
     id = Column(Integer, primary_key=True)
-    doc_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    doc_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     sequence_number = Column(Integer)
     text = Column(Text)
 
@@ -115,8 +115,8 @@ class Summary(Base):
 class SummaryChunk(Base):
     __tablename__ = "summary_chunks"
 
-    summary_id = Column(Integer, ForeignKey("summaries.id"), primary_key=True)
-    chunk_id = Column(Integer, ForeignKey("chunks.id"), primary_key=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), primary_key=True)
+    chunk_id = Column(Integer, ForeignKey("chunks.id", ondelete="CASCADE"), primary_key=True)
 
     summary = relationship("Summary", back_populates="chunks")
     chunk = relationship("Chunk", back_populates="summary_links")
@@ -129,9 +129,10 @@ class Quiz(Base):
     __tablename__ = "quizzes"
 
     id = Column(Integer, primary_key=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255))  # Added: quiz title for identification
     created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(Integer, ForeignKey("users.id"))
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
 
     # Relationships
     course = relationship("Course", back_populates="quizzes")
@@ -143,7 +144,7 @@ class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
 
     id = Column(Integer, primary_key=True)
-    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id", ondelete="CASCADE"), nullable=False)
     question = Column(Text, nullable=False)
     type = Column(String(50)) 
     options = Column(JSON)  
@@ -162,8 +163,8 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     subject = Column(String(255))
     content = Column(Text)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False) # zawedto 3shan a3ml route ygeb all posts for a course
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -175,8 +176,8 @@ class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
