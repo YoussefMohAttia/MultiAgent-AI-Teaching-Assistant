@@ -4,48 +4,27 @@ services:
   postgres:
     image: postgres:12
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypass
-      POSTGRES_DB: mydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1111
+      POSTGRES_DB: teaching_assistant_db
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+      - "5433:5432"
 
   backend:
-
     build:
       context: ./Backend
       dockerfile: Dockerfile
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
-      DATABASE_URL: postgresql://myuser:mypass@postgres:5432/mydb
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:1111@postgres:5432/teaching_assistant_db
     depends_on:
       - postgres
-      - redis
     volumes:
-      - ./backend:/app
+      - ./Backend:/app
     ports:
       - "8000:8000"
-    
-
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    stdin_open: true
-    volumes:
-      - ./frontend:/app:cached
-      - ./frontend/node_modules:/app/node_modules:cached
-    environment:
-      - NODE_ENV=development
 
 volumes:
   db-data:
