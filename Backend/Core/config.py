@@ -11,8 +11,11 @@ class Settings(BaseSettings):
     CLIENT_SECRET: str
     TENANT_ID: str
 
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+
     SECRET_KEY: str = "change_this_in_production_please_make_it_long_and_random"
-    REDIRECT_URI: str = "http://localhost:8000/auth/callback"
+    REDIRECT_URI: str = "http://localhost:8000/login/token"
 
     @property
     def AUTHORITY(self) -> str:

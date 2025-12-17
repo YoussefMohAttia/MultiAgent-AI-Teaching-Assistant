@@ -4,24 +4,27 @@ from fastapi import APIRouter, Form, Header
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
-from Core.msal_client_config import MSALClientConfig
 from Core.utils import OptStr
 from models.auth_token import AuthToken
 from models.id_token_claims import IDTokenClaims
 from models.common import BearerToken
-from security.msal_auth_code_handler import MSALAuthCodeHandler 
-from security.msal_scheme import MSALScheme
+from security.google_auth_code_handler import GoogleAuthCodeHandler
+from security.google_scheme import GoogleScheme
+from Core.google_client_config import GoogleClientConfig
 from models.id_token_claims import TokenStatus
 from DB import crud 
 
-class MSALAuthorization:
+
+
+
+class GoogleAuthorization:
     def __init__(
         self,
-        client_config: MSALClientConfig,
+        client_config: GoogleClientConfig,
         return_to_path: str = "/",
         tags: Optional[list[str]] = None,  # type: ignore [unused-ignore]
     ):
-        self.handler = MSALAuthCodeHandler(client_config=client_config)
+        self.handler = GoogleAuthCodeHandler(client_config=client_config)
         if not tags:
             tags = ["authentication"]
         self.return_to_path = return_to_path
@@ -80,8 +83,8 @@ class MSALAuthorization:
         # 2. Extract Data from Token
         claims = token.id_token_claims.__dict__
         azure_id = claims.get("subject") or claims.get("sub")
-        email = claims.get("preferred_username")
-        name = claims.get("display_name") or email.split("@")[0]
+        email = claims.get("preferred_username") or claims.get("email")
+        name = claims.get("display_name") or claims.get("name") or (email.split("@")[0] if email else "Unknown")
 
         # 3. DATABASE SYNC (The New Clean Way)
         from DB.session import get_db
@@ -108,7 +111,7 @@ class MSALAuthorization:
             algorithm="HS256"
         )
 
-        response = RedirectResponse(url="/")
+        response = RedirectResponse(url=self.return_to_path)
         response.set_cookie("jwt_token", jwt_token, httponly=True, samesite="lax", max_age=2592000)
         return response
 
@@ -137,8 +140,8 @@ class MSALAuthorization:
         return False
 
     @property
-    def scheme(self) -> MSALScheme:
-        return MSALScheme(
+    def scheme(self) -> GoogleScheme:
+        return GoogleScheme(
             authorization_url=self.router.url_path_for("_login_route"),
             token_url=self.router.url_path_for("_post_token_route"),
             handler=self.handler,

@@ -1,7 +1,7 @@
-from Core.msal_client_config import MSALClientConfig
+from Core.google_client_config import GoogleClientConfig
 import auth
-from auth import MSALAuthorization
-client_config = MSALClientConfig()
-msal_auth = MSALAuthorization(client_config=client_config)
+from auth import GoogleAuthorization
+client_config = GoogleClientConfig()
+google_auth = GoogleAuthorization(client_config=client_config)
 
-router = msal_auth.router
+router = google_auth.router

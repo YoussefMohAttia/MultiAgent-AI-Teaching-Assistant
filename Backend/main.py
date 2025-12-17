@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
 
 from Routers import login, courses, posts, quizzes , documents,comments
-from Routers.login import msal_auth
+from Routers.login import google_auth
 from DB.session import create_all_tables
 
 
@@ -29,33 +29,18 @@ async def root():
 
 @app.get("/test-auth")
 async def test_auth(request: Request):
-    is_authenticated = await msal_auth.check_authenticated_session(request)
+    is_authenticated = await google_auth.check_authenticated_session(request)
     if not is_authenticated:
         return {"authenticated": False, "message": "Not logged in"}
-
-    token = await msal_auth.get_session_token(request)
+    token = await google_auth.get_session_token(request)
     if not token or not token.id_token_claims:
         return {"authenticated": True, "message": "Logged in but no claims"}
-
     claims = token.id_token_claims.__dict__  # this is how your wrapper stores it
-
     return {
         "authenticated": True,
-        "message": "You are fully logged in!",
-        "user_email": claims.get("preferred_username") or claims.get("email"),
-        "user_name": claims.get("display_name"), 
+        "message": "You are fully logged in 55555555!",
+        "user_email":claims.get("email"),
+        "user_name": claims.get("name"), 
         "azure_id": claims.get("sub"),
-        "raw_claims": claims,
         "token": token
     }
-
-
-# @app.get("/protected-example")
-# async def protected_example(request: Request, token: str = Depends(msal_auth.scheme)):
-#     """Example of a protected route that requires authentication"""
-#     auth_token = await msal_auth.get_session_token(request)
-#     return {
-#         "message": "You have access to this protected route!",
-#         "user_email": auth_token.id_token_claims.email if auth_token and auth_token.id_token_claims else None,
-#         "user_name": auth_token.id_token_claims.name if auth_token and auth_token.id_token_claims else None
-#     }

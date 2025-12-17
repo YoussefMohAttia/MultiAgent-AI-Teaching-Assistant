@@ -27,7 +27,7 @@ class MSALClientConfig(BaseSettings):
     show_in_docs: bool = False
 
     policy: MSALPolicies = MSALPolicies.AAD_SINGLE
-    scopes: ClassVar[list[str]] = ["User.Read"]
+    scopes: ClassVar[list[str]] = ["openid", "email", "profile"]
 
     @property
     def authority(self) -> str:
