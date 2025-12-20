@@ -15,12 +15,12 @@ async def startup_event():
     await create_all_tables()
     print("All tables created successfully!")
 
-app.include_router(login.router, prefix="/login", tags=["Authentication"])
-app.include_router(courses.router, prefix="/courses", tags=["Courses"])
-app.include_router(posts.router, prefix="/posts", tags=["Posts"])
+app.include_router(login.router, prefix="/api/login", tags=["Authentication"])
+app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
+app.include_router(posts.router, prefix="/api/posts", tags=["Posts"])
 app.include_router(quizzes.router, tags=["Quizzes"])
-app.include_router(documents.router, prefix="/documents", tags=["Documents"])
-app.include_router(comments.router, prefix="/comments", tags=["Comments"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
+app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 
 @app.get("/")
 async def root():
