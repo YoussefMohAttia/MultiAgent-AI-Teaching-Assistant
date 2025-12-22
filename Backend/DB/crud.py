@@ -205,3 +205,78 @@ def is_token_valid(user:  User) -> bool:
     
     now = datetime.now(timezone.utc)
     return user.google_token_expires_at > now
+
+# ---------------------------
+# GOOGLE CLASSROOM SYNC OPERATIONS
+# ---------------------------
+
+async def get_course_by_classroom_id(db: AsyncSession, classroom_id: str):
+    """Get course by Google Classroom ID"""
+    result = await db.execute(
+        select(Course).filter(Course.classroom_id == classroom_id)
+    )
+    return result.scalars().first()
+
+
+async def get_course_by_id(db: AsyncSession, course_id: int):
+    """Get course by internal database ID"""
+    result = await db.execute(
+        select(Course).filter(Course.id == course_id)
+    )
+    return result.scalars().first()
+
+
+async def create_course(
+    db: AsyncSession,
+    user_id: int,
+    classroom_id: str,
+    title: str
+):
+    """Create a new course from Google Classroom"""
+    new_course = Course(
+        classroom_id=classroom_id,
+        title=title,
+        user_id=user_id
+    )
+    db.add(new_course)
+    await db.commit()
+    await db.refresh(new_course)
+    return new_course
+
+
+async def update_course(db: AsyncSession, course:  Course, title: str):
+    """Update existing course title"""
+    course.title = title
+    await db.commit()
+    await db.refresh(course)
+    return course
+
+
+async def get_user_courses(db: AsyncSession, user_id: int):
+    """Get all courses for a user"""
+    result = await db. execute(
+        select(Course).filter(Course.user_id == user_id)
+    )
+    return result.scalars().all()
+
+
+async def create_document(
+    db: AsyncSession,
+    course_id: int,
+    classroom_material_id: str,
+    title: str,
+    google_drive_url: str = None
+):
+    """Create a document/material from Google Classroom"""
+    from . schemas import Document  # Import here to avoid circular import
+    
+    new_doc = Document(
+        course_id=course_id,
+        classroom_material_id=classroom_material_id,
+        title=title,
+        google_drive_url=google_drive_url
+    )
+    db.add(new_doc)
+    await db.commit()
+    await db.refresh(new_doc)
+    return new_doc

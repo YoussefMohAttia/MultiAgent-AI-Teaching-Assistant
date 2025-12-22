@@ -57,22 +57,19 @@ class GoogleClassroomService:
             print(f"❌ Error fetching courses: {e}")
             return []
     
-    async def fetch_course_materials(
-        self, 
-        access_token: str, 
-        course_id: str
-    ) -> List[Dict]:
+    async def fetch_courses(self, access_token: str) -> List[Dict]:
         """
-        Fetch materials for a specific course
+        Fetch all courses for the authenticated user
         
-        Args:
+        Args:  
             access_token: Valid Google access token
-            course_id: Google Classroom course ID
         
         Returns:
-            List of material dictionaries
+            List of course dictionaries from Google Classroom
         """
-        url = f"{self.BASE_URL}/courses/{course_id}/courseWorkMaterials"
+        url = f"{self.BASE_URL}/courses"
+        
+        print(f"🔑 Using access token: {access_token[: 50]}...")  # Show first 50 chars
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -81,17 +78,45 @@ class GoogleClassroomService:
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
                 
+                print(f"📡 API URL: {url}")
+                print(f"📡 Status Code: {response.status_code}")
+                print(f"📡 Response Headers: {dict(response.headers)}")
+                print(f"📡 Response Body: {response.text}")
+                
                 if response.status_code == 200:
                     data = response.json()
-                    materials = data.get("courseWorkMaterial", [])
-                    print(f"✅ Fetched {len(materials)} materials for course {course_id}")
-                    return materials
-                else:
-                    print(f"❌ Failed to fetch materials:  {response.status_code}")
+                    courses = data.get("courses", [])
+                    print(f"✅ Fetched {len(courses)} courses from Google Classroom")
+                    if courses:
+                        print(f"📚 Courses:  {[c.get('name') for c in courses]}")
+                    return courses
+                    
+                elif response.status_code == 401:
+                    print("❌ Unauthorized - token may be invalid")
+                    print(f"❌ Response: {response.text}")
                     return []
                     
+                elif response.status_code == 403:
+                    print("❌ Forbidden - no permission to access courses")
+                    try:
+                        error_data = response.json()
+                        print(f"❌ Error details: {error_data}")
+                    except:
+                        print(f"❌ Raw response: {response.text}")
+                    return []
+                    
+                else:  
+                    print(f"❌ Failed to fetch courses: {response.status_code}")
+                    print(f"Response: {response.text}")
+                    return []
+                    
+        except httpx.TimeoutException:
+            print("❌ Request timed out")
+            return []
         except Exception as e:
-            print(f"❌ Error fetching materials: {e}")
+            print(f"❌ Error fetching courses:  {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     async def fetch_announcements(
