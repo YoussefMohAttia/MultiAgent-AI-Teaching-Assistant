@@ -4,17 +4,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from .schemas import Post, Quiz, QuizQuestion, Course, UserCourse,User,Comment
 from .models import QuizCreate
-from datetime import datetime
-
-
+from datetime import datetime, timedelta
+from services.google_token_services import refresh_google_token
+from datetime import timezone
 # ---------------------------
 # USER OPERATIONS (Add this section)
 # ---------------------------
-async def get_user_by_google_id(db: AsyncSession, google_id: str):
+async def get_user_by_google_id(db: AsyncSession, google_id:  str) -> User:
+
+  
     result = await db.execute(select(User).where(User.google_id == google_id))
     return result.scalars().first()
 
-async def create_new_user(db: AsyncSession, google_id:  str, email: str, name:  str):
+
+async def get_user_by_id(db: AsyncSession, user_id: int) :
+
+    result = await db. execute(select(User).where(User.id == user_id))
+    return result.scalars().first()
+
+
+async def create_new_user(
+    db: AsyncSession, 
+    google_id: str, 
+    email: str, 
+    name: str
+) -> User:
+ 
     new_user = User(google_id=google_id, email=email, name=name)
     db.add(new_user)
     await db.commit()
@@ -128,3 +143,65 @@ async def delete_comment(db: AsyncSession, comment_id: int,user_id: int):
         await db.delete(comment)
         await db.commit()
     return comment
+
+# ---------------------------
+# GOOGLE TOKEN OPERATIONS
+# ---------------------------
+
+async def get_valid_access_token(
+    db: AsyncSession,
+    user_id: int,
+    client_id: str,
+    client_secret: str
+):
+    
+    user=await get_user_by_id(db, user_id)
+    if not user or not user.google_refresh_token:
+        print(f"❌ User {user_id} not found")
+        return None
+    if is_token_valid(user):
+        print(f"✅ Token for user {user_id} is still valid")
+        return user.google_access_token
+    token_data = await refresh_google_token(
+        refresh_token=user.google_refresh_token,
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    await update_user_access_token(
+        db=db,
+        user=user,
+        access_token=token_data["access_token"],
+        expires_in=token_data["expires_in"]
+    )
+    
+    return token_data["access_token"]
+
+async def update_user_access_token(
+    db: AsyncSession,
+    user: User,
+    access_token: str,
+    expires_in: int
+) -> User:
+    
+   
+    
+    user.google_access_token = access_token
+    user.google_token_expires_at = datetime. now(timezone.utc) + timedelta(seconds=expires_in)
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
+def is_token_valid(user:  User) -> bool:
+  
+    # Check if user has token
+    if not user.google_access_token:
+        return False
+    
+    # Check if expiry time exists
+    if not user.google_token_expires_at:
+        return False
+    
+    
+    now = datetime.now(timezone.utc)
+    return user.google_token_expires_at > now

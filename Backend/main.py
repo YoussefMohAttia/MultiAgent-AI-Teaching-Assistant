@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
 
-from Routers import login, courses, posts, quizzes , documents,comments
+from Routers import login, courses, posts, quizzes , documents,comments,google_classroom
 from Routers.login import google_auth
 from DB.session import create_all_tables
 
@@ -21,7 +21,7 @@ app.include_router(posts.router, prefix="/api/posts", tags=["Posts"])
 app.include_router(quizzes.router, tags=["Quizzes"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
-
+app.include_router(google_classroom.router,prefix="/api/sync",tags=["Google Classroom"]) 
 @app.get("/")
 async def root():
     return {"name": "Yousef"}
@@ -41,6 +41,6 @@ async def test_auth(request: Request):
         "message": "You are fully logged in 55555555!",
         "user_email":claims.get("email"),
         "user_name": claims.get("name"), 
-        "azure_id": claims.get("sub"),
+        "google_id": claims.get("sub"),
         "token": token
     }
