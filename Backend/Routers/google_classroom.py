@@ -7,7 +7,7 @@ from DB import crud
 from services.google_classroom_service import GoogleClassroomService
 from Core. config import settings
 
-router = APIRouter(prefix="/api/google-classroom", tags=["Google Classroom"])
+router = APIRouter()
 
 # Initialize service
 google_service = GoogleClassroomService()
@@ -85,97 +85,5 @@ async def sync_courses(
     }
 
 
-@router.get("/courses")
-async def get_synced_courses(
-    user_id: int,  # TODO:  Get from JWT token later
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get all courses synced from Google Classroom for this user
-    """
-    courses = await crud.get_user_courses(db, user_id)
-    
-    return {
-        "success": True,
-        "count": len(courses),
-        "courses": [
-            {
-                "id":  course.id,
-                "classroom_id": course.classroom_id,
-                "title": course. title,
-                "created_at": course.created_at.isoformat() if course.created_at else None
-            }
-            for course in courses
-        ]
-    }
 
 
-@router.post("/sync-materials/{course_id}")
-async def sync_course_materials(
-    course_id: int,
-    user_id: int,  # TODO: Get from JWT
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Sync materials for a specific course
-    """
-    # 1. Get course
-    course = await crud.get_course_by_id(db, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-    
-    # 2. Get valid access token
-    access_token = await crud. get_valid_access_token(
-        db=db,
-        user_id=user_id,
-        client_id=settings. GOOGLE_CLIENT_ID,
-        client_secret=settings. GOOGLE_CLIENT_SECRET
-    )
-    
-    if not access_token:
-        raise HTTPException(
-            status_code=401,
-            detail="Could not get valid access token"
-        )
-    
-    # 3. Fetch materials from Google
-    materials = await google_service.fetch_course_materials(
-        access_token, 
-        course. classroom_id
-    )
-    
-    if not materials:
-        return {
-            "success": True,
-            "message": "No materials found",
-            "synced":  0
-        }
-    
-    # 4. Save materials to database
-    synced_count = 0
-    for material in materials:
-        material_id = material.get("id")
-        title = material.get("title", "Untitled")
-        
-        # Extract Google Drive URL if exists
-        drive_url = None
-        if "materials" in material:
-            for mat in material["materials"]:
-                if "driveFile" in mat:
-                    drive_url = mat["driveFile"].get("alternateLink")
-                    break
-        
-        await crud.create_document(
-            db=db,
-            course_id=course_id,
-            classroom_material_id=material_id,
-            title=title,
-            google_drive_url=drive_url
-        )
-        synced_count += 1
-    
-    return {
-        "success": True,
-        "message": "Materials synced successfully",
-        "synced": synced_count
-    }
