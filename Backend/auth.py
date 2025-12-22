@@ -1,9 +1,10 @@
 from typing import Annotated, Optional
-
+from datetime import datetime, timedelta  
+import jwt
 from fastapi import APIRouter, Form, Header
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
-
+from Core.config import settings
 from Core.utils import OptStr
 from models.auth_token import AuthToken
 from models.id_token_claims import IDTokenClaims
@@ -79,10 +80,10 @@ class GoogleAuthorization:
     async def _get_token_route(self, request: Request, code: str, state: OptStr) -> RedirectResponse:
         # 1. Exchange Code for Token
         token: AuthToken = await self.handler.authorize_access_token(request=request, code=code, state=state)
-
+        
         # 2. Extract Data from Token
         claims = token.id_token_claims.__dict__
-        azure_id = claims.get("subject") or claims.get("sub")
+        google_id = claims.get("subject") or claims.get("sub")
         email = claims.get("preferred_username") or claims.get("email")
         name = claims.get("display_name") or claims.get("name") or (email.split("@")[0] if email else "Unknown")
 
@@ -91,22 +92,28 @@ class GoogleAuthorization:
         
         async for db in get_db():
             # Check if user exists using CRUD
-            user = await crud.get_user_by_azure_id(db, azure_id)
+            user = await crud.get_user_by_google_id(db, google_id)
             
             if not user:
                 # Create new user if they don't exist
-                user = await crud.create_new_user(db, azure_id, email, name)
-            
+                user = await crud.create_new_user(db, google_id, email, name)
+            user.google_access_token = token.access_token
+            user.google_refresh_token = token.refresh_token
+            if isinstance(token.expires_in, int):
+                user.google_token_expires_at = datetime.utcnow() + timedelta(seconds=token.expires_in)
+            else:
+                user.google_token_expires_at = datetime.utcnow() + token.expires_in  
+        
+            await db.commit()
             # We break because we only need to do this once
             break
 
         # 4. Issue Session Cookie
-        from datetime import timedelta, datetime
-        import jwt
-        from Core.config import settings
+        
+        
         
         jwt_token = jwt.encode(
-            {"sub": azure_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
+            {"sub": google_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
             settings.SECRET_KEY,
             algorithm="HS256"
         )

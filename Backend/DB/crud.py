@@ -10,23 +10,12 @@ from datetime import datetime
 # ---------------------------
 # USER OPERATIONS (Add this section)
 # ---------------------------
-async def get_user_by_azure_id(db: AsyncSession, azure_id: str) -> User | None:
-    """
-    Check if a user exists based on their Microsoft ID.
-    """
-    result = await db.execute(select(User).filter(User.azure_id == azure_id))
+async def get_user_by_google_id(db: AsyncSession, google_id: str):
+    result = await db.execute(select(User).where(User.google_id == google_id))
     return result.scalars().first()
 
-async def create_new_user(db: AsyncSession, azure_id: str, email: str, name: str) -> User:
-    """
-    Register a new user from Microsoft login data.
-    """
-    new_user = User(
-        azure_id=azure_id, 
-        email=email, 
-        name=name, 
-        created_at=datetime.utcnow()
-    )
+async def create_new_user(db: AsyncSession, google_id:  str, email: str, name:  str):
+    new_user = User(google_id=google_id, email=email, name=name)
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)

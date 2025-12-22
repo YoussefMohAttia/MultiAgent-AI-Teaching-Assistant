@@ -12,7 +12,7 @@ class GoogleClientConfig(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
 
     
-    redirect_uri: OptStr = "http://localhost:8000/login/token"
+    redirect_uri: OptStr = "http://localhost:8000/api/login/token"
     path_prefix: str = ""
     login_path: str = "/_login_route"
     token_path: str = "/token"

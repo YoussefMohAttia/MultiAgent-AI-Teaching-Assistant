@@ -1,6 +1,6 @@
-
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy. ext.declarative import declarative_base
 from datetime import datetime
+from sqlalchemy. sql import func
 from sqlalchemy import (
     Column,
     Integer,
@@ -13,24 +13,33 @@ from sqlalchemy import (
     JSON
 )
 from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
 # ---------------------------
-# User and Teams Account
+# User and User Courses
 # ---------------------------
 class User(Base):
     __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True)
-    azure_id = Column(String(255), unique=True, nullable=False, index=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
+    
+    id = Column(Integer, primary_key=True, index=True)
+    google_id = Column(String(255), unique=True, index=True)
+    email = Column(String(255), unique=True, index=True)
+    name = Column(String(255))
+    
+    # Google OAuth Tokens
+    google_access_token = Column(Text, nullable=True)
+    google_refresh_token = Column(Text, nullable=True)
+    google_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
     # Relationships
-    teams_accounts = relationship("TeamsAccount", back_populates="user")
-    posts = relationship("Post", back_populates="user")
-    comments = relationship("Comment", back_populates="user")
-    quizzes_created = relationship("Quiz", back_populates="creator")
+    courses = relationship("Course", back_populates="user", cascade="all, delete-orphan")
+    posts = relationship("Post", back_populates="author", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")  # ← ADD
+    quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
+    quizzes_created = relationship("Quiz", back_populates="creator")  # ← ADD
 
 
 class UserCourse(Base):
@@ -39,49 +48,45 @@ class UserCourse(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
 
 
-class TeamsAccount(Base):
-    __tablename__ = "teams_accounts"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    encrypted_refresh_token = Column(Text)
-    access_token_expiry = Column(DateTime)
-    status = Column(String(50), default="active")
-
-    # Relationships
-    user = relationship("User", back_populates="teams_accounts")
-
-
 # ---------------------------
 # Courses and Documents
 # ---------------------------
 class Course(Base):
     __tablename__ = "courses"
-
-    id = Column(Integer, primary_key=True)
-    lms_id = Column(String(255))
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    classroom_id = Column(String(255), unique=True, index=True)
     title = Column(String(255), nullable=False)
-
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
     # Relationships
-    documents = relationship("Document", back_populates="course")
-    quizzes = relationship("Quiz", back_populates="course")
-    posts = relationship("Post", back_populates="course") # le nafs elsabab 
+    user = relationship("User", back_populates="courses")
+    documents = relationship("Document", back_populates="course", cascade="all, delete-orphan")
+    posts = relationship("Post", back_populates="course", cascade="all, delete-orphan")
+    quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
+
+    class Config:
+        from_attributes = True
 
 
 class Document(Base):
     __tablename__ = "documents"
-
-    id = Column(Integer, primary_key=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    type = Column(String(50))
-    title = Column(String(255))
-    s3_path = Column(String(500))
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
-    lms_source_id = Column(String(255))
-
+    
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False, index=True)
+    classroom_material_id = Column(String(255), index=True)
+    title = Column(String(255), nullable=False)
+    google_drive_url = Column(String(500), nullable=True)
+    s3_path = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
     # Relationships
     course = relationship("Course", back_populates="documents")
-    chunks = relationship("Chunk", back_populates="document")
+    chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")  # ← ADD
+
+    class Config:
+        from_attributes = True
 
 
 class Chunk(Base):
@@ -94,7 +99,7 @@ class Chunk(Base):
 
     # Relationships
     document = relationship("Document", back_populates="chunks")
-    summary_links = relationship("SummaryChunk", back_populates="chunk")
+    summary_links = relationship("SummaryChunk", back_populates="chunk", cascade="all, delete-orphan")
 
 
 # ---------------------------
@@ -109,7 +114,7 @@ class Summary(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    chunks = relationship("SummaryChunk", back_populates="summary")
+    chunks = relationship("SummaryChunk", back_populates="summary", cascade="all, delete-orphan")
 
 
 class SummaryChunk(Base):
@@ -136,7 +141,8 @@ class Quiz(Base):
     # Relationships
     course = relationship("Course", back_populates="quizzes")
     creator = relationship("User", back_populates="quizzes_created")
-    questions = relationship("QuizQuestion", back_populates="quiz")
+    questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
+    attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")  # ← ADD if QuizAttempt exists
 
 
 class QuizQuestion(Base):
@@ -153,6 +159,20 @@ class QuizQuestion(Base):
     quiz = relationship("Quiz", back_populates="questions")
 
 
+class QuizAttempt(Base):
+    __tablename__ = "quiz_attempts"
+    
+    id = Column(Integer, primary_key=True)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    score = Column(Integer)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    quiz = relationship("Quiz", back_populates="attempts")
+    user = relationship("User", back_populates="quiz_attempts")
+
+
 # ---------------------------
 # Posts & Comments
 # ---------------------------
@@ -162,14 +182,18 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     subject = Column(String(255))
     content = Column(Text)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False) # zawedto 3shan a3ml route ygeb all posts for a course
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="posts")
-    course = relationship("Course", back_populates="posts") # le nafs elsabab
-    comments = relationship("Comment", back_populates="post")
+    author = relationship("User", back_populates="posts")  # ← CHANGED from 'user' to 'author'
+    course = relationship("Course", back_populates="posts")
+    comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
+
+    class Config:
+        from_attributes = True
+
 
 class Comment(Base):
     __tablename__ = "comments"
@@ -184,3 +208,5 @@ class Comment(Base):
     post = relationship("Post", back_populates="comments")
     user = relationship("User", back_populates="comments")
 
+    class Config:
+        from_attributes = True
