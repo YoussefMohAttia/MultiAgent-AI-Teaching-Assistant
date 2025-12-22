@@ -19,7 +19,10 @@ class GoogleClientConfig(BaseSettings):
     logout_path: str = "/_logout_route"
     show_in_docs: bool = False
 
-    scopes: ClassVar[list[str]] = ["openid", "email", "profile"]
+    scopes: ClassVar[list[str]] = ["openid", "email", "profile",
+                                   "https://www.googleapis.com/auth/classroom.courses.readonly",
+                                    "https://www.googleapis.com/auth/classroom.coursework.me.readonly",  
+                                    "https://www.googleapis.com/auth/classroom.announcements.readonly"]
 
     @property
     def authority(self) -> str:
