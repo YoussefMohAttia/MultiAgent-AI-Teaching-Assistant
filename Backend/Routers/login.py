@@ -2,6 +2,9 @@ from Core.google_client_config import GoogleClientConfig
 import auth
 from auth import GoogleAuthorization
 client_config = GoogleClientConfig()
-google_auth = GoogleAuthorization(client_config=client_config)
+google_auth = GoogleAuthorization(
+    client_config=client_config,
+    return_to_path="http://localhost:5173/dashboard"
+)
 
 router = google_auth.router
