@@ -1,6 +1,6 @@
-from sqlalchemy. ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
-from sqlalchemy. sql import func
+from sqlalchemy.sql import func
 from sqlalchemy import (
     Column,
     Integer,
@@ -37,9 +37,9 @@ class User(Base):
     # Relationships
     courses = relationship("Course", back_populates="user", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="author", cascade="all, delete-orphan")
-    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")  # ← ADD
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
-    quizzes_created = relationship("Quiz", back_populates="creator")  # ← ADD
+    quizzes_created = relationship("Quiz", back_populates="creator")
 
 
 class UserCourse(Base):
@@ -79,11 +79,20 @@ class Document(Base):
     title = Column(String(255), nullable=False)
     google_drive_url = Column(String(500), nullable=True)
     s3_path = Column(String(500), nullable=True)
+
+    # NEW: type of document — "material", "announcement", "coursework"
+    # Will be reclassified by AI team into "lecture", "assignment", "announcement"
+    doc_type = Column(String(50), nullable=True, index=True)
+
+    # NEW: raw text content — populated for announcements and assignment descriptions
+    # NULL for materials (they are Drive files, no text body)
+    raw_text = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     course = relationship("Course", back_populates="documents")
-    chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")  # ← ADD
+    chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
 
     class Config:
         from_attributes = True
@@ -142,7 +151,7 @@ class Quiz(Base):
     course = relationship("Course", back_populates="quizzes")
     creator = relationship("User", back_populates="quizzes_created")
     questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
-    attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")  # ← ADD if QuizAttempt exists
+    attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")
 
 
 class QuizQuestion(Base):
@@ -151,8 +160,8 @@ class QuizQuestion(Base):
     id = Column(Integer, primary_key=True)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
     question = Column(Text, nullable=False)
-    type = Column(String(50)) 
-    options = Column(JSON)  
+    type = Column(String(50))
+    options = Column(JSON)
     correct_answer = Column(String(255))
 
     # Relationships
@@ -187,7 +196,7 @@ class Post(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    author = relationship("User", back_populates="posts")  # ← CHANGED from 'user' to 'author'
+    author = relationship("User", back_populates="posts")
     course = relationship("Course", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
 

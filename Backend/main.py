@@ -1,4 +1,7 @@
+import traceback
+
 from fastapi import FastAPI, Depends
+from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -8,6 +11,12 @@ from DB.session import create_all_tables
 
 
 app = FastAPI(title="MultiAgent AI Teaching Assistant")
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "traceback": traceback.format_exc()}
+    )
 app.add_middleware(SessionMiddleware, secret_key="super-secret-change-in-production-123456")
 @app.on_event("startup")
 async def startup_event():

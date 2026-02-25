@@ -1,4 +1,3 @@
-#documents
 # backend/Routers/documents.py
 import os
 import shutil
@@ -16,7 +15,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
 
-# POST /documents/upload — Upload PDF or any file
+
+# ─────────────────────────────────────────────
+# POST /documents/upload — Manually upload a PDF
+# ─────────────────────────────────────────────
 @router.post("/upload")
 async def upload_document(
     course_id: int,
@@ -29,26 +31,26 @@ async def upload_document(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    # 2. Validate file type (optional — allow only PDF for now)
+    # 2. Validate file type — allow only PDF
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     # 3. Save file to disk
-    file_extension = os.path.splitext(file.filename)[1] or ".pdf"
     safe_filename = f"doc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # 4. Save metadata to DB
+    # 4. Save metadata to DB — using the current Document schema columns
     new_doc = Document(
         course_id=course_id,
-        type=file.content_type,
         title=file.filename,
-        s3_path=file_path,           # ← we store local path for now
-        uploaded_at=datetime.utcnow(),
-        lms_source_id=None           # ← for future Teams sync
+        s3_path=file_path,
+        doc_type="manual_upload",       # mark it as manually uploaded
+        classroom_material_id=None,     # not from Google Classroom
+        google_drive_url=None,
+        raw_text=None
     )
     db.add(new_doc)
     await db.commit()
@@ -59,19 +61,22 @@ async def upload_document(
         "document_id": new_doc.id,
         "filename": new_doc.title,
         "course_id": new_doc.course_id,
-        "download_url": f"/documents/download/{new_doc.id}"
+        "download_url": f"/api/documents/download/{new_doc.id}"
     }
 
-# GET /documents/download/{doc_id} — Download PDF by ID
+
+# ─────────────────────────────────────────────
+# GET /documents/download/{doc_id} — Download a manually uploaded PDF
+# ─────────────────────────────────────────────
 @router.get("/download/{doc_id}")
 async def download_document(doc_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Document).where(Document.id == doc_id))
     doc = result.scalars().first()
-    
+
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    if not os.path.exists(doc.s3_path):
+
+    if not doc.s3_path or not os.path.exists(doc.s3_path):
         raise HTTPException(status_code=404, detail="File not found on server")
 
     return FileResponse(
@@ -80,19 +85,28 @@ async def download_document(doc_id: int, db: AsyncSession = Depends(get_db)):
         media_type="application/pdf"
     )
 
+
+# ─────────────────────────────────────────────
 # GET /documents/{course_id} — List all documents in a course
+# ─────────────────────────────────────────────
 @router.get("/{course_id}")
 async def list_documents(course_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Document).where(Document.course_id == course_id))
     docs = result.scalars().all()
+
     return {
         "count": len(docs),
         "documents": [
             {
                 "id": d.id,
                 "title": d.title,
-                "uploaded_at": d.uploaded_at.isoformat(),
-                "download_url": f"/documents/download/{d.id}"
-            } for d in docs
+                "doc_type": d.doc_type,                             # "material" / "announcement" / "coursework" / "manual_upload"
+                "google_drive_url": d.google_drive_url,             # Drive link (if from Google Classroom)
+                "raw_text": d.raw_text,                             # text content (announcements/assignments)
+                "classroom_material_id": d.classroom_material_id,  # Google's ID (None if manual upload)
+                "created_at": d.created_at.isoformat() if d.created_at else None,  # safe: handles None
+                "download_url": f"/api/documents/download/{d.id}" if d.s3_path else None  # only for manual uploads
+            }
+            for d in docs
         ]
     }

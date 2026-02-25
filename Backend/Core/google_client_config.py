@@ -11,18 +11,26 @@ class GoogleClientConfig(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
 
-    
-    redirect_uri: OptStr = "http://localhost:8000/api/login/token"
+    redirect_uri: OptStr = "http://127.0.0.1:8000/api/login/token"
     path_prefix: str = ""
     login_path: str = "/_login_route"
     token_path: str = "/token"
     logout_path: str = "/_logout_route"
     show_in_docs: bool = False
 
-    scopes: ClassVar[list[str]] = ["openid", "email", "profile",
-                                   "https://www.googleapis.com/auth/classroom.courses.readonly",
-                                    "https://www.googleapis.com/auth/classroom.coursework.me.readonly",  
-                                    "https://www.googleapis.com/auth/classroom.announcements.readonly"]
+    scopes: ClassVar[list[str]] = [
+        "openid",
+        "email",
+        "profile",
+        # Read list of courses the user is enrolled in / teaching
+        "https://www.googleapis.com/auth/classroom.courses.readonly",
+        # Read coursework (assignments) created in courses
+        "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+        # Read pure study materials posted in courses
+        "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+        # Read announcements posted in courses
+        "https://www.googleapis.com/auth/classroom.announcements.readonly",
+    ]
 
     @property
     def authority(self) -> str:
