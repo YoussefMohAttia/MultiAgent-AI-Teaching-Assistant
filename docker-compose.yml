@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1111
+      POSTGRES_DB: teaching_assistant_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+  
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:1111@postgres:5432/teaching_assistant_db
+    depends_on:
+      - postgres
+    volumes:
+      - ./Backend:/app
+    ports:
+      - "8000:8000"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginxx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  db-data:

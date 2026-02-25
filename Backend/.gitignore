@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+Backend/venv/
+
+# Environment variables
+.env
+
+# IDE stuff
+.vscode/
+.idea/
+
+# Byte-compiled / cache
+*.pyo
+*.pyd
+*.pdb
+
+# OS files
+.DS_Store
+Thumbs.db
