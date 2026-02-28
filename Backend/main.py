@@ -22,12 +22,15 @@ app = FastAPI(title="MultiAgent AI Teaching Assistant")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,   # required for cookies / Authorization headers
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(SessionMiddleware, secret_key="super-secret-change-in-production-123456")
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 @app.on_event("startup")
 async def startup_event():
     print("Creating database tables from schemas.py ...")

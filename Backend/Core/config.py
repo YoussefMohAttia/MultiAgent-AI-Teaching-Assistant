@@ -5,7 +5,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Will be overridden by .env – these are just fallbacks
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:123456@localhost:5432/teaching_assistant_db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:12345@localhost:5432/teaching_assistant_db"
 
     CLIENT_ID: str
     CLIENT_SECRET: str

@@ -4,17 +4,21 @@ import { useAuth } from '../contexts/AuthContext';
 import './SignIn.css';
 
 export default function SignIn() {
-  const { user, mockLogin } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Already logged in → go to dashboard
+  // Already logged in → go straight to dashboard
   useEffect(() => {
     if (user) navigate('/dashboard');
   }, [user, navigate]);
 
   function handleGoogleLogin() {
-    mockLogin();
-    navigate('/dashboard', { replace: true });
+    // Redirect browser to the backend login route.
+    // The backend then redirects to Google, and after approval
+    // Google sends the code back to the backend (/api/login/token).
+    // The backend creates a JWT and redirects to /dashboard?token=JWT.
+    // TokenHandler in App.jsx picks up the token automatically.
+    window.location.href = 'http://127.0.0.1:8000/api/login/_login_route';
   }
 
   return (

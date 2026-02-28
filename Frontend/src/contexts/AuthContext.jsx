@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, restore token from localStorage
+  // On mount: restore token from localStorage (handles page refresh)
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
     if (token) {
@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
       });
       setUser({ ...res.data, token });
     } catch {
+      // Token invalid or expired — clear it and treat as logged out
       localStorage.removeItem('jwt_token');
       setUser(null);
     } finally {
@@ -33,19 +34,8 @@ export function AuthProvider({ children }) {
 
   function login(token) {
     localStorage.setItem('jwt_token', token);
-    setLoading(true);   // show spinner while validating
+    setLoading(true);
     fetchMe(token);
-  }
-
-  function mockLogin() {
-    setUser({
-      id: 1,
-      name: 'Demo Student',
-      email: 'demo@student.edu',
-      sub: 'dev_demo_student_edu',
-      token: 'mock-token',
-    });
-    setLoading(false);
   }
 
   function logout() {
@@ -54,7 +44,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, mockLogin, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
