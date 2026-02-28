@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
 
     SECRET_KEY: str = "change_this_in_production_please_make_it_long_and_random"
-    REDIRECT_URI: str = "http://localhost:8000/login/token"
+    REDIRECT_URI: str = "http://127.0.0.1:8000/login/token"
 
     @property
     def AUTHORITY(self) -> str:

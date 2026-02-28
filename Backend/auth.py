@@ -119,8 +119,8 @@ class GoogleAuthorization:
             algorithm="HS256"
         )
 
-        response = RedirectResponse(url=self.return_to_path)
-        response.set_cookie("jwt_token", jwt_token, httponly=True, samesite="lax", max_age=2592000)
+        redirect_url = f"{self.return_to_path}?token={jwt_token}"
+        response = RedirectResponse(url=redirect_url)
         return response
 
     async def _post_token_route(
