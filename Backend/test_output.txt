@@ -1,0 +1,158 @@
+======================================================================
+  AI SERVICES TEST OUTPUT
+  PDF: Drone Warfare in the Russia-Ukraine Conflict
+  Date: 2026-02-28 12:03:49
+  Text length: 4000 chars
+======================================================================
+
+======================================================================
+  1. SUMMARIZER  [Model: gemma-3-27b-it]
+======================================================================
+  STATUS: 200 OK  (9.2s)
+----------------------------------------------------------------------
+{
+  "summary": "## Summary: Drone Warfare in the Russia-Ukraine Conflict\n\nThis paper analyzes the ethical implications of drone warfare as exemplified by the Russia-Ukraine conflict, focusing on the moral responsibilities of engineers in the design and deployment of unmanned aerial systems (UAS). The study highlights a shift in modern combat characterized by the widespread use of drones for intelligence, reconnaissance, and attack. \n\nA central argument is that engineering choices regarding cost, autonomy, and reliability in drone design – illustrated by comparing the low-cost Iranian Shahed-136 to the more sophisticated Turkish Bayraktar TB2 – create ethical dilemmas. Specifically, the proliferation of inexpensive, single-use “kamikaze” drones like the Shahed-136 enables mass attacks that frequently violate just-war principles of distinction and proportionality, resulting in civilian harm, infrastructure damage, and psychological trauma. \n\nThe paper emphasizes the tension between engineers’ professional ethical obligations (such as those outlined in the NSPE Code, prioritizing public safety) and the development of lethal technologies. It concludes that engineers must prioritize public welfare when designing military systems and that unchecked drone proliferation poses a risk to public trust in technology and international law. The research aims to provide a nuanced understanding of drones as both tools of progress and instruments of destruction, and to reflect on the broader responsibilities of engineers in armed conflict."
+}
+
+======================================================================
+  2. QUIZ GENERATOR  [Model: gemma-3-27b-it]
+======================================================================
+  STATUS: 200 OK  (11.8s)
+----------------------------------------------------------------------
+{
+  "items": [
+    {
+      "stem": "What is a primary ethical concern raised by drone warfare, as discussed in the passage?",
+      "options": [
+        "The increased safety of soldiers.",
+        "The conflict between engineering ethics and wartime objectives.",
+        "The reduced cost of military operations.",
+        "The improvement of international relations."
+      ],
+      "answer_index": 1
+    },
+    {
+      "stem": "According to the passage, what is a key characteristic of the Shahed-136 drone?",
+      "options": [
+        "It is a sophisticated reconnaissance platform.",
+        "It is designed for multiple uses.",
+        "It is a single-use, explosive-carrying drone.",
+        "It relies on advanced artificial intelligence."
+      ],
+      "answer_index": 2
+    },
+    {
+      "stem": "The passage highlights that drone warfare impacts civilians through:",
+      "options": [
+        "Improved infrastructure and economic growth.",
+        "Reduced psychological trauma and increased safety.",
+        "Infrastructure damage and psychological trauma.",
+        "Enhanced access to healthcare and education."
+      ],
+      "answer_index": 2
+    },
+    {
+      "stem": "What does the NSPE Code emphasize regarding engineers' responsibilities?",
+      "options": [
+        "Prioritizing military objectives above all else.",
+        "Holding paramount the safety, health, and welfare of the public.",
+        "Maximizing cost-efficiency in all projects.",
+        "Ensuring rapid technological advancement."
+      ],
+      "answer_index": 1
+    },
+    {
+      "stem": "The Russia-Ukraine conflict serves as an example of:",
+      "options": [
+        "A decline in the use of drone technology.",
+        "The new era of drone warfare and its ethical implications.",
+        "The successful implementation of just-war principles.",
+        "A decrease in civilian casualties during conflict."
+      ],
+      "answer_index": 1
+    }
+  ]
+}
+
+======================================================================
+  3. CHATBOT / RAG TUTOR  [Model: gemma-3-27b-it]
+======================================================================
+  STATUS: 200 OK  (24.5s)
+----------------------------------------------------------------------
+{
+  "answer": "Okay, that's a *really* interesting and important question! It's great you're thinking about how technology is changing warfare. Unfortunately, I currently don't have access to any documents about the Russia-Ukraine conflict to draw upon and give you a detailed, sourced answer. My knowledge base for this course is still being built up. \n\nHowever, I can still give you a general overview based on what's been widely reported in the news and open-source intelligence.  I'll break down the main types of drones being used and *how* they're impacting warfare, but please keep in mind this isn't based on specific course materials *yet*.\n\n**Main Types of Drones in the Russia-Ukraine Conflict:**\n\nWe can broadly categorize them into a few key types:\n\n* **Commercial/Consumer Drones (e.g., DJI Mavic series):** These are relatively inexpensive, readily available drones originally designed for photography and videography.  Both sides are using these *extensively* for reconnaissance (scouting), artillery spotting (helping to direct fire accurately), and even dropping small explosives.  Their small size makes them harder to detect.\n* **Military Reconnaissance Drones:** These are more sophisticated than consumer drones, offering better range, sensors (like thermal imaging), and data security. Examples include the Turkish-made Bayraktar TB2, which gained early prominence. They provide real-time intelligence on enemy positions and movements.\n* **Loitering Munitions (\"Kamikaze Drones\"):** These are single-use drones that essentially *are* the weapon. They fly to a target and detonate.  They're cheaper and more precise than many traditional missiles.  Examples include the Switchblade (US-made) and various Iranian-made models.\n* **Larger Military Drones:** These are often used for longer-range surveillance, electronic warfare, and potentially carrying heavier payloads.  These are less frequently discussed in open sources, but are certainly being employed.\n\n**How Drones Have Changed Warfare in Ukraine (and generally):**\n\nThis conflict is really demonstrating a *revolution* in how war is fought. Here's how:\n\n* **Increased Situational Awareness:** Drones provide a constant stream of real-time information, giving commanders a much clearer picture of the battlefield. This is a huge advantage.\n* **Asymmetric Warfare:** Drones allow weaker forces to inflict significant damage on stronger opponents. Ukraine, for example, has used relatively inexpensive drones to harass and damage much more expensive Russian equipment.\n* **Lower Cost & Accessibility:** Compared to traditional military assets like tanks or fighter jets, drones are relatively cheap and easy to acquire (especially commercial models). This lowers the barrier to entry for conducting military operations.\n* **Increased Risk to Soldiers:**  Drones are used for reconnaissance, meaning fewer soldiers need to physically put themselves in harm's way to gather information. However, they also *create* risk, as they can be used to target soldiers.\n* **Electronic Warfare is Critical:**  The conflict has highlighted the importance of electronic warfare – jamming drone signals, spoofing GPS, and developing countermeasures.  It's a constant cat-and-mouse game.\n* **Changing Tactics:**  Traditional formations and tactics are becoming less effective against drone attacks.  Forces are having to disperse, use camouflage, and develop new ways to protect themselves.\n* **Proliferation Concerns:** The widespread use of drones raises concerns about their proliferation to non-state actors and the potential for misuse.\n\n\n\n**What I can help you with *right now* (even without the course documents):**\n\n* **Specific drone models:** We can discuss the capabilities of specific drones mentioned above (Bayraktar TB2, Switchblade, DJI Mavic) in more detail, based on publicly available information.\n* **Electronic Warfare:** We can explore the concepts of jamming, spoofing, and other electronic warfare techniques.\n* **The ethics of drone warfare:** This is a complex topic with many important considerations.\n* **The history of drones in warfare:**  Drones haven't just appeared in Ukraine! They have a long history of development and use.\n\n\n\nAs soon as the course materials are available, I'll be able to give you a much more precise and detailed answer based on the assigned readings.  \n\n\n\nDoes this general overview help? Would you like me to delve deeper into any of these areas? Let me know what you're most interested in!",
+  "sources": []
+}
+
+======================================================================
+  4. EVALUATOR  [Model: gemma-3-12b-it, Ground Truth: Summarizer output]
+======================================================================
+  STATUS: 200 OK  (122.4s)
+----------------------------------------------------------------------
+{
+  "scores": {
+    "correctness": {
+      "score": 3.79,
+      "detail": "ROUGE=0.16, LLM=6.0/10. The summary correctly identifies the widespread use of drones in the Russia-Ukraine conflict and mentions the Bayraktar TB2. However, it misses key aspects like the ethical considerations, the Shahed-136 comparison, and the broader implications for engineering ethics discussed in the lecture."
+    },
+    "relevance": {
+      "score": 6.0,
+      "detail": "The summary correctly identifies the core topic of drone usage in the Russia-Ukraine conflict and mentions a specific drone model (Bayraktar TB2). However, it misses key aspects like the ethical considerations, the Shahed-136 comparison, and the broader implications for engineering ethics discussed in the lecture."
+    },
+    "coherence": {
+      "score": 7.0,
+      "detail": "The summary demonstrates a reasonable flow of ideas, establishing the drone usage by both sides and then linking it to a broader impact on warfare. However, it lacks stronger transitions and could benefit from more explicit connections between the specific examples (Bayraktar TB2) and the general point about cheap surveillance."
+    },
+    "completeness": {
+      "score": 2.37,
+      "detail": "ROUGE-recall=0.07, LLM=4.0/10. The student summary touches on the use of drones in the Russia-Ukraine conflict and their impact on warfare, but it significantly omits key details about the ethical considerations, specific drone types (like the Shahed-136), and the dilemmas faced by engineers as discussed in the lecture and reference summary."
+    },
+    "conciseness": {
+      "score": 3.2,
+      "detail": "Length ratio: 0.17x"
+    },
+    "terminology": {
+      "score": 1.75,
+      "detail": "7/40 domain terms matched"
+    },
+    "hallucination": {
+      "score": 8.0,
+      "detail": "Unsupported claims: Ukraine uses Turkish Bayraktar TB2 drones for strikes.; Russia also uses drones for reconnaissance."
+    },
+    "missing_key_points": {
+      "score": 2.67,
+      "detail": "Missing (15/15 pts): 1: The paper examines the ethical issues surrounding drone warfare specifically ; 2: The Iranian Shahed-136 and the Turkish Bayraktar TB2 exemplify trade-offs in ; 3: The Shahed-136 is a kamikaze “loitering munition” designed for single-use mis"
+    },
+    "factual_accuracy": {
+      "score": 8.0,
+      "detail": "The summary accurately reflects several key points from the lecture but misses a crucial detail regarding the Shahed-136 drone.  Errors: The student summary states Ukraine uses Turkish Bayraktar TB2 drones, which is accurate according to the lecture.; The student summary states Russia uses drones for reconnaissance, which is accurate according to the lecture.; The student summary states drones have changed modern warfare by providing cheap surveillance capabilities, which is accurate according to the lecture."
+    },
+    "critical_analysis": {
+      "score": 3.0,
+      "detail": "The summary primarily describes *what* is happening (drone usage and capabilities) without delving into *why* this is significant or exploring any deeper implications. It lacks analysis of the strategic impact, ethical considerations, or potential long-term consequences of drone warfare in this conflict."
+    }
+  },
+  "overall": 4.58,
+  "reference_summary": "## Summary: Drone Warfare in the Russia-Ukraine Conflict\n\nThis paper analyzes the ethical implications of drone warfare as exemplified by the Russia-Ukraine conflict, focusing on the moral responsibilities of engineers in the design and deployment of unmanned aerial systems (UAS). The study highlights a shift in modern combat characterized by the widespread use of drones for intelligence, reconnaissance, and attack. \n\nA central argument is that engineering choices regarding cost, autonomy, and reliability in drone design – illustrated by comparing the low-cost Iranian Shahed-136 to the more sophisticated Turkish Bayraktar TB2 – create ethical dilemmas. Specifically, the proliferation of inexpensive, single-use “kamikaze” drones like the Shahed-136 enables mass attacks that frequently violate just-war principles of distinction and proportionality, resulting in civilian harm, infrastructure damage, and psychological trauma. \n\nThe paper emphasizes the tension between engineers’ professional ethical obligations (such as those outlined in the NSPE Code, prioritizing public safety) and the development of lethal technologies. It concludes that engineers must prioritize public welfare when designing military systems and that unchecked drone proliferation poses a risk to public trust in technology and international law. The research aims to provide a nuanced understanding of drones as both tools of progress and instruments of destruction, and to reflect on the broader responsibilities of engineers in armed conflict.",
+  "key_points": [
+    "The paper examines the ethical issues surrounding drone warfare specifically within the context of the Russia-Ukraine war.",
+    "The Iranian Shahed-136 and the Turkish Bayraktar TB2 exemplify trade-offs in cost, autonomy, and reliability in drone design.",
+    "The Shahed-136 is a kamikaze “loitering munition” designed for single-use missions, carrying a 50 kg explosive payload.",
+    "The Shahed-136's size is approximately 3.5 meters in length, 2.5 meters in wingspan, and weighs around 200 kg.",
+    "Drone warfare has significantly altered modern conflict, with both sides in Ukraine deploying thousands of small drones.",
+    "Engineers designing military drones face dilemmas balancing mission autonomy against accountability.",
+    "The NSPE Code of ethics requires engineers to prioritize the safety, health, and welfare of the public, which conflicts with the purpose of lethal military drones.",
+    "Cheap, kamikaze drones like the Shahed-136 enable mass attacks that often violate just-war principles of distinction and proportionality.",
+    "Drone strikes, such as those in Kyiv and Kherson, have resulted in infrastructure damage and psychological trauma for civilians.",
+    "The war in Ukraine exemplifies a new era of drone warfare and its ethical implications.",
+    "The study aims to outline the technical and ethical trade-offs inherent in modern combat drones.",
+    "A key objective is to compare different drone models (e.g., Shahed-136 and Bayraktar TB2) in terms of design and use.",
+    "The paper seeks to analyze documented drone strikes in Ukraine and their humanitarian effects.",
+    "Engineers must carefully weigh public welfare when designing military systems.",
+    "Unchecked drone proliferation risks eroding public trust in technology and international law."
+  ]
+}
+
+======================================================================
+  ALL TESTS COMPLETE
+======================================================================

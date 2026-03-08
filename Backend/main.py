@@ -1,13 +1,23 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
 
-from Routers import login, courses, posts, quizzes , documents,comments
+from Routers import login, courses, posts, quizzes , documents, comments, ai
 from Routers.login import google_auth
 from DB.session import create_all_tables
 
 
 app = FastAPI(title="MultiAgent AI Teaching Assistant")
+
+# Allow the Vite dev server (and any localhost) to talk to the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(SessionMiddleware, secret_key="super-secret-change-in-production-123456")
 @app.on_event("startup")
 async def startup_event():
@@ -21,6 +31,7 @@ app.include_router(posts.router, prefix="/api/posts", tags=["Posts"])
 app.include_router(quizzes.router, tags=["Quizzes"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 @app.get("/")
 async def root():

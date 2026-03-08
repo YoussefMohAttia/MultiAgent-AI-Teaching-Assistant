@@ -6,12 +6,13 @@ from Core.config import settings
 from .schemas import Base        # ← this imports your real models from schemas.py
 
 # Async engine (this is the only important change)
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     future=True,
-    pool_size=20,
-    max_overflow=40
+    **({} if _is_sqlite else {"pool_size": 20, "max_overflow": 40})
 )
 
 AsyncSessionLocal = sessionmaker(

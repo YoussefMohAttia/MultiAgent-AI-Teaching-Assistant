@@ -54,12 +54,23 @@ async def upload_document(
     await db.commit()
     await db.refresh(new_doc)
 
+    # 5. Auto-index the PDF into the course's vector store for RAG chatbot
+    chunks_indexed = 0
+    try:
+        from services.pdf_processor import index_pdf_for_course
+        chunks_indexed = index_pdf_for_course(file_path, course_id)
+    except Exception as e:
+        # Indexing failure should not block the upload
+        import logging
+        logging.getLogger(__name__).warning(f"Auto-index failed for doc {new_doc.id}: {e}")
+
     return {
         "message": "PDF uploaded successfully!",
         "document_id": new_doc.id,
         "filename": new_doc.title,
         "course_id": new_doc.course_id,
-        "download_url": f"/documents/download/{new_doc.id}"
+        "download_url": f"/documents/download/{new_doc.id}",
+        "chunks_indexed": chunks_indexed,
     }
 
 # GET /documents/download/{doc_id} — Download PDF by ID
