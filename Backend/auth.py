@@ -99,10 +99,11 @@ class GoogleAuthorization:
                 user = await crud.create_new_user(db, google_id, email, name)
             user.google_access_token = token.access_token
             user.google_refresh_token = token.refresh_token
-            if isinstance(token.expires_in, int):
-                user.google_token_expires_at = datetime.utcnow() + timedelta(seconds=token.expires_in)
-            else:
-                user.google_token_expires_at = datetime.utcnow() + token.expires_in  
+            if token.expires_in is not None:
+                if isinstance(token.expires_in, timedelta):
+                    user.google_token_expires_at = datetime.utcnow() + token.expires_in
+                else:
+                    user.google_token_expires_at = datetime.utcnow() + timedelta(seconds=int(token.expires_in))
         
             await db.commit()
             # We break because we only need to do this once
@@ -118,8 +119,8 @@ class GoogleAuthorization:
             algorithm="HS256"
         )
 
-        response = RedirectResponse(url=self.return_to_path)
-        response.set_cookie("jwt_token", jwt_token, httponly=True, samesite="lax", max_age=2592000)
+        redirect_url = f"{self.return_to_path}?token={jwt_token}"
+        response = RedirectResponse(url=redirect_url)
         return response
 
     async def _post_token_route(

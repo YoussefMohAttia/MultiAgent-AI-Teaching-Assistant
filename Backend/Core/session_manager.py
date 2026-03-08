@@ -24,19 +24,19 @@ class CacheManager:
         pass
 
     @classmethod
-    def write(cls, key: str, value: StrsDict) -> None:  # TODO: make sure we run this one at a time
+    def write(cls, key: str, value: StrsDict) -> None:
         value_json: str = json.dumps(value)
         cls.cache_db.update({key: value_json})
 
     @classmethod
-    def read(cls, key: str) -> Optional[StrsDict]:  # TODO: make sure we run this one at a time
+    def read(cls, key: str) -> Optional[StrsDict]:
         value_json: OptStr = cls.cache_db.get(key, None)
         if value_json:
-            return json.loads(value_json)  # type: ignore
+            return json.loads(value_json)
         return None
 
     @classmethod
-    def remove(cls, key: str) -> None:  # TODO: make sure we run this one at a time
+    def remove(cls, key: str) -> None:
         cls.cache_db.pop(key, None)
 
 
@@ -47,7 +47,9 @@ class SessionManager:
 
     @property
     def session_id(self) -> OptStr:
-        return str(self.request.session.get(SESSION_KEY, None))
+        # FIX: str(None) returns "None" which is truthy — must guard against this
+        value = self.request.session.get(SESSION_KEY, None)
+        return str(value) if value is not None else None
 
     def init_session(self, session_id: str) -> None:
         self.request.session.update({SESSION_KEY: session_id})
@@ -58,7 +60,7 @@ class SessionManager:
         session: OptStrsDict = self.cache_manager.read(self.session_id)
         if session:
             return session
-        return {}  # return empty session object
+        return {}
 
     def _write_session(self, session: StrsDict) -> None:
         if not self.session_id:
@@ -71,7 +73,7 @@ class SessionManager:
         if session is None:
             msg = "No session id, (Make sure you initialized the session by calling init_session)"
             raise OSError(msg)
-        session.update({model.__repr_name__(): model.model_dump_json(exclude_none=True, by_alias=True)})  # type: ignore
+        session.update({model.__repr_name__(): model.model_dump_json(exclude_none=True, by_alias=True)})
         self._write_session(session=session)
 
     def load(self, model_cls: type[M]) -> Optional[M]:
@@ -85,8 +87,6 @@ class SessionManager:
     def clear(self) -> None:
         session_id = self.session_id
         if not session_id:
-            return  # there is no session to clear
-        # clear the session object from cache
+            return
         self.cache_manager.remove(session_id)
-        # clear the session_id from the session cookie
         self.request.session.pop(SESSION_KEY, None)
