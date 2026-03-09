@@ -6,6 +6,15 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Attach JWT token from localStorage to every request automatically
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('jwt_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // ── Courses ──────────────────────────────────────────────────────────────────
 export const getCourses = () => api.get('/courses/');
 export const createCourse = (title) => api.post(`/courses/?title=${encodeURIComponent(title)}`);
@@ -22,17 +31,38 @@ export const uploadDocument = (courseId, file) => {
 };
 
 // ── AI Services ──────────────────────────────────────────────────────────────
-export const summarizeText = (text) =>
-  api.post('/ai/summarize', { text });
 
-export const generateQuiz = (text, nItems = 5, nOptions = 4) =>
-  api.post('/ai/generate-quiz', { text, n_items: nItems, n_options: nOptions });
+// source: { text: "..." }  OR  { documentId: 123 }
+export const summarizeText = (source) =>
+  api.post('/ai/summarize', {
+    text: source.text || null,
+    document_id: source.documentId || null,
+  });
+
+// source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
+export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
+  api.post('/ai/generate-quiz', {
+    course_id: courseId,
+    created_by: createdBy,
+    text: source.text || null,
+    document_id: source.documentId || null,
+    n_items: nItems,
+    n_options: nOptions,
+  });
+
+export const getQuizzesByCourse = (courseId) =>
+  api.get(`/quizzes/course/${courseId}`);
 
 export const chatWithTutor = (courseId, question, conversationId = 'default') =>
   api.post('/ai/chat', { course_id: courseId, question, conversation_id: conversationId });
 
-export const evaluateSummary = (studentSummary, lectureText, referenceSummary = null) => {
-  const body = { student_summary: studentSummary, lecture_text: lectureText };
+// source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
+export const evaluateSummary = (studentSummary, source, referenceSummary = null) => {
+  const body = {
+    student_summary: studentSummary,
+    lecture_text: source.text || null,
+    document_id: source.documentId || null,
+  };
   if (referenceSummary) body.reference_summary = referenceSummary;
   return api.post('/ai/evaluate', body);
 };

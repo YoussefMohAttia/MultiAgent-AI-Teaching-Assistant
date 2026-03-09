@@ -21,7 +21,7 @@ from models.ai_models import (
     ChatRequest, ChatResponse,
     QuizGenerateRequest, QuizGenerateResponse, QuizItem,
     SummarizeRequest, SummarizeResponse,
-    EvaluateRequest, EvaluateResponse,
+    EvaluateRequest, EvaluateResponse, MetricScore,
     IndexDocumentRequest, IndexDocumentResponse,
 )
 
@@ -34,7 +34,13 @@ router = APIRouter()
 # ── Helper: resolve document text from DB ─────────────────────────────────────
 
 async def _get_document_text(document_id: int, db: AsyncSession) -> str:
-    """Look up a document's file path in the DB and extract its text."""
+    """Return extractable text for a document.
+
+    Resolution order:
+      1. Local PDF already on disk (s3_path exists)       → extract via PyPDF
+      2. Google Drive URL present                          → auto-download, then extract
+      3. raw_text stored in DB (announcements/assignments) → return directly
+    """
     result = await db.execute(
         select(DocumentORM).where(DocumentORM.id == document_id)
     )
@@ -43,11 +49,32 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
         raise HTTPException(status_code=404, detail="Document not found")
 
     import os
-    if not doc.s3_path or not os.path.exists(doc.s3_path):
-        raise HTTPException(status_code=404, detail="Document file not found on server")
-
     from services.pdf_processor import extract_text_from_pdf
-    return extract_text_from_pdf(doc.s3_path)
+
+    # 1 & 2 — local file or auto-downloadable Drive file
+    if doc.s3_path or doc.google_drive_url:
+        try:
+            from services.drive_download_service import ensure_local_file
+            local_path = await ensure_local_file(doc, db)
+            return extract_text_from_pdf(local_path)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except Exception as e:
+            # Fall through to raw_text if download fails for any reason
+            print(f"⚠️  Drive download failed for doc {document_id}: {e}")
+
+    # 3 — raw text stored directly in DB
+    if doc.raw_text and doc.raw_text.strip():
+        return doc.raw_text
+
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "This document has no extractable text. "
+            "It may be a non-PDF Drive file (image, video, etc.) "
+            "or a Drive link that is not accessible."
+        ),
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -75,7 +102,20 @@ async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
 
 @router.post("/generate-quiz", response_model=QuizGenerateResponse)
 async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
-    """Generate quiz questions from provided text or an uploaded document."""
+    """Generate quiz questions from provided text or an uploaded document and persist to the database."""
+    from sqlalchemy.future import select as sa_select
+    from DB.schemas import Course as CourseORM, User as UserORM
+
+    # Validate course exists
+    course_result = await db.execute(sa_select(CourseORM).where(CourseORM.id == req.course_id))
+    if not course_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Validate creator user exists
+    user_result = await db.execute(sa_select(UserORM).where(UserORM.id == req.created_by))
+    if not user_result.scalars().first():
+        raise HTTPException(status_code=404, detail="User not found")
+
     # Resolve the source text
     text = req.text
     if not text and req.document_id:
@@ -94,10 +134,30 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
             n_items=req.n_items,
             n_options=req.n_options,
         )
-        items = [QuizItem(**item) for item in raw_items]
-        return QuizGenerateResponse(items=items)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Persist quiz + questions to database
+    from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM
+    db_quiz = QuizORM(course_id=req.course_id, created_by=req.created_by)
+    db.add(db_quiz)
+    await db.flush()  # get db_quiz.id before inserting questions
+
+    for item in raw_items:
+        db_question = QuizQuestionORM(
+            quiz_id=db_quiz.id,
+            question=item["stem"],
+            type="multiple_choice",
+            options=item["options"],
+            correct_answer=item["options"][item["answer_index"]],
+        )
+        db.add(db_question)
+
+    await db.commit()
+    await db.refresh(db_quiz)
+
+    items = [QuizItem(**item) for item in raw_items]
+    return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=items)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -106,7 +166,8 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
 
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
-    """Summarise text or an uploaded document."""
+    """Summarise text or an uploaded document and persist results to DB."""
+    from sqlalchemy.future import select as sa_select
     text = req.text
     if not text and req.document_id:
         text = await _get_document_text(req.document_id, db)
@@ -118,10 +179,57 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
 
     try:
         from services.summarizer_service import summarize_text
-        summary = summarize_text(text)
-        return SummarizeResponse(summary=summary)
+        summary_text = summarize_text(text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # ── Persist to DB ─────────────────────────────────────────────────────
+    from DB.schemas import (
+        Chunk as ChunkORM,
+        Summary as SummaryORM,
+        SummaryChunk as SummaryChunkORM,
+    )
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    db_summary = SummaryORM(text=summary_text, method="llm")
+    db.add(db_summary)
+    await db.flush()  # get db_summary.id
+
+    if req.document_id:
+        # Reuse existing chunks for this document if they were created before
+        existing_chunks = (
+            await db.execute(
+                sa_select(ChunkORM)
+                .where(ChunkORM.doc_id == req.document_id)
+                .order_by(ChunkORM.sequence_number)
+            )
+        ).scalars().all()
+
+        if not existing_chunks:
+            # First time — split and persist chunks
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000, chunk_overlap=200
+            )
+            raw_chunks = splitter.split_text(text)
+            existing_chunks = []
+            for i, chunk_text in enumerate(raw_chunks):
+                c = ChunkORM(
+                    doc_id=req.document_id,
+                    sequence_number=i,
+                    text=chunk_text,
+                )
+                db.add(c)
+                existing_chunks.append(c)
+            await db.flush()  # get chunk ids
+
+        # Link every chunk to this summary
+        for chunk in existing_chunks:
+            db.add(SummaryChunkORM(summary_id=db_summary.id, chunk_id=chunk.id))
+
+    await db.commit()
+    await db.refresh(db_summary)
+
+    return SummarizeResponse(summary_id=db_summary.id, summary=summary_text)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -155,9 +263,48 @@ async def evaluate(req: EvaluateRequest, db: AsyncSession = Depends(get_db), use
             reference_summary=req.reference_summary,
             key_points=req.key_points,
         )
-        return EvaluateResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # ── Transform service output to response model ──────────────────────────
+    # Service returns: {scores: {name: {score, detail}}, overall, reference_summary, key_points}
+    raw_scores = result["scores"]        # {metric: {score, detail}}
+    overall_score = result["overall"]
+
+    metrics = {
+        name: MetricScore(score=v["score"], feedback=v["detail"])
+        for name, v in raw_scores.items()
+    }
+
+    # ── Persist to DB ─────────────────────────────────────────────────────
+    from DB.schemas import Evaluation as EvaluationORM, EvaluationMetric as EvaluationMetricORM
+
+    db_eval = EvaluationORM(
+        document_id=req.document_id,
+        student_summary=req.student_summary,
+        lecture_text=lecture,
+        overall_score=overall_score,
+        method="hybrid",
+    )
+    db.add(db_eval)
+    await db.flush()
+
+    for name, m in metrics.items():
+        db.add(EvaluationMetricORM(
+            evaluation_id=db_eval.id,
+            metric_name=name,
+            score=m.score,
+            feedback=m.feedback,
+        ))
+
+    await db.commit()
+    await db.refresh(db_eval)
+
+    return EvaluateResponse(
+        evaluation_id=db_eval.id,
+        overall_score=overall_score,
+        metrics=metrics,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

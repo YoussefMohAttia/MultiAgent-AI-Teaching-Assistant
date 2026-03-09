@@ -183,7 +183,7 @@ export default function Dashboard() {
           <div className="actions-grid">
             <ActionCard icon="🤖" title="Ask AI" desc="Get instant help from your AI teaching assistant" />
             <ActionCard icon="📝" title="View Posts" desc="Browse announcements and coursework" />
-            <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" />
+            <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" onClick={() => navigate('/quiz?tab=take')} />
           </div>
         </section>
       </main>
@@ -218,9 +218,9 @@ function CourseCard({ course }) {
   );
 }
 
-function ActionCard({ icon, title, desc }) {
+function ActionCard({ icon, title, desc, onClick }) {
   return (
-    <div className="action-card">
+    <div className="action-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : {}}>
       <span className="action-icon">{icon}</span>
       <h3 className="action-title">{title}</h3>
       <p className="action-desc">{desc}</p>

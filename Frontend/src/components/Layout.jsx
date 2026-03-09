@@ -3,7 +3,7 @@ import './Layout.css';
 
 const NAV = [
   { section: 'Main' },
-  { to: '/', icon: '📊', label: 'Dashboard' },
+  { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/courses', icon: '📚', label: 'Courses' },
   { section: 'AI Tools' },
   { to: '/summarizer', icon: '📝', label: 'Summarizer' },

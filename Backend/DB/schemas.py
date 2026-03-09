@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import (
     Column,
     Integer,
+    Float,
     String,
     Text,
     DateTime,
@@ -134,6 +135,36 @@ class SummaryChunk(Base):
 
     summary = relationship("Summary", back_populates="chunks")
     chunk = relationship("Chunk", back_populates="summary_links")
+
+
+# ---------------------------
+# Evaluations
+# ---------------------------
+class Evaluation(Base):
+    __tablename__ = "evaluations"
+
+    id = Column(Integer, primary_key=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
+    student_summary = Column(Text, nullable=False)
+    lecture_text = Column(Text, nullable=True)
+    overall_score = Column(Float, nullable=False)
+    overall_feedback = Column(Text, nullable=True)
+    method = Column(String(100), default="hybrid")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    metrics = relationship("EvaluationMetric", back_populates="evaluation", cascade="all, delete-orphan")
+
+
+class EvaluationMetric(Base):
+    __tablename__ = "evaluation_metrics"
+
+    id = Column(Integer, primary_key=True)
+    evaluation_id = Column(Integer, ForeignKey("evaluations.id"), nullable=False)
+    metric_name = Column(String(100), nullable=False)
+    score = Column(Float, nullable=False)
+    feedback = Column(Text, nullable=True)
+
+    evaluation = relationship("Evaluation", back_populates="metrics")
 
 
 # ---------------------------

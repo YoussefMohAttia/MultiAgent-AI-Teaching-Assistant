@@ -30,7 +30,8 @@ class QuizGenerateRequest(BaseModel):
     """Generate quiz questions from raw text or a document in a course."""
     text: Optional[str] = None
     document_id: Optional[int] = None
-    course_id: Optional[int] = None
+    course_id: int
+    created_by: int
     objectives: Optional[List[str]] = None
     n_items: int = Field(default=5, ge=1, le=20)
     n_options: int = Field(default=4, ge=2, le=6)
@@ -43,6 +44,8 @@ class QuizItem(BaseModel):
 
 
 class QuizGenerateResponse(BaseModel):
+    quiz_id: int
+    course_id: int
     items: List[QuizItem]
 
 
@@ -55,6 +58,7 @@ class SummarizeRequest(BaseModel):
 
 
 class SummarizeResponse(BaseModel):
+    summary_id: Optional[int] = None
     summary: str
 
 
@@ -69,16 +73,16 @@ class EvaluateRequest(BaseModel):
     key_points: Optional[List[str]] = None
 
 
-class MetricResult(BaseModel):
+class MetricScore(BaseModel):
     score: float
-    detail: str
+    feedback: str
 
 
 class EvaluateResponse(BaseModel):
-    scores: Dict[str, MetricResult]
-    overall: float
-    reference_summary: str
-    key_points: List[str]
+    evaluation_id: Optional[int] = None
+    overall_score: float
+    overall_feedback: Optional[str] = None
+    metrics: Dict[str, MetricScore]
 
 
 # ── Document Indexing ────────────────────────────────────────────────────────
