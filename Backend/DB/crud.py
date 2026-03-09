@@ -165,7 +165,7 @@ async def update_user_access_token(
     db: AsyncSession, user: User, access_token: str, expires_in: int
 ) -> User:
     user.google_access_token = access_token
-    user.google_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    user.google_token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
     await db.commit()
     await db.refresh(user)
     return user
@@ -176,7 +176,9 @@ def is_token_valid(user: User) -> bool:
         return False
     if not user.google_token_expires_at:
         return False
-    return user.google_token_expires_at > datetime.now(timezone.utc)
+    # Compare as naive UTC datetimes (SQLite stores naive)
+    expires = user.google_token_expires_at.replace(tzinfo=None) if user.google_token_expires_at.tzinfo else user.google_token_expires_at
+    return expires > datetime.utcnow()
 
 # ---------------------------
 # GOOGLE CLASSROOM SYNC — COURSES

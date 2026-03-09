@@ -21,11 +21,26 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('home');
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/'); return; }
-    fetchCourses();
+    syncAndFetch();
   }, [user]);
+
+  async function syncAndFetch() {
+    setSyncing(true);
+    try {
+      await axios.post(`/api/sync/sync-courses?user_id=${user.id}`, null, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+    } catch (err) {
+      console.warn('Sync failed:', err?.response?.data?.detail || err.message);
+    } finally {
+      setSyncing(false);
+    }
+    await fetchCourses();
+  }
 
   async function fetchCourses() {
     setCoursesLoading(true);
@@ -136,7 +151,12 @@ export default function Dashboard() {
         <section className="section">
           <div className="section-header">
             <h2 className="section-title">Your Courses</h2>
-            <button className="section-action" onClick={fetchCourses}>↻ Refresh</button>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button className="section-action" onClick={syncAndFetch} disabled={syncing}>
+                {syncing ? '⏳ Syncing…' : '🔄 Sync Classroom'}
+              </button>
+              <button className="section-action" onClick={fetchCourses}>↻ Refresh</button>
+            </div>
           </div>
 
           {coursesLoading ? (
