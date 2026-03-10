@@ -72,9 +72,9 @@ export default function QuizGenerator() {
       setSelectedDocId('');
       getDocuments(Number(courseId))
         .then((r) => {
-          // Only show docs that have a local PDF or raw_text — Drive-only links can't be read
+          // Show docs that have a local PDF, a Drive URL (backend downloads on-demand), or raw text
           const usable = (r.data.documents || []).filter(
-            (d) => d.download_url || d.raw_text
+            (d) => d.download_url || d.google_drive_url || d.raw_text
           );
           setDocs(usable);
           if (usable.length) setSelectedDocId(String(usable[0].id));

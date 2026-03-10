@@ -8,16 +8,38 @@ Endpoints:
   GET  /api/sync/courses/{user_id}     → list synced courses for a user
   GET  /api/sync/documents/{course_id} → list synced documents for a course
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
-from DB.session import get_db
+from DB.session import get_db, AsyncSessionLocal
 from DB import crud
+from DB.schemas import Document as DocumentORM
 from services.google_classroom_service import GoogleClassroomService
+from services.drive_download_service import ensure_local_file
+from services.pdf_processor import index_pdf_for_course
 from Core.config import settings
 
 router = APIRouter()
 google_service = GoogleClassroomService()
+
+
+async def _background_index_documents(new_doc_ids: list):
+    """Background task: download Drive files and index them into ChromaDB."""
+    if not new_doc_ids:
+        return
+    async with AsyncSessionLocal() as db:
+        for doc_id in new_doc_ids:
+            try:
+                result = await db.execute(select(DocumentORM).where(DocumentORM.id == doc_id))
+                doc = result.scalars().first()
+                if not doc or not doc.google_drive_url:
+                    continue
+                local_path = await ensure_local_file(doc, db)
+                index_pdf_for_course(local_path, doc.course_id)
+                print(f"✅ Auto-indexed doc {doc_id} for course {doc.course_id}")
+            except Exception as e:
+                print(f"⚠️  Auto-index skipped doc {doc_id}: {e}")
 
 
 # ─────────────────────────────────────────────
@@ -71,6 +93,7 @@ async def sync_courses(
 @router.post("/full-sync")
 async def full_sync(
     user_id: int,   # TODO: extract from JWT cookie in a later sprint
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -128,6 +151,7 @@ async def full_sync(
     docs_announcements = 0
     docs_coursework = 0
     docs_skipped = 0
+    new_drive_doc_ids = []
 
     for db_course_id, classroom_id in synced_courses:
 
@@ -147,7 +171,7 @@ async def full_sync(
             title = item.get("title", "Untitled Material")
             drive_url = google_service.extract_drive_url(item.get("materials", []))
 
-            await crud.create_document(
+            new_doc = await crud.create_document(
                 db=db,
                 course_id=db_course_id,
                 classroom_material_id=material_id,
@@ -156,6 +180,8 @@ async def full_sync(
                 google_drive_url=drive_url,
                 raw_text=item.get("description")  # optional description text
             )
+            if drive_url:
+                new_drive_doc_ids.append(new_doc.id)
             docs_materials += 1
 
         # ── 3b: Announcements ──────────────────────
@@ -202,7 +228,7 @@ async def full_sync(
             drive_url = google_service.extract_drive_url(item.get("materials", []))
             description = item.get("description", None)  # assignment instructions → raw_text
 
-            await crud.create_document(
+            new_doc = await crud.create_document(
                 db=db,
                 course_id=db_course_id,
                 classroom_material_id=material_id,
@@ -211,14 +237,21 @@ async def full_sync(
                 google_drive_url=drive_url,
                 raw_text=description
             )
+            if drive_url:
+                new_drive_doc_ids.append(new_doc.id)
             docs_coursework += 1
 
-    # ── Step 4: Return summary ─────────────────────
+    # ── Step 4: Schedule background indexing for new Drive documents ──────
+    if new_drive_doc_ids:
+        background_tasks.add_task(_background_index_documents, new_drive_doc_ids)
+        print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
+
+    # ── Step 5: Return summary ─────────────────────────────────────────────
     total_docs_new = docs_materials + docs_announcements + docs_coursework
 
     return {
         "success": True,
-        "message": "Full sync completed successfully",
+        "message": "Full sync completed. Drive documents are being indexed in the background.",
         "courses": {
             "new": courses_new,
             "updated": courses_updated,
