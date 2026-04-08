@@ -83,6 +83,26 @@ class EvaluateResponse(BaseModel):
     overall_score: float
     overall_feedback: Optional[str] = None
     metrics: Dict[str, MetricScore]
+    reference_summary: Optional[str] = None
+    key_points: Optional[List[str]] = None
+
+
+# ── Essay Grading ───────────────────────────────────────────────────────────
+
+class EssayGradeRequest(BaseModel):
+    """Grade a single essay using the fine-tuned essay grader model."""
+    essay_text: str = Field(min_length=1)
+    question: Optional[str] = None
+
+
+class EssayGradeResponse(BaseModel):
+    predicted_band: float
+    raw_band: float
+    calibrated_band: float
+    objective: str
+    ordinal_threshold: float
+    word_count: int
+    model_path: str
 
 
 # ── Document Indexing ────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import QuizGenerator from './pages/QuizGenerator';
 import Chat from './pages/Chat';
 import Summarizer from './pages/Summarizer';
 import Evaluator from './pages/Evaluator';
+import EssayGrader from './pages/EssayGrader';
 
 // Handles ?token= query param injected by the backend redirect
 function TokenHandler() {
@@ -58,6 +59,7 @@ function AppRoutes() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/summarizer" element={<Summarizer />} />
           <Route path="/evaluator" element={<Evaluator />} />
+          <Route path="/essay-grader" element={<EssayGrader />} />
         </Route>
         {/* Catch-all */}
         <Route path="*" element={<SignIn />} />

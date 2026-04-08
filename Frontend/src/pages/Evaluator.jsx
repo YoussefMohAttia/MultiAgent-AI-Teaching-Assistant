@@ -3,16 +3,56 @@ import { evaluateSummary, getCourses, getDocuments } from '../services/api';
 import '../components/Shared.css';
 
 const METRIC_INFO = {
-  correctness:        { label: 'Correctness',        icon: '✅' },
-  relevance:          { label: 'Relevance',           icon: '🎯' },
-  coherence:          { label: 'Coherence',           icon: '🔗' },
-  completeness:       { label: 'Completeness',        icon: '📋' },
-  conciseness:        { label: 'Conciseness',         icon: '✂️' },
-  terminology:        { label: 'Terminology',         icon: '📖' },
-  hallucination:      { label: 'Hallucination',       icon: '👻' },
-  missing_key_points: { label: 'Missing Key Points',  icon: '🔑' },
-  factual_accuracy:   { label: 'Factual Accuracy',    icon: '📐' },
-  critical_analysis:  { label: 'Critical Analysis',   icon: '🧠' },
+  correctness: {
+    label: 'Correctness',
+    icon: '✅',
+    desc: 'Hybrid: lecture grounding + reference alignment + lexical overlap',
+  },
+  relevance: {
+    label: 'Relevance',
+    icon: '🎯',
+    desc: 'Coverage of key lecture topics and ideas',
+  },
+  coherence: {
+    label: 'Coherence',
+    icon: '🔗',
+    desc: 'Logical flow and readability of the summary',
+  },
+  completeness: {
+    label: 'Completeness',
+    icon: '📋',
+    desc: 'Hybrid: key-point coverage plus recall against reference',
+  },
+  conciseness: {
+    label: 'Conciseness',
+    icon: '✂️',
+    desc: 'Length efficiency relative to the reference summary',
+  },
+  terminology: {
+    label: 'Terminology',
+    icon: '📖',
+    desc: 'Use of domain-specific lecture vocabulary',
+  },
+  hallucination: {
+    label: 'Hallucination',
+    icon: '👻',
+    desc: 'Penalty for unsupported claims not found in lecture',
+  },
+  missing_key_points: {
+    label: 'Missing Key Points',
+    icon: '🔑',
+    desc: 'Coverage of extracted lecture key points',
+  },
+  factual_accuracy: {
+    label: 'Factual Accuracy',
+    icon: '📐',
+    desc: 'Correctness of factual details and claims',
+  },
+  critical_analysis: {
+    label: 'Critical Analysis',
+    icon: '🧠',
+    desc: 'Depth of reasoning and analytical thinking',
+  },
 };
 
 function colorForScore(score) {
@@ -227,7 +267,6 @@ export default function Evaluator() {
       {/* ── Results Section ─────────────────────────── */}
       {result && (
         <>
-          {/* Overall Score */}
           <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>Overall Score</p>
             <div style={{ fontSize: '3.5rem', fontWeight: 700, color: colorForScore(result.overall_score) }}>
@@ -240,41 +279,72 @@ export default function Evaluator() {
             )}
           </div>
 
-          {/* Per-metric scores */}
-          <div className="grid-2">
-            {Object.entries(METRIC_INFO).map(([key, { label, icon }]) => {
-              const metric = result.metrics?.[key];
-              if (!metric) return null;
-              return (
-                <div className="card" key={key} style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                      {icon} {label}
-                    </span>
-                    <span style={{ fontWeight: 700, fontSize: '1.1rem', color: colorForScore(metric.score) }}>
-                      {metric.score}/10
-                    </span>
-                  </div>
-                  {/* score bar */}
-                  <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-hover)', overflow: 'hidden', marginBottom: 8 }}>
-                    <div
-                      style={{
-                        width: `${metric.score * 10}%`,
-                        height: '100%',
-                        borderRadius: 3,
-                        background: colorForScore(metric.score),
-                        transition: 'width .6s ease',
-                      }}
-                    />
-                  </div>
-                  {metric.feedback && (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                      {metric.feedback}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student words</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{studentSummary.trim().split(/\s+/).filter(Boolean).length}</div>
+            </div>
+            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reference words</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+                {result.reference_summary ? result.reference_summary.trim().split(/\s+/).filter(Boolean).length : '-'}
+              </div>
+            </div>
+            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Key points</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{result.key_points?.length ?? '-'}</div>
+            </div>
+            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Metrics</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{Object.keys(result.metrics || {}).length}</div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-hover)' }}>
+                  <th style={{ textAlign: 'left', padding: 12 }}>Metric</th>
+                  <th style={{ textAlign: 'center', padding: 12, width: 120 }}>Score</th>
+                  <th style={{ textAlign: 'left', padding: 12, width: '30%' }}>Visual</th>
+                  <th style={{ textAlign: 'left', padding: 12 }}>Details / AI Feedback</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(METRIC_INFO).map(([key, info]) => {
+                  const metric = result.metrics?.[key];
+                  if (!metric) return null;
+                  const score = Number(metric.score || 0);
+                  const icon = score >= 7 ? '🟢' : score >= 4 ? '🟡' : '🔴';
+                  return (
+                    <tr key={key} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: 12, fontWeight: 600 }}>{icon} {info.label}</td>
+                      <td style={{ padding: 12, textAlign: 'center', fontWeight: 700 }}>
+                        {score.toFixed(1)}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> /10</span>
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <div style={{ height: 10, borderRadius: 6, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${Math.max(0, Math.min(100, score * 10))}%`,
+                              height: '100%',
+                              borderRadius: 6,
+                              background: colorForScore(score),
+                              transition: 'width .4s ease',
+                            }}
+                          />
+                        </div>
+                      </td>
+                      <td style={{ padding: 12, fontSize: '0.85rem', lineHeight: 1.45 }}>
+                        <div style={{ marginBottom: 4, color: 'var(--text-muted)' }}>{info.desc}</div>
+                        {metric.feedback && <div>{metric.feedback}</div>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}

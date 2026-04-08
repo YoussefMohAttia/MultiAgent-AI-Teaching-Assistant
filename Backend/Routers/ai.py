@@ -22,6 +22,7 @@ from models.ai_models import (
     QuizGenerateRequest, QuizGenerateResponse, QuizItem,
     SummarizeRequest, SummarizeResponse,
     EvaluateRequest, EvaluateResponse, MetricScore,
+    EssayGradeRequest, EssayGradeResponse,
     IndexDocumentRequest, IndexDocumentResponse,
 )
 
@@ -256,12 +257,20 @@ async def evaluate(req: EvaluateRequest, db: AsyncSession = Depends(get_db), use
         from services.evaluator_service import evaluate_summary
         # evaluate_summary is sync (blocking HTTP + time.sleep retries);
         # offload to a thread so we don't block the async event loop.
-        result = await asyncio.to_thread(
-            evaluate_summary,
-            student_summary=req.student_summary,
-            lecture_text=lecture,
-            reference_summary=req.reference_summary,
-            key_points=req.key_points,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                evaluate_summary,
+                student_summary=req.student_summary,
+                lecture_text=lecture,
+                reference_summary=req.reference_summary,
+                key_points=req.key_points,
+            ),
+            timeout=300,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Evaluation request timed out at the API layer (300s), not token limit. Please retry or reduce lecture length.",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -304,11 +313,35 @@ async def evaluate(req: EvaluateRequest, db: AsyncSession = Depends(get_db), use
         evaluation_id=db_eval.id,
         overall_score=overall_score,
         metrics=metrics,
+        reference_summary=result.get("reference_summary"),
+        key_points=result.get("key_points"),
     )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  5.  INDEX DOCUMENT  —  Process & index a PDF into the course vector store
+#  5.  ESSAY GRADING  —  IELTS band prediction using fine-tuned local model
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/grade-essay", response_model=EssayGradeResponse)
+async def grade_essay(req: EssayGradeRequest, user: CurrentUser | None = _auth):
+    """Predict IELTS overall band for a single essay."""
+    try:
+        import asyncio
+        from services.essay_grader_service import grade_essay as grade_single
+
+        # Model inference is sync and potentially heavy; run in worker thread.
+        result = await asyncio.to_thread(
+            grade_single,
+            essay_text=req.essay_text,
+            question=req.question,
+        )
+        return EssayGradeResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  6.  INDEX DOCUMENT  —  Process & index a PDF into the course vector store
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/index-document", response_model=IndexDocumentResponse)

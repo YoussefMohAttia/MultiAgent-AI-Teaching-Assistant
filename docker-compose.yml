@@ -20,10 +20,12 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:1111@postgres:5432/teaching_assistant_db
+      ESSAY_GRADER_MODEL_PATH: /models/fine_tuned_essaygrader
     depends_on:
       - postgres
     volumes:
       - ./Backend:/app
+      - "./Ai Team/Main/final_essay_grader/fine_tuned_essaygrader:/models/fine_tuned_essaygrader:ro"
     ports:
       - "8000:8000"
 

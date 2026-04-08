@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { icon: '❓', label: 'Quizzes',    id: 'quizzes',    path: '/quiz' },
   { icon: '📝', label: 'Summarizer', id: 'summarizer', path: '/summarizer' },
   { icon: '📊', label: 'Evaluator',  id: 'evaluator',  path: '/evaluator' },
+  { icon: '🧾', label: 'Essay Grader', id: 'essayGrader', path: '/essay-grader' },
 ];
 
 export default function Dashboard() {
@@ -199,6 +200,7 @@ export default function Dashboard() {
             <ActionCard icon="🤖" title="Ask AI" desc="Get instant help from your AI teaching assistant" onClick={() => navigate('/chat')} />
             <ActionCard icon="📝" title="Summarize" desc="Summarize lecture notes and documents instantly" onClick={() => navigate('/summarizer')} />
             <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" onClick={() => navigate('/quiz?tab=take')} />
+            <ActionCard icon="🧾" title="Grade Essay" desc="Predict IELTS band score using your fine-tuned model" onClick={() => navigate('/essay-grader')} />
           </div>
         </section>
       </main>

@@ -67,6 +67,12 @@ export const evaluateSummary = (studentSummary, source, referenceSummary = null)
   return api.post('/ai/evaluate', body);
 };
 
+export const gradeEssay = (essayText, question = null) =>
+  api.post('/ai/grade-essay', {
+    essay_text: essayText,
+    question,
+  });
+
 export const indexDocument = (documentId, courseId) =>
   api.post('/ai/index-document', { document_id: documentId, course_id: courseId });
 

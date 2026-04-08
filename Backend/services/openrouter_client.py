@@ -30,6 +30,7 @@ def chat_completion(
     model: str | None = None,
     temperature: float = 0.3,
     max_tokens: int = 1500,
+    timeout_s: float | None = None,
 ) -> str:
     """Send a single prompt and return the assistant's text response."""
     client = get_ai_client()
@@ -53,5 +54,6 @@ def chat_completion(
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
+        timeout=timeout_s,
     )
     return response.choices[0].message.content.strip()

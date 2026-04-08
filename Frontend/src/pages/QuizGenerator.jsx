@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import '../components/Shared.css';
+import './QuizGenerator.css';
 
 export default function QuizGenerator() {
   const { user } = useAuth();
@@ -267,7 +268,13 @@ export default function QuizGenerator() {
             </div>
           )}
 
-          {generatedItems.length > 0 && <QuizTaker items={generatedItems} />}
+          {generatedItems.length > 0 && (
+            <QuizTaker
+              items={generatedItems}
+              title="Practice Multiple Choice Questions"
+              subtitle="Generated Quiz"
+            />
+          )}
         </>
       )}
 
@@ -290,7 +297,7 @@ export default function QuizGenerator() {
                   </span>
                 </h3>
               </div>
-              <QuizTaker items={takeItems} />
+              <QuizTaker items={takeItems} title={`Quiz #${activeQuiz.id}`} subtitle="Saved Quiz" />
             </>
           ) : (
             <>
@@ -337,97 +344,125 @@ export default function QuizGenerator() {
 }
 
 // ── Reusable quiz-taking UI (used by both generate and take tabs) ─────────────
-function QuizTaker({ items }) {
-  const [showAnswers, setShowAnswers] = useState(false);
+function QuizTaker({ items, title, subtitle }) {
   const [selected, setSelected] = useState({});
+  const [locked, setLocked] = useState({});
+  const [revealedAll, setRevealedAll] = useState(false);
+  const [showScoreBar, setShowScoreBar] = useState(false);
 
-  const handleSelect = (qIdx, oIdx) => {
-    if (showAnswers) return;
+  const attempted = Object.values(selected).filter((v) => v !== '__revealed__').length;
+  const score = items.filter((q, i) => selected[i] !== '__revealed__' && selected[i] === q.answer_index).length;
+
+  const onAnswer = (qIdx, oIdx) => {
+    if (locked[qIdx] || revealedAll) return;
     setSelected((prev) => ({ ...prev, [qIdx]: oIdx }));
+    setLocked((prev) => ({ ...prev, [qIdx]: true }));
   };
 
-  const score =
-    showAnswers && items.length
-      ? items.filter((q, i) => selected[i] === q.answer_index).length
-      : null;
+  const revealAllAnswers = () => {
+    const nextLocked = {};
+    const nextSelected = { ...selected };
+    items.forEach((_, i) => {
+      nextLocked[i] = true;
+      if (nextSelected[i] === undefined) nextSelected[i] = '__revealed__';
+    });
+    setLocked(nextLocked);
+    setSelected(nextSelected);
+    setRevealedAll(true);
+  };
+
+  const resetAll = () => {
+    setSelected({});
+    setLocked({});
+    setRevealedAll(false);
+    setShowScoreBar(false);
+  };
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ fontSize: '1rem' }}>{items.length} Questions Generated</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!showAnswers && Object.keys(selected).length > 0 && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAnswers(true)}>
-              ✅ Check Answers
-            </button>
-          )}
-          {showAnswers && (
-            <span className="badge badge-success" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>
-              Score: {score}/{items.length}
-            </span>
-          )}
+    <section className="quiz-format-root">
+      <header className="quiz-format-header">
+        <div className="quiz-format-course">{title || 'Practice Multiple Choice Questions'}</div>
+        <div className="quiz-format-subtitle">{subtitle || 'Generated from your selected source'}</div>
+        <div className="quiz-format-meta">
+          <span>AI Teaching Assistant</span>
+          <span>{items.length} Questions</span>
         </div>
+      </header>
+
+      <div className="quiz-format-controls">
+        <label>Quiz Controls:</label>
+        <button className="btn btn-primary" onClick={revealAllAnswers}>Reveal All Answers</button>
+        <button className="btn btn-secondary" onClick={() => setShowScoreBar(true)}>Show Score</button>
+        <button className="btn btn-outline" onClick={resetAll}>Reset</button>
       </div>
 
-      {items.map((q, qi) => (
-        <div
-          key={qi}
-          className="card"
-          style={{
-            marginBottom: 16,
-            borderLeft: `3px solid ${
-              showAnswers
-                ? selected[qi] === q.answer_index
-                  ? 'var(--success)'
-                  : selected[qi] !== undefined
-                  ? 'var(--danger)'
-                  : 'var(--border)'
-                : 'var(--primary)'
-            }`,
-          }}
-        >
-          <p style={{ fontWeight: 600, marginBottom: 12, fontSize: '0.95rem' }}>
-            {qi + 1}. {q.stem}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {q.options.map((opt, oi) => {
-              const isCorrect = oi === q.answer_index;
-              const isSelected = selected[qi] === oi;
-              let bg = 'var(--bg-input)';
-              let border = '1px solid var(--border)';
-              if (showAnswers && isCorrect) {
-                bg = 'rgba(34,197,94,0.12)';
-                border = '1px solid var(--success)';
-              } else if (showAnswers && isSelected && !isCorrect) {
-                bg = 'rgba(239,68,68,0.12)';
-                border = '1px solid var(--danger)';
-              } else if (!showAnswers && isSelected) {
-                bg = 'rgba(108,99,255,0.12)';
-                border = '1px solid var(--primary)';
-              }
-              return (
-                <div
-                  key={oi}
-                  onClick={() => handleSelect(qi, oi)}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: bg,
-                    border,
-                    cursor: showAnswers ? 'default' : 'pointer',
-                    fontSize: '0.88rem',
-                    transition: 'all .2s',
-                  }}
-                >
-                  <strong style={{ marginRight: 8 }}>{String.fromCharCode(65 + oi)}.</strong>
-                  {opt}
-                  {showAnswers && isCorrect && ' ✓'}
-                </div>
-              );
-            })}
-          </div>
+      {showScoreBar && (
+        <div className="quiz-format-scorebar">
+          Score: {score} / {attempted} answered ({items.length} total) - {Math.round((score / Math.max(items.length, 1)) * 100)}%
         </div>
-      ))}
-    </>
+      )}
+
+      <main className="quiz-format-main">
+        {items.map((q, qi) => {
+          const chosen = selected[qi];
+          const isRevealedOnly = chosen === '__revealed__';
+          const isAnswered = chosen !== undefined;
+          const isCorrectAnswered = !isRevealedOnly && chosen === q.answer_index;
+          const isWrongAnswered = !isRevealedOnly && isAnswered && chosen !== q.answer_index;
+
+          return (
+            <div
+              key={qi}
+              className={`quiz-question-card ${
+                isCorrectAnswered
+                  ? 'answered-correct'
+                  : isWrongAnswered || isRevealedOnly
+                  ? 'answered-wrong'
+                  : ''
+              }`}
+            >
+              <div className="quiz-q-header">
+                <div className="quiz-q-num">{qi + 1}</div>
+                <div className="quiz-q-text">{q.stem}</div>
+              </div>
+
+              <ul className="quiz-options">
+                {q.options.map((opt, oi) => {
+                  const isCorrect = oi === q.answer_index;
+                  const isSelected = chosen === oi;
+                  const className = [
+                    'quiz-option-btn',
+                    isSelected && !isCorrect && (isWrongAnswered ? 'wrong' : ''),
+                    (isCorrect && locked[qi]) || (isCorrect && revealedAll) ? 'correct' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+
+                  return (
+                    <li key={oi}>
+                      <button
+                        type="button"
+                        className={className}
+                        onClick={() => onAnswer(qi, oi)}
+                        disabled={!!locked[qi] || revealedAll}
+                      >
+                        <span className="quiz-opt-letter">{String.fromCharCode(65 + oi)}</span>
+                        <span>{opt}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {(locked[qi] || revealedAll) && (
+                <div className="quiz-explanation show">
+                  <strong>Correct answer:</strong> {String.fromCharCode(65 + q.answer_index)}. {q.options[q.answer_index]}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </main>
+    </section>
   );
 }

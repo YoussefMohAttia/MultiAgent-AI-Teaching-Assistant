@@ -46,3 +46,5 @@ rouge-score>=0.1.2
 nltk>=3.8.0
 numpy>=1.24.0
 tiktoken>=0.5.0
+transformers>=4.41.0
+torch>=2.1.0

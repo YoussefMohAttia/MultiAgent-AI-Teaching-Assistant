@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+.quiz-format-root {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f5f8fa;
+  margin-top: 12px;
+}
+
+.quiz-format-header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 36px 28px 28px;
+  text-align: center;
+  border-bottom: 4px solid #1a6b8a;
+}
+
+.quiz-format-course {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.8rem;
+  letter-spacing: 0.02em;
+}
+
+.quiz-format-subtitle {
+  margin-top: 8px;
+  color: #c4c9ce;
+  font-style: italic;
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+.quiz-format-meta {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  color: #d7dce1;
+  font-size: 0.9rem;
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+.quiz-format-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: #e8f1f5;
+  border-bottom: 1px solid #d6e4ec;
+}
+
+.quiz-format-controls label {
+  font-size: 0.9rem;
+  color: #5a6a72;
+  font-style: italic;
+}
+
+.quiz-format-scorebar {
+  text-align: center;
+  padding: 16px;
+  background: #1a1a2e;
+  color: #fff;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.2rem;
+}
+
+.quiz-format-main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px 16px 40px;
+}
+
+.quiz-question-card {
+  background: #fff;
+  border: 1px solid #d6e4ec;
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+  padding: 22px 20px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.quiz-question-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.quiz-question-card.answered-correct {
+  border-left-color: #27ae60;
+  background: #f6fff8;
+}
+
+.quiz-question-card.answered-wrong {
+  border-left-color: #c0392b;
+  background: #fff6f5;
+}
+
+.quiz-q-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.quiz-q-num {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'Source Serif 4', Georgia, serif;
+  flex-shrink: 0;
+}
+
+.quiz-q-text {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #1a1a2e;
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+.quiz-options {
+  list-style: none;
+  margin-left: 42px;
+}
+
+.quiz-options li {
+  margin-bottom: 8px;
+}
+
+.quiz-option-btn {
+  width: 100%;
+  text-align: left;
+  background: #f0f6fa;
+  border: 1.5px solid #d6e4ec;
+  border-radius: 4px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 0.95rem;
+  color: #1a1a2e;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+  background: #dceef7;
+  border-color: #1a6b8a;
+}
+
+.quiz-option-btn:disabled {
+  cursor: default;
+}
+
+.quiz-option-btn.correct {
+  background: #eafaf1;
+  border-color: #27ae60;
+  color: #1a5c32;
+  font-weight: 600;
+}
+
+.quiz-option-btn.wrong {
+  background: #fdecea;
+  border-color: #c0392b;
+  color: #7b1d1d;
+}
+
+.quiz-opt-letter {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  min-width: 16px;
+  color: #1a6b8a;
+}
+
+.quiz-option-btn.correct .quiz-opt-letter {
+  color: #27ae60;
+}
+
+.quiz-option-btn.wrong .quiz-opt-letter {
+  color: #c0392b;
+}
+
+.quiz-explanation {
+  display: none;
+  margin-top: 12px;
+  margin-left: 42px;
+  background: #eaf4fb;
+  border-left: 3px solid #1a6b8a;
+  border-radius: 0 4px 4px 0;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  color: #1a3040;
+  line-height: 1.6;
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+.quiz-explanation.show {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .quiz-format-header {
+    padding: 28px 16px 22px;
+  }
+
+  .quiz-format-course {
+    font-size: 1.35rem;
+  }
+
+  .quiz-format-main {
+    padding: 20px 10px 28px;
+  }
+
+  .quiz-options,
+  .quiz-explanation {
+    margin-left: 0;
+  }
+}

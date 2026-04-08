@@ -3,11 +3,12 @@ Student summary evaluator service — 10-dimension hybrid evaluation.
 
 Extracted from Ai Team/Main/EVALUATOR.ipynb.
 
-Uses LLM-based scoring for semantic analysis and ROUGE/NLTK for
-lexical metrics. Avoids heavy sentence-transformers/torch dependency.
+Uses hybrid scoring aligned with EVALUATOR.ipynb:
+- embeddings + ROUGE for deterministic metrics
+- LLM judging for coherence/hallucination/factual accuracy/critical analysis
 
-Model: Gemma 3 12B (for evaluation scoring)
-Ground truth: Summarizer service output via Gemma 3 27B
+Model: configurable evaluator model via settings.EVALUATOR_MODEL_NAME
+Ground truth: summarizer service output + extracted lecture key points
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
@@ -29,6 +29,7 @@ log = logging.getLogger(__name__)
 # ── Lazy singletons (loaded on first evaluation) ─────────────────────────────
 _rouge_scorer_mod = None
 _nltk_ready = False
+_embedder_mod = None
 
 
 def _get_rouge_scorer():
@@ -37,6 +38,14 @@ def _get_rouge_scorer():
         from rouge_score import rouge_scorer as rs
         _rouge_scorer_mod = rs
     return _rouge_scorer_mod
+
+
+def _get_embedder():
+    global _embedder_mod
+    if _embedder_mod is None:
+        from sentence_transformers import SentenceTransformer
+        _embedder_mod = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embedder_mod
 
 
 def _ensure_nltk():
@@ -50,31 +59,18 @@ def _ensure_nltk():
 
 
 # ── Helper: OpenAI chat via Google AI Studio (Gemma 3 12B) ────────────────
-# Free tier may have RPM limits — retry with exponential backoff.
-_RETRY_MAX = 3
-_RETRY_BASE_DELAY = 15  # seconds
+# Keep evaluator calls single-shot: no retries/fallback to cap call volume.
 
 
 def _ai_chat(prompt: str, max_tokens: int = 500) -> str:
-    for attempt in range(_RETRY_MAX + 1):
-        try:
-            log.info("_ai_chat attempt %d/%d (model=%s)", attempt + 1, _RETRY_MAX + 1, settings.EVALUATOR_MODEL_NAME)
-            result = chat_completion(
-                prompt,
-                max_tokens=max_tokens,
-                temperature=0.3,
-                model=settings.EVALUATOR_MODEL_NAME,
-            )
-            log.info("_ai_chat succeeded on attempt %d", attempt + 1)
-            return result
-        except Exception as e:
-            log.warning("_ai_chat attempt %d failed: %s", attempt + 1, e)
-            if "429" in str(e) and attempt < _RETRY_MAX:
-                wait = _RETRY_BASE_DELAY * (2 ** attempt)
-                log.info("Rate limited — sleeping %ds before retry", wait)
-                time.sleep(wait)
-                continue
-            raise
+    model_name = settings.EVALUATOR_MODEL_NAME
+    log.info("_ai_chat single attempt (model=%s)", model_name)
+    return chat_completion(
+        prompt,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        model=model_name,
+    )
 
 
 def _ai_score(criteria_name: str, criteria_desc: str, student: str,
@@ -139,33 +135,44 @@ def extract_key_points(lecture: str) -> List[str]:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _score_correctness(student: str, reference: str, lecture: str) -> Tuple[float, str]:
-    """Hybrid: ROUGE against reference + LLM accuracy check."""
+    """Notebook-aligned hybrid correctness.
+
+    40% cosine(student, lecture) + 35% cosine(student, reference) + 25% ROUGE-F1.
+    """
+    from sentence_transformers import util
+
+    embedder = _get_embedder()
+    emb_s = embedder.encode(student, convert_to_tensor=True)
+    emb_r = embedder.encode(reference, convert_to_tensor=True)
+    emb_l = embedder.encode(lecture, convert_to_tensor=True)
+
+    cos_ref = float(util.cos_sim(emb_s, emb_r))
+    cos_lecture = float(util.cos_sim(emb_s, emb_l))
+
     rs_mod = _get_rouge_scorer()
     sc = rs_mod.RougeScorer(["rouge1", "rougeL"], use_stemmer=True)
     rs = sc.score(reference, student)
     rouge = (rs["rouge1"].fmeasure + rs["rougeL"].fmeasure) / 2
 
-    llm_score, llm_reason = _ai_score(
-        "CORRECTNESS",
-        "  - Summary accurately reflects the lecture content\n"
-        "  - No misrepresentations or distortions of the original ideas\n"
-        "  - Key facts and relationships are preserved",
-        student, "LECTURE", lecture,
-    )
-
-    hybrid = 0.50 * (llm_score / 10) + 0.50 * rouge
-    detail = f"ROUGE={rouge:.2f}, LLM={llm_score}/10. {llm_reason}"
+    hybrid = 0.40 * cos_lecture + 0.35 * cos_ref + 0.25 * rouge
+    detail = f"cos_lecture={cos_lecture:.2f}, cos_ref={cos_ref:.2f}, rouge_f1={rouge:.2f}"
     return round(hybrid * 10, 2), detail
 
 
 def _score_relevance(student: str, lecture: str) -> Tuple[float, str]:
-    return _ai_score(
-        "RELEVANCE",
-        "  - Summary focuses on the most important topics from the lecture\n"
-        "  - No off-topic or irrelevant content\n"
-        "  - Covers the core ideas proportionally",
-        student, "LECTURE", lecture,
-    )
+    from sentence_transformers import util
+
+    embedder = _get_embedder()
+    chunks = [p.strip() for p in re.split(r"\n{2,}", lecture) if len(p.strip()) > 60]
+    if not chunks:
+        chunks = [lecture]
+
+    emb_s = embedder.encode(student, convert_to_tensor=True)
+    emb_c = embedder.encode(chunks, convert_to_tensor=True)
+    sims = util.cos_sim(emb_s, emb_c)[0]
+
+    score = 0.4 * float(sims.mean()) + 0.6 * float(sims.max())
+    return round(score * 10, 2), f"mean_sim={float(sims.mean()):.2f}, max_sim={float(sims.max()):.2f}"
 
 
 def _score_coherence(student: str) -> Tuple[float, str]:
@@ -189,23 +196,29 @@ def _score_coherence(student: str) -> Tuple[float, str]:
 
 
 def _score_completeness(student: str, reference: str, key_points: List[str]) -> Tuple[float, str]:
-    """Hybrid: ROUGE recall + LLM completeness check."""
+    """Notebook-aligned hybrid completeness.
+
+    50% key-point embedding coverage + 50% ROUGE recall.
+    """
+    from sentence_transformers import util
+
+    embedder = _get_embedder()
+
+    if key_points:
+        emb_s = embedder.encode(student, convert_to_tensor=True)
+        emb_kp = embedder.encode(key_points, convert_to_tensor=True)
+        sims = util.cos_sim(emb_s, emb_kp)[0]
+        covered = float((sims > 0.40).float().mean())
+    else:
+        covered = 0.5
+
     rs_mod = _get_rouge_scorer()
     sc = rs_mod.RougeScorer(["rouge1", "rouge2", "rougeL"], use_stemmer=True)
     rs = sc.score(reference, student)
     recall = (rs["rouge1"].recall + rs["rouge2"].recall + rs["rougeL"].recall) / 3
 
-    kp_text = "\n".join(f"- {p}" for p in key_points[:10]) if key_points else "(none)"
-    llm_score, llm_reason = _ai_score(
-        "COMPLETENESS",
-        f"  - Covers all key points from the lecture:\n{kp_text}\n"
-        "  - No important ideas are omitted\n"
-        "  - Comprehensive coverage of the subject matter",
-        student, "REFERENCE SUMMARY", reference,
-    )
-
-    hybrid = 0.50 * (llm_score / 10) + 0.50 * recall
-    detail = f"ROUGE-recall={recall:.2f}, LLM={llm_score}/10. {llm_reason}"
+    hybrid = 0.50 * covered + 0.50 * recall
+    detail = f"covered={covered:.2f}, rouge_recall={recall:.2f}"
     return round(hybrid * 10, 2), detail
 
 
@@ -259,35 +272,29 @@ def _score_hallucination(student: str, lecture: str) -> Tuple[float, str]:
 
 
 def _score_missing_points(student: str, key_points: List[str]) -> Tuple[float, str]:
+    from sentence_transformers import util
+
+    embedder = _get_embedder()
+
     if not key_points:
         return 5.0, "No key points available."
 
-    kp_text = "\n".join(f"{i+1}. {p}" for i, p in enumerate(key_points))
-    prompt = (
-        "Below is a list of key points from a lecture and a student summary.\n"
-        "Determine which key points are MISSING from the student summary.\n\n"
-        f"KEY POINTS:\n{kp_text}\n\n"
-        f'STUDENT SUMMARY:\n"""\n{student}\n"""\n\n'
-        'Return ONLY valid JSON: {"covered_count": <int>, "total": <int>, '
-        '"missing": ["<point_number: brief description>", ...]}'
-    )
-    try:
-        raw = _ai_chat(prompt, max_tokens=500)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
-        covered = int(data.get("covered_count", len(key_points) // 2))
-        total = int(data.get("total", len(key_points)))
-        missed = data.get("missing", [])
-        score = round(covered / max(total, 1) * 10, 2)
+    emb_s = embedder.encode(student, convert_to_tensor=True)
+    emb_kp = embedder.encode(key_points, convert_to_tensor=True)
+    sims = util.cos_sim(emb_s, emb_kp)[0].tolist()
 
-        if not missed:
-            detail = "All key lecture points appear to be covered."
-        else:
-            snippets = [str(p)[:80] for p in missed[:3]]
-            detail = f"Missing ({len(missed)}/{total} pts): " + "; ".join(snippets)
-        return score, detail
-    except Exception as e:
-        return 5.0, f"Evaluation error: {e}"
+    threshold = 0.38
+    missed = [key_points[i] for i, sim in enumerate(sims) if sim < threshold]
+    covered_frac = 1.0 - len(missed) / len(key_points)
+    score = round(covered_frac * 10, 2)
+
+    if not missed:
+        detail = "All key lecture points appear to be covered."
+    else:
+        snippets = [p[:80] + "..." if len(p) > 80 else p for p in missed[:3]]
+        detail = f"Missing ({len(missed)}/{len(key_points)} pts): " + "; ".join(snippets)
+
+    return score, detail
 
 
 def _score_factual_accuracy(student: str, lecture: str) -> Tuple[float, str]:
@@ -347,7 +354,7 @@ def evaluate_summary(
     If *reference_summary* is not provided it will be generated by the
     **summarizer service** (Gemma 3 27B) to serve as ground truth.
     If *key_points* are not provided they will be extracted from the lecture
-    using the evaluator model (Gemini 2.5 Flash).
+    using the configured evaluator model.
 
     Returns {
         "scores": { metric_name: {"score": float, "detail": str}, ... },
@@ -356,27 +363,36 @@ def evaluate_summary(
         "key_points": list[str],
     }
     """
+    lecture_ctx = lecture_text
+
     # Auto-generate reference summary using the Summarizer service (Gemma 3 27B)
     if reference_summary is None:
         log.info("[EVAL] Generating reference summary …")
         from services.summarizer_service import summarize_text
-        reference_summary = summarize_text(lecture_text)
+        try:
+            reference_summary = summarize_text(lecture_ctx)
+        except Exception as e:
+            log.warning("[EVAL] Reference summary generation failed, using trimmed lecture fallback: %s", e)
+            reference_summary = lecture_ctx[:1500]
+
+    reference_ctx = reference_summary
+
     if key_points is None:
         log.info("[EVAL] Extracting key points …")
-        key_points = extract_key_points(lecture_text)
+        key_points = extract_key_points(lecture_ctx)
 
     # Run all 10 scorers
     results: Dict[str, Dict] = {}
     metrics = [
-        ("correctness",      lambda: _score_correctness(student_summary, reference_summary, lecture_text)),
-        ("relevance",        lambda: _score_relevance(student_summary, lecture_text)),
+        ("correctness",      lambda: _score_correctness(student_summary, reference_ctx, lecture_ctx)),
+        ("relevance",        lambda: _score_relevance(student_summary, lecture_ctx)),
         ("coherence",        lambda: _score_coherence(student_summary)),
-        ("completeness",     lambda: _score_completeness(student_summary, reference_summary, key_points)),
-        ("conciseness",      lambda: _score_conciseness(student_summary, reference_summary)),
-        ("terminology",      lambda: _score_terminology(student_summary, lecture_text)),
-        ("hallucination",    lambda: _score_hallucination(student_summary, lecture_text)),
+        ("completeness",     lambda: _score_completeness(student_summary, reference_ctx, key_points)),
+        ("conciseness",      lambda: _score_conciseness(student_summary, reference_ctx)),
+        ("terminology",      lambda: _score_terminology(student_summary, lecture_ctx)),
+        ("hallucination",    lambda: _score_hallucination(student_summary, lecture_ctx)),
         ("missing_key_points", lambda: _score_missing_points(student_summary, key_points)),
-        ("factual_accuracy", lambda: _score_factual_accuracy(student_summary, lecture_text)),
+        ("factual_accuracy", lambda: _score_factual_accuracy(student_summary, lecture_ctx)),
         ("critical_analysis", lambda: _score_critical_analysis(student_summary)),
     ]
     for i, (name, fn) in enumerate(metrics, 1):
@@ -392,6 +408,6 @@ def evaluate_summary(
     return {
         "scores": results,
         "overall": overall,
-        "reference_summary": reference_summary,
+        "reference_summary": reference_ctx,
         "key_points": key_points,
     }
