@@ -9,6 +9,14 @@ from DB import crud
 
 router = APIRouter()
 
+@router.get("/course/{course_id}", response_model=List[QuizOut])
+async def get_quizzes_by_course(
+    course_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    quizzes = await crud.get_quizzes_by_course_id(db=db, course_id=course_id)
+    return quizzes
+
 @router.get("/{subject_name}/quizzes", response_model=List[QuizOut])
 async def get_quizzes_by_subject(
     subject_name: str, 

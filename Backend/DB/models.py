@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from .session import Base
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta
 
 class UserCreate(BaseModel):
@@ -37,7 +37,7 @@ class PostOut(BaseModel):
 class QuizQuestionBase(BaseModel):
     question: str
     type: str
-    options: Optional[dict] = None
+    options: Optional[Any] = None  # stored as list[str] for AI-generated quizzes
     correct_answer: Optional[str] = None
 
 class QuizQuestionCreate(QuizQuestionBase):

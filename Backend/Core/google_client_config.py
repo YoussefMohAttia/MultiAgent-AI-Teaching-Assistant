@@ -30,6 +30,8 @@ class GoogleClientConfig(BaseSettings):
         "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
         # Read announcements posted in courses
         "https://www.googleapis.com/auth/classroom.announcements.readonly",
+        # Download files attached to Classroom materials via the Drive API
+        "https://www.googleapis.com/auth/drive.readonly",
     ]
 
     @property

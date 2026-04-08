@@ -6,11 +6,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import './Dashboard.css';
 
 const NAV_ITEMS = [
-  { icon: '🏠', label: 'Home',      id: 'home' },
-  { icon: '📚', label: 'Courses',   id: 'courses' },
-  { icon: '📝', label: 'Posts',     id: 'posts' },
-  { icon: '🧠', label: 'Quizzes',   id: 'quizzes' },
-  { icon: '📄', label: 'Documents', id: 'documents' },
+  { icon: '🏠', label: 'Home',       id: 'home',       path: null },
+  { icon: '📚', label: 'Courses',    id: 'courses',    path: '/courses' },
+  { icon: '💬', label: 'AI Tutor',   id: 'chat',       path: '/chat' },
+  { icon: '❓', label: 'Quizzes',    id: 'quizzes',    path: '/quiz' },
+  { icon: '📝', label: 'Summarizer', id: 'summarizer', path: '/summarizer' },
+  { icon: '📊', label: 'Evaluator',  id: 'evaluator',  path: '/evaluator' },
 ];
 
 export default function Dashboard() {
@@ -23,17 +24,31 @@ export default function Dashboard() {
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
   useEffect(() => {
     if (!user) { navigate('/'); return; }
-    syncAndFetch();
+    autoSync();
   }, [user]);
 
-  async function syncAndFetch() {
+  // Auto-sync: only runs if more than 5 minutes since last sync
+  async function autoSync() {
+    const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0');
+    if (Date.now() - lastSync < SYNC_COOLDOWN_MS) {
+      await fetchCourses();
+      return;
+    }
+    await runSync();
+  }
+
+  // Full sync — always runs (used by manual button)
+  async function runSync() {
     setSyncing(true);
     try {
-      await axios.post(`/api/sync/sync-courses?user_id=${user.id}`, null, {
+      await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
+      localStorage.setItem('last_sync_ts', String(Date.now()));
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {
@@ -96,7 +111,7 @@ export default function Dashboard() {
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => { setActiveTab(item.id); if (item.path) navigate(item.path); }}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -152,7 +167,7 @@ export default function Dashboard() {
           <div className="section-header">
             <h2 className="section-title">Your Courses</h2>
             <div style={{display:'flex',gap:'8px'}}>
-              <button className="section-action" onClick={syncAndFetch} disabled={syncing}>
+              <button className="section-action" onClick={runSync} disabled={syncing}>
                 {syncing ? '⏳ Syncing…' : '🔄 Sync Classroom'}
               </button>
               <button className="section-action" onClick={fetchCourses}>↻ Refresh</button>
@@ -181,9 +196,9 @@ export default function Dashboard() {
         <section className="section">
           <h2 className="section-title">Quick Actions</h2>
           <div className="actions-grid">
-            <ActionCard icon="🤖" title="Ask AI" desc="Get instant help from your AI teaching assistant" />
-            <ActionCard icon="📝" title="View Posts" desc="Browse announcements and coursework" />
-            <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" />
+            <ActionCard icon="🤖" title="Ask AI" desc="Get instant help from your AI teaching assistant" onClick={() => navigate('/chat')} />
+            <ActionCard icon="📝" title="Summarize" desc="Summarize lecture notes and documents instantly" onClick={() => navigate('/summarizer')} />
+            <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" onClick={() => navigate('/quiz?tab=take')} />
           </div>
         </section>
       </main>
@@ -204,6 +219,7 @@ function StatCard({ icon, label, value, color }) {
 }
 
 function CourseCard({ course }) {
+  const navigate = useNavigate();
   const colors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444'];
   const color = colors[course.id % colors.length];
   return (
@@ -212,15 +228,15 @@ function CourseCard({ course }) {
       <div className="course-body">
         <h3 className="course-title">{course.title}</h3>
         <p className="course-id">ID: {course.id}</p>
-        <button className="course-btn">Open →</button>
+        <button className="course-btn" onClick={() => navigate('/courses')}>Open →</button>
       </div>
     </div>
   );
 }
 
-function ActionCard({ icon, title, desc }) {
+function ActionCard({ icon, title, desc, onClick }) {
   return (
-    <div className="action-card">
+    <div className="action-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : {}}>
       <span className="action-icon">{icon}</span>
       <h3 className="action-title">{title}</h3>
       <p className="action-desc">{desc}</p>
