@@ -1,5 +1,5 @@
 #pydantic models for request and response bodies
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .session import Base
 
@@ -18,9 +18,7 @@ class UserCourse(BaseModel):
 class Course(BaseModel):
     id: int
     title: str
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 
@@ -30,9 +28,7 @@ class PostOut(BaseModel):
     content: str
     user_id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuizQuestionBase(BaseModel):
     question: str
@@ -46,9 +42,7 @@ class QuizQuestionCreate(QuizQuestionBase):
 class QuizQuestionOut(QuizQuestionBase):
     id: int
     quiz_id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuizBase(BaseModel):
     created_by: int
@@ -61,9 +55,7 @@ class QuizOut(QuizBase):
     course_id: int
     created_at: datetime
     questions: List[QuizQuestionOut]
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str

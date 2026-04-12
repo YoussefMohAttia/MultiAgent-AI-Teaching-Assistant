@@ -1,17 +1,10 @@
-FROM node:12
-
-ADD package.json /package.json
-
-ENV NODE_PATH=/node_modules
-ENV PATH=$PATH:/node_modules/.bin
-RUN npm install
-
+# Stage 1: Build the React app
+FROM node:lts as builder
 WORKDIR /app
-ADD . /app
+COPY package*.json ./
+RUN npm install
+COPY . .
 
-EXPOSE 8000
-EXPOSE 35729
+# Stage 2: Create the production image
 
-ENTRYPOINT ["/bin/bash", "/app/run.sh"]
-
-CMD ["start"]
+EXPOSE 80

@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
@@ -16,7 +18,6 @@ itsdangerous>=2.1.2
 # HTTP Requests
 requests==2.31.0
 httpx==0.28.1
-asyncpg==0.29.0
 # Data Validation
 pydantic>=2.9.0
 pydantic-settings==2.0.3
@@ -34,11 +35,11 @@ regex>=2024.9.11
 python-dotenv==1.0.0
 
 # ── AI / ML Dependencies ──────────────────────────────────────────
-openai>=1.14.0
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-openai>=0.1.0
-langchain-text-splitters>=0.2.0
+openai==1.109.1
+langchain==0.2.17
+langchain-community==0.2.19
+langchain-openai==0.1.25
+langchain-text-splitters==0.2.4
 chromadb>=0.4.0
 pypdf>=4.0.0
 sentence-transformers>=2.2.0
@@ -47,4 +48,4 @@ nltk>=3.8.0
 numpy>=1.24.0
 tiktoken>=0.5.0
 transformers>=4.41.0
-torch>=2.1.0
+torch==2.5.1+cpu
