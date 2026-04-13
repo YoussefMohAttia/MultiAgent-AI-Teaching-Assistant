@@ -28,8 +28,16 @@
   gap: 10px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-brand span {
-  font-size: 1.4rem;
+.sidebar-brand-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.sidebar-brand-text {
+  font-size: 1.05rem;
+  line-height: 1.1;
 }
 
 .sidebar-nav {

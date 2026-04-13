@@ -39,14 +39,6 @@ function AppRoutes() {
       <TokenHandler />
       <Routes>
         <Route path="/" element={<SignIn />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
         {/* Layout-wrapped AI tool pages */}
         <Route
           element={
@@ -55,6 +47,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/quiz" element={<QuizGenerator />} />
           <Route path="/chat" element={<Chat />} />

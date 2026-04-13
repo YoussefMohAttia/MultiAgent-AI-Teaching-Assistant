@@ -5,17 +5,17 @@ const NAV = [
   { section: 'Main' },
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/courses', icon: '📚', label: 'Courses' },
+  { to: '/user-manual', icon: '📘', label: 'User Manual' },
   { section: 'AI Tools' },
   { to: '/summarizer', icon: '📝', label: 'Summarizer' },
   { to: '/quiz', icon: '❓', label: 'Quiz Generator' },
   { to: '/chat', icon: '💬', label: 'AI Tutor Chat' },
   { to: '/evaluator', icon: '📊', label: 'Evaluator' },
   { to: '/essay-grader', icon: '🧾', label: 'Essay Grader' },
-  { to: '/user-manual', icon: '📘', label: 'User Manual' },
 ];
 
 const pageTitle = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
   '/courses': 'Courses',
   '/summarizer': 'AI Summarizer',
   '/quiz': 'Quiz Generator',
@@ -34,7 +34,8 @@ export default function Layout() {
       {/* ── Sidebar ──────────────────────────────────── */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <span>🎓</span> AI Teaching Asst
+          <img src="/Tung-Tung-Tung-Sahur-PNG-Photos.png" alt="Tung Tung Tung Sahur" className="sidebar-brand-image" />
+          <span className="sidebar-brand-text">Squee Learn</span>
         </div>
         <nav className="sidebar-nav">
           {NAV.map((item, i) =>
