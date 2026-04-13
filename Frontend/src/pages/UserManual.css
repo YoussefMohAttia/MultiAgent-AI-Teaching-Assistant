@@ -1,0 +1,98 @@
+.manual-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.manual-hero {
+  border: 1px solid var(--accent-border);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.2), transparent 42%),
+    linear-gradient(135deg, var(--bg-card), var(--bg-card));
+}
+
+.manual-kicker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  margin-bottom: 10px;
+}
+
+.manual-hero h2 {
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  color: var(--text-heading);
+  margin-bottom: 12px;
+}
+
+.manual-lead {
+  color: var(--text-secondary);
+  line-height: 1.65;
+  max-width: 78ch;
+}
+
+.manual-section h3 {
+  color: var(--text-heading);
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.manual-tab-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--bg-card);
+}
+
+.manual-tab-card header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.manual-tab-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.manual-tab-card h4 {
+  color: var(--text-heading);
+  margin-bottom: 4px;
+  font-size: 0.98rem;
+}
+
+.manual-tab-card p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.manual-list {
+  margin-left: 18px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.manual-list.compact {
+  font-size: 0.88rem;
+}
+
+.manual-steps {
+  margin-left: 18px;
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+@media (max-width: 1000px) {
+  .manual-grid {
+    grid-template-columns: 1fr;
+  }
+}

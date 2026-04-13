@@ -11,6 +11,7 @@ const NAV = [
   { to: '/chat', icon: '💬', label: 'AI Tutor Chat' },
   { to: '/evaluator', icon: '📊', label: 'Evaluator' },
   { to: '/essay-grader', icon: '🧾', label: 'Essay Grader' },
+  { to: '/user-manual', icon: '📘', label: 'User Manual' },
 ];
 
 const pageTitle = {
@@ -21,6 +22,7 @@ const pageTitle = {
   '/chat': 'AI Tutor Chat',
   '/evaluator': 'Summary Evaluator',
   '/essay-grader': 'Essay Grader',
+  '/user-manual': 'User Manual',
 };
 
 export default function Layout() {

@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { icon: '📝', label: 'Summarizer', id: 'summarizer', path: '/summarizer' },
   { icon: '📊', label: 'Evaluator',  id: 'evaluator',  path: '/evaluator' },
   { icon: '🧾', label: 'Essay Grader', id: 'essayGrader', path: '/essay-grader' },
+  { icon: '📘', label: 'User Manual', id: 'userManual', path: '/user-manual' },
 ];
 
 export default function Dashboard() {
