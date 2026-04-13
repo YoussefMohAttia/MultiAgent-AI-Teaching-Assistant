@@ -21,6 +21,26 @@ const TAB_GUIDE = [
     ],
   },
   {
+    tab: 'Pomodoro',
+    icon: '⏱️',
+    purpose: 'Run focused study sessions with timed breaks.',
+    details: [
+      'Default cycle is 30 minutes work + 5 minutes break, with editable durations.',
+      'Includes Start, Pause, Reset, Skip Break, and optional auto-start next session.',
+      'Tracks completed cycles and streak bonus points during your study routine.',
+    ],
+  },
+  {
+    tab: 'Mini Games',
+    icon: '🎮',
+    purpose: 'Take short break-time game sessions to refresh focus.',
+    details: [
+      'Locked during work mode and unlocks only while Pomodoro break mode is active.',
+      'Currently includes Memory Match with image cards and full-screen play mode.',
+      'Returns you to study flow when break ends and game access is locked again.',
+    ],
+  },
+  {
     tab: 'Summarizer',
     icon: '📝',
     purpose: 'Turn long content into concise study notes.',
