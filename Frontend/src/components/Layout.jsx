@@ -1,10 +1,14 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { usePomodoro } from '../contexts/PomodoroContext';
 import './Layout.css';
 
 const NAV = [
   { section: 'Main' },
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/courses', icon: '📚', label: 'Courses' },
+  { to: '/pomodoro', icon: '⏱️', label: 'Pomodoro' },
+  { to: '/mini-games', icon: '🎮', label: 'Mini Games' },
   { to: '/user-manual', icon: '📘', label: 'User Manual' },
   { section: 'AI Tools' },
   { to: '/summarizer', icon: '📝', label: 'Summarizer' },
@@ -23,10 +27,21 @@ const pageTitle = {
   '/evaluator': 'Summary Evaluator',
   '/essay-grader': 'Essay Grader',
   '/user-manual': 'User Manual',
+  '/pomodoro': 'Pomodoro Timer',
+  '/mini-games': 'Mini Games',
 };
 
 export default function Layout() {
+  const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { isBreak } = usePomodoro();
+
+  useEffect(() => {
+    if (!isBreak && pathname === '/mini-games') {
+      navigate('/pomodoro', { replace: true });
+    }
+  }, [isBreak, pathname, navigate]);
+
   const title = pageTitle[pathname] || 'AI Teaching Assistant';
 
   return (
@@ -42,17 +57,27 @@ export default function Layout() {
             item.section ? (
               <div key={i} className="sidebar-section">{item.section}</div>
             ) : (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  `sidebar-link${isActive ? ' active' : ''}`
-                }
-              >
-                <span className="icon">{item.icon}</span>
-                {item.label}
-              </NavLink>
+              item.to === '/mini-games' && !isBreak ? (
+                <div key={item.to} className="sidebar-link sidebar-link-disabled" title="Available during break">
+                  <span className="icon">🔒</span>
+                  <span>
+                    {item.label}
+                    <small className="sidebar-help">Available during break</small>
+                  </span>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) =>
+                    `sidebar-link${isActive ? ' active' : ''}`
+                  }
+                >
+                  <span className="icon">{item.icon}</span>
+                  {item.label}
+                </NavLink>
+              )
             ),
           )}
         </nav>

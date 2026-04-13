@@ -1,0 +1,152 @@
+.pomodoro-root {
+  display: grid;
+  gap: 18px;
+}
+
+.pomodoro-main-card h2 {
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  color: var(--text-heading);
+}
+
+.pomodoro-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.pomodoro-kicker {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.pomodoro-timer-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.pomodoro-ring {
+  --progress: 0%;
+  width: min(66vw, 280px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--bg-card) 62%, transparent 63%),
+    conic-gradient(var(--primary) var(--progress), rgba(255, 255, 255, 0.12) 0);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 1px var(--border) inset;
+}
+
+.pomodoro-countdown {
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: 0.04em;
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pomodoro-toggle-row {
+  margin-top: 14px;
+}
+
+.pomodoro-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.pomodoro-settings-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pomodoro-section-title {
+  margin-bottom: 14px;
+  color: var(--text-heading);
+}
+
+.pomodoro-adjust-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pomodoro-adjust-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--bg-card);
+}
+
+.pomodoro-adjust-card p {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  margin-bottom: 10px;
+}
+
+.pomodoro-adjust-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pomodoro-number-input {
+  width: 74px;
+  text-align: center;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+}
+
+.pomodoro-adjust-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.pomodoro-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pomodoro-metric-value {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.pomodoro-metric-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.pomodoro-note {
+  display: block;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .pomodoro-settings-grid,
+  .pomodoro-adjust-grid {
+    grid-template-columns: 1fr;
+  }
+}

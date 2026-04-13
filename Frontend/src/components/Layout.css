@@ -81,6 +81,19 @@
   text-align: center;
 }
 
+.sidebar-link-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.sidebar-help {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ── Main content ─────────────────────────────────────────────────────────── */
 .main-content {
   margin-left: var(--sidebar-w);

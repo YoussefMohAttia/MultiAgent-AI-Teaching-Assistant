@@ -13,6 +13,9 @@ import Summarizer from './pages/Summarizer';
 import Evaluator from './pages/Evaluator';
 import EssayGrader from './pages/EssayGrader';
 import UserManual from './pages/UserManual';
+import Pomodoro from './pages/Pomodoro';
+import MiniGames from './pages/MiniGames';
+import { PomodoroProvider } from './contexts/PomodoroContext';
 
 // Handles ?token= query param injected by the backend redirect
 function TokenHandler() {
@@ -54,6 +57,8 @@ function AppRoutes() {
           <Route path="/summarizer" element={<Summarizer />} />
           <Route path="/evaluator" element={<Evaluator />} />
           <Route path="/essay-grader" element={<EssayGrader />} />
+          <Route path="/pomodoro" element={<Pomodoro />} />
+          <Route path="/mini-games" element={<MiniGames />} />
           <Route path="/user-manual" element={<UserManual />} />
         </Route>
         {/* Catch-all */}
@@ -67,7 +72,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppRoutes />
+        <PomodoroProvider>
+          <AppRoutes />
+        </PomodoroProvider>
       </AuthProvider>
     </ThemeProvider>
   );
