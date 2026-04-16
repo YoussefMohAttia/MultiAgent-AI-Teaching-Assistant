@@ -18,7 +18,7 @@ export default function SignIn() {
     // Google sends the code back to the backend (/api/login/token).
     // The backend creates a JWT and redirects to /dashboard?token=JWT.
     // TokenHandler in App.jsx picks up the token automatically.
-    window.location.href = 'http://localhost:8000/api/login/_login_route';
+    window.location.href = '/api/login/_login_route';
   }
 
   return (
