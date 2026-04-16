@@ -1,10 +1,18 @@
-# Stage 1: Build the React app
-FROM node:lts as builder
+FROM node:20-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
 
-# Stage 2: Create the production image
+COPY package*.json ./
+ENV NODE_ENV=development
+RUN npm install --production=false && test -f node_modules/.bin/vite
+
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
