@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 from .utils import OptStr
 
@@ -11,7 +12,10 @@ class GoogleClientConfig(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
 
-    redirect_uri: OptStr = "http://localhost:8000/api/login/token"
+    redirect_uri: OptStr = Field(
+        default="http://localhost:8000/api/login/token",
+        validation_alias=AliasChoices("GOOGLE_OAUTH_REDIRECT_URI", "REDIRECT_URI"),
+    )
     path_prefix: str = ""
     login_path: str = "/_login_route"
     token_path: str = "/token"

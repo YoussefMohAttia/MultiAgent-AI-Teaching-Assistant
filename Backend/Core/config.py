@@ -16,6 +16,8 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "change_this_in_production_please_make_it_long_and_random"
     REDIRECT_URI: str = "http://localhost:8000/login/token"
+    FRONTEND_URL: str = "http://localhost:5173"
+    CORS_ALLOWED_ORIGINS: str = ""
 
     # ── AI / Google AI Studio Settings ─────────────────────────────────────
     GOOGLE_AI_API_KEY: str = ""

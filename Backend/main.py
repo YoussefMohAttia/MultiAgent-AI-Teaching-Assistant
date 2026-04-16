@@ -19,14 +19,25 @@ from DB import crud
 from datetime import datetime, timedelta
 
 
+def _build_allowed_origins() -> list[str]:
+    default_origins = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    }
+    env_origins = {
+        origin.strip()
+        for origin in settings.CORS_ALLOWED_ORIGINS.split(",")
+        if origin.strip()
+    }
+    frontend_origin = {settings.FRONTEND_URL.strip()} if settings.FRONTEND_URL.strip() else set()
+    return sorted(default_origins | env_origins | frontend_origin)
+
+
 app = FastAPI(title="MultiAgent AI Teaching Assistant")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_build_allowed_origins(),
     allow_credentials=True,   # required for cookies / Authorization headers
     allow_methods=["*"],
     allow_headers=["*"],
