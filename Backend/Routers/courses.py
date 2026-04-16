@@ -53,7 +53,7 @@ async def list_courses(request: Request, db: AsyncSession = Depends(get_db)):
         "courses": [{"id": c.id, "title": c.title} for c in courses],
     }
 
-
+'''
 # POST /courses — Create a new course owned by the authenticated user
 @router.post("/")
 async def create_course(request: Request, title: str, db: AsyncSession = Depends(get_db)):
@@ -81,3 +81,4 @@ async def delete_course(course_id: int, request: Request, db: AsyncSession = Dep
     await db.delete(course)
     await db.commit()
     return {"message": "Course deleted successfully", "deleted_course_id": course_id}
+'''
