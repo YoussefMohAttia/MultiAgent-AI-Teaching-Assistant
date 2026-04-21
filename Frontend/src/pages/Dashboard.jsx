@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import './Dashboard.css';
+import { 
+  BookOpen, Flame, RefreshCw, CloudSync, 
+  Bot, FileText, BrainCircuit, PenTool, Inbox
+} from 'lucide-react';
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -51,7 +54,7 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [streak, setStreak] = useState(1);
 
-  const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+  const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
   useEffect(() => {
     if (!user) {
@@ -102,88 +105,130 @@ export default function Dashboard() {
 
   const initials = user?.name
     ? user.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
+    : 'U';
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="dash-root">
-      <main className="dash-main">
-        <header className="dash-header">
-          <div>
-            <h1 className="dash-greeting">
-              {greeting}, {user?.name?.split(' ')[0] || 'there'} 👋
-            </h1>
-            <p className="dash-date">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          </div>
-          <div className="header-right">
-            <div className="header-avatar">{initials}</div>
-          </div>
-        </header>
+    <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
+      
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          {/* Changed text-slate-900 to text-white so it shows on dark background */}
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            {greeting}, {user?.name?.split(' ')[0] || 'there'}
+          </h1>
+          {/* Changed to text-slate-400 for a softer subtitle */}
+          <p className="text-sm text-slate-400 font-medium">
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            })}
+          </p>
+        </div>
+        <div className="h-12 w-12 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-lg font-bold shadow-sm border border-indigo-500/30">
+          {initials}
+        </div>
+      </header>
 
-        <div className="stats-row">
-          <StatCard icon="📚" label="Courses" value={coursesLoading ? '—' : courses.length} color="indigo" />
-          <StatCard icon="🔥" label="Streak" value={streak} color="orange" />
+      {/* ── Top Stats Row ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard 
+          icon={BookOpen} 
+          label="Active Courses" 
+          value={coursesLoading ? '—' : courses.length} 
+          colorClass="bg-blue-500/20 text-blue-400" 
+        />
+        <StatCard 
+          icon={Flame} 
+          label="Day Streak" 
+          value={streak} 
+          colorClass="bg-orange-500/20 text-orange-400" 
+        />
+        <StatCard 
+          icon={BrainCircuit} 
+          label="AI Interactions" 
+          value="12" 
+          colorClass="bg-emerald-500/20 text-emerald-400" 
+        />
+      </div>
+
+      {/* ── Courses Section ── */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          {/* Section titles updated to white */}
+          <h2 className="text-xl font-bold text-white">Your Courses</h2>
+          <div className="flex gap-2">
+            <button 
+              onClick={runSync} 
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              <CloudSync className={`w-4 h-4 ${syncing ? 'animate-pulse' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Classroom'}
+            </button>
+            <button 
+              onClick={fetchCourses}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${coursesLoading ? 'animate-spin text-indigo-400' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        <section className="section">
-          <div className="section-header">
-            <h2 className="section-title">Your Courses</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="section-action" onClick={runSync} disabled={syncing}>
-                {syncing ? '⏳ Syncing…' : '🔄 Sync Classroom'}
-              </button>
-              <button className="section-action" onClick={fetchCourses}>↻ Refresh</button>
-            </div>
+        {coursesLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-slate-800 animate-pulse rounded-xl border border-slate-700" />
+            ))}
           </div>
-
-          {coursesLoading ? (
-            <div className="courses-loading">
-              {[1, 2, 3].map((i) => <div key={i} className="course-skeleton" />)}
+        ) : courses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 bg-slate-800/50 border border-slate-700 border-dashed rounded-xl text-center">
+            <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mb-4">
+              <Inbox className="w-6 h-6 text-slate-400" />
             </div>
-          ) : courses.length === 0 ? (
-            <div className="empty-state">
-              <span className="empty-icon">📭</span>
-              <p>No courses yet. They will appear here once synced with Google Classroom.</p>
-            </div>
-          ) : (
-            <div className="courses-grid">
-              {courses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="section">
-          <h2 className="section-title">Quick Actions</h2>
-          <div className="actions-grid">
-            <ActionCard icon="🤖" title="Ask AI" desc="Get instant help from your AI teaching assistant" onClick={() => navigate('/chat')} />
-            <ActionCard icon="📝" title="Summarize" desc="Summarize lecture notes and documents instantly" onClick={() => navigate('/summarizer')} />
-            <ActionCard icon="🧩" title="Take a Quiz" desc="Test your knowledge with AI-generated quizzes" onClick={() => navigate('/quiz?tab=take')} />
-            <ActionCard icon="🧾" title="Grade Essay" desc="Predict IELTS band score using your fine-tuned model" onClick={() => navigate('/essay-grader')} />
+            <h3 className="text-lg font-semibold text-white mb-1">No courses found</h3>
+            <p className="text-sm text-slate-400 max-w-sm">
+              Your dashboard is empty. Click "Sync Classroom" to fetch your official courses from Google.
+            </p>
           </div>
-        </section>
-      </main>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course) => (
+              <CourseCard key={course.id} course={course} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Quick Actions Section ── */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-bold text-white">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ActionCard icon={Bot} title="Ask AI" desc="Instant help from your teaching assistant" onClick={() => navigate('/chat')} />
+          <ActionCard icon={FileText} title="Summarize" desc="Condense lecture notes instantly" onClick={() => navigate('/summarizer')} />
+          <ActionCard icon={BrainCircuit} title="Take a Quiz" desc="Test knowledge with AI quizzes" onClick={() => navigate('/quiz?tab=take')} />
+          <ActionCard icon={PenTool} title="Grade Essay" desc="Predict your IELTS band score" onClick={() => navigate('/essay-grader')} />
+        </div>
+      </section>
+
     </div>
   );
 }
 
-function StatCard({ icon, label, value, color }) {
+// ─── Subcomponents ──────────────────────────────────────────────
+
+function StatCard({ icon: Icon, label, value, colorClass }) {
   return (
-    <div className={`stat-card stat-${color}`}>
-      <span className="stat-icon">{icon}</span>
+    // Changed bg-white to bg-slate-800 and borders to slate-700
+    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm flex items-center gap-4">
+      <div className={`p-3 rounded-lg ${colorClass}`}>
+        <Icon className="w-6 h-6" />
+      </div>
       <div>
-        <p className="stat-value">{value}</p>
-        <p className="stat-label">{label}</p>
+        <p className="text-sm font-medium text-slate-400">{label}</p>
+        <p className="text-2xl font-bold text-white">{value}</p>
       </div>
     </div>
   );
@@ -191,27 +236,42 @@ function StatCard({ icon, label, value, color }) {
 
 function CourseCard({ course }) {
   const navigate = useNavigate();
-  const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
-  const color = colors[course.id % colors.length];
+  const colors = ['bg-indigo-500', 'bg-violet-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
+  const colorClass = colors[course.id % colors.length];
 
   return (
-    <div className="course-card">
-      <div className="course-color-bar" style={{ background: color }} />
-      <div className="course-body">
-        <h3 className="course-title">{course.title}</h3>
-        <p className="course-id">ID: {course.id}</p>
-        <button className="course-btn" onClick={() => navigate('/courses')}>Open →</button>
+    <div 
+      onClick={() => navigate('/courses')}
+      className="group bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all cursor-pointer flex flex-col justify-between min-h-[140px]"
+    >
+      <div>
+        <div className="flex items-start justify-between mb-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${colorClass}`}>
+            <BookOpen className="w-5 h-5" />
+          </div>
+          {/* Removed the ID badge completely as requested */}
+        </div>
+        <h3 className="font-semibold text-white group-hover:text-indigo-400 transition-colors line-clamp-2">
+          {course.title}
+        </h3>
       </div>
     </div>
   );
 }
 
-function ActionCard({ icon, title, desc, onClick }) {
+function ActionCard({ icon: Icon, title, desc, onClick }) {
   return (
-    <div className="action-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : {}}>
-      <span className="action-icon">{icon}</span>
-      <h3 className="action-title">{title}</h3>
-      <p className="action-desc">{desc}</p>
+    <div 
+      onClick={onClick} 
+      className="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-sm hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all flex flex-col gap-3 group"
+    >
+      <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-300 group-hover:text-indigo-400 group-hover:bg-indigo-500/20 transition-colors">
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="font-semibold text-white text-sm mb-1">{title}</h3>
+        <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
+      </div>
     </div>
   );
 }
