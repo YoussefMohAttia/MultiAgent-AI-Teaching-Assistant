@@ -90,17 +90,15 @@ const TAB_GUIDE = [
       'Supports self-assessment and faster writing improvement cycles.',
     ],
   },
-  {
-    tab: 'User Manual',
-    icon: '📘',
-    purpose: 'This page. Central reference for using the platform.',
-    details: [
-      'Explains platform purpose and the function of each tab.',
-      'Provides a recommended student workflow from setup to revision.',
-      'Can be shared with first-time users for onboarding.',
-    ],
-  },
 ];
+
+const USER_MANUAL_TAB = {
+  icon: '📘',
+  title: 'User Manual (Current Tab)',
+  purpose: 'This page is the central reference for using the platform and understanding how each feature fits your study workflow.',
+  description:
+    'It explains the website purpose, the function of every left-side tab, and a recommended way to move from setup to revision. You can also share it with first-time users as a quick onboarding guide.',
+};
 
 export default function UserManual() {
   return (
@@ -126,6 +124,20 @@ export default function UserManual() {
       </section>
 
       <section className="card manual-section">
+        <h3>{USER_MANUAL_TAB.title}</h3>
+        <article className="manual-tab-card">
+          <header>
+            <span className="manual-tab-icon" aria-hidden="true">{USER_MANUAL_TAB.icon}</span>
+            <div>
+              <h4>User Manual</h4>
+              <p>{USER_MANUAL_TAB.purpose}</p>
+            </div>
+          </header>
+          <p>{USER_MANUAL_TAB.description}</p>
+        </article>
+      </section>
+
+      <section className="card manual-section">
         <h3>What Each Left-Side Tab Does</h3>
         <div className="manual-grid">
           {TAB_GUIDE.map((item) => (
@@ -147,17 +159,6 @@ export default function UserManual() {
         </div>
       </section>
 
-      <section className="card manual-section">
-        <h3>Brought to you by:</h3>
-        <ol className="manual-steps">
-          <li>Ahmed Samir</li>
-          <li>Mohamed Morsy</li>
-          <li>Youssef Ibrahim</li>
-          <li>Youssef Moh Attia</li>
-          <li>Youssef Awad</li>
-          <li>Karim Mohamed ElMahrouky</li>
-        </ol>
-      </section>
     </div>
   );
 }
