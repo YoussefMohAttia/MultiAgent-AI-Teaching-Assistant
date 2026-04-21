@@ -132,6 +132,98 @@ function MemoryMatch({ fullScreen = false }) {
   );
 }
 
+function isSolvedBoard(board) {
+  return board.every((value, idx) => (idx === 8 ? value === 0 : value === idx + 1));
+}
+
+function isSolvableBoard(board) {
+  const tiles = board.filter((v) => v !== 0);
+  let inversions = 0;
+
+  for (let i = 0; i < tiles.length; i += 1) {
+    for (let j = i + 1; j < tiles.length; j += 1) {
+      if (tiles[i] > tiles[j]) inversions += 1;
+    }
+  }
+
+  return inversions % 2 === 0;
+}
+
+function buildShuffledPuzzle() {
+  const base = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+  let candidate = base;
+
+  do {
+    candidate = shuffle(base);
+  } while (!isSolvableBoard(candidate) || isSolvedBoard(candidate));
+
+  return candidate;
+}
+
+function EightPuzzle({ fullScreen = false }) {
+  const [board, setBoard] = useState(() => buildShuffledPuzzle());
+  const [moves, setMoves] = useState(0);
+
+  const solved = useMemo(() => isSolvedBoard(board), [board]);
+
+  function resetPuzzle() {
+    setBoard(buildShuffledPuzzle());
+    setMoves(0);
+  }
+
+  function canSwap(indexA, indexB) {
+    const rowA = Math.floor(indexA / 3);
+    const colA = indexA % 3;
+    const rowB = Math.floor(indexB / 3);
+    const colB = indexB % 3;
+
+    return Math.abs(rowA - rowB) + Math.abs(colA - colB) === 1;
+  }
+
+  function moveTile(index) {
+    if (solved) return;
+
+    const emptyIndex = board.indexOf(0);
+    if (!canSwap(index, emptyIndex)) return;
+
+    setBoard((prev) => {
+      const next = [...prev];
+      [next[index], next[emptyIndex]] = [next[emptyIndex], next[index]];
+      return next;
+    });
+    setMoves((v) => v + 1);
+  }
+
+  return (
+    <div className={`card mini-card ${fullScreen ? 'mini-card-fullscreen' : ''}`}>
+      <div className="mini-header">
+        <h3>8-Puzzle</h3>
+        <button className="btn btn-secondary btn-sm" onClick={resetPuzzle}>Reset</button>
+      </div>
+      <p className="mini-sub">Moves: {moves} {solved && ' • Solved!'}</p>
+      <div className="puzzle-grid" role="group" aria-label="8 puzzle board">
+        {board.map((value, idx) => {
+          const isEmpty = value === 0;
+          const emptyIndex = board.indexOf(0);
+          const movable = !isEmpty && canSwap(idx, emptyIndex);
+
+          return (
+            <button
+              key={`${value}-${idx}`}
+              className={`puzzle-tile ${isEmpty ? 'empty' : ''} ${movable ? 'movable' : ''}`}
+              onClick={() => moveTile(idx)}
+              disabled={isEmpty || solved}
+              aria-label={isEmpty ? 'Empty tile' : `Tile ${value}`}
+            >
+              {!isEmpty ? value : ''}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function GameLauncherCard({ title, description, onPlay, disabled = false }) {
   return (
     <div className="card mini-card mini-launcher-card">
@@ -173,6 +265,18 @@ export default function MiniGames() {
     );
   }
 
+  if (activeGame === 'puzzle') {
+    return (
+      <div className="mini-fullscreen-overlay">
+        <div className="mini-fullscreen-topbar">
+          <h2>8-Puzzle</h2>
+          <button className="btn btn-secondary" onClick={() => setActiveGame(null)}>← Back to Games</button>
+        </div>
+        <EightPuzzle fullScreen />
+      </div>
+    );
+  }
+
   return (
     <div className="mini-root">
       <section className="card mini-banner">
@@ -184,13 +288,13 @@ export default function MiniGames() {
       <section className="mini-grid">
         <GameLauncherCard
           title="Memory Match"
-          description="Match all image pairs before break ends."
-          onPlay={() => setActiveGame('memory')}
+          description="Temporarily unavailable."
+          disabled
         />
         <GameLauncherCard
-          title="Quick Math Challenge"
-          description="To be added soon"
-          disabled
+          title="8-Puzzle"
+          description="Slide tiles into order from 1 to 8."
+          onPlay={() => setActiveGame('puzzle')}
         />
         <GameLauncherCard
           title="Reaction Clicker"
