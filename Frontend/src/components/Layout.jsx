@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { usePomodoro } from '../contexts/PomodoroContext';
+import { useAuth } from '../contexts/AuthContext';
 import './Layout.css';
 
 const NAV = [
@@ -30,6 +31,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { isBreak } = usePomodoro();
+  const { logout } = useAuth();
 
   useEffect(() => {
     if (!isBreak && pathname === '/mini-games') {
@@ -38,6 +40,11 @@ export default function Layout() {
   }, [isBreak, pathname, navigate]);
 
   const title = pageTitle[pathname] || 'AI Teaching Assistant';
+
+  function handleSignOut() {
+    logout();
+    navigate('/', { replace: true });
+  }
 
   return (
     <div className="layout">
@@ -76,6 +83,12 @@ export default function Layout() {
             ),
           )}
         </nav>
+        <div className="sidebar-footer">
+          <button type="button" className="sidebar-signout" onClick={handleSignOut}>
+            <span className="icon">🚪</span>
+            Sign Out
+          </button>
+        </div>
       </aside>
 
       {/* ── Main area ────────────────────────────────── */}

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -14,6 +18,12 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --background: 240 25% 8%;
+  --foreground: 210 33% 96%;
+  --card: 240 17% 10%;
+  --card-foreground: 210 33% 96%;
+  --input: 240 10% 20%;
+  --ring: 239 84% 67%;
 }
 
 /* ── DARK THEME (default) ── */
