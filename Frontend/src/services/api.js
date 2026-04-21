@@ -39,6 +39,14 @@ export const summarizeText = (source) =>
     document_id: source.documentId || null,
   });
 
+export const summarizeUploadedFile = (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api.post('/ai/summarize-upload', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {

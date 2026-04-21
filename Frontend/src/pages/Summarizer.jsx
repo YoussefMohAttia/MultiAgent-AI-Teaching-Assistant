@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { summarizeText, getCourses, getDocuments, uploadDocument } from '../services/api';
+import { summarizeText, getCourses, getDocuments, summarizeUploadedFile } from '../services/api';
 import '../components/Shared.css';
 
 export default function Summarizer() {
@@ -47,7 +47,8 @@ export default function Summarizer() {
     }
   }, [sourceMode, courseId]);
 
-  const isDisabled = loading || !courseId || (
+  const needsCourse = sourceMode === 'document';
+  const isDisabled = loading || (needsCourse && !courseId) || (
     sourceMode === 'text'
       ? !text.trim()
       : sourceMode === 'document'
@@ -68,10 +69,11 @@ export default function Summarizer() {
       if (sourceMode === 'document') {
         source = { documentId: Number(selectedDocId) };
       } else if (sourceMode === 'upload') {
-        const uploadRes = await uploadDocument(Number(courseId), uploadFile);
-        const uploadedDocId = uploadRes.data?.document_id;
-        if (!uploadedDocId) throw new Error('Upload succeeded but no document id was returned.');
-        source = { documentId: Number(uploadedDocId) };
+        const res = await summarizeUploadedFile(uploadFile);
+        setSummary(res.data.summary);
+        setElapsed(((Date.now() - t0) / 1000).toFixed(1));
+        setLoading(false);
+        return;
       } else {
         source = { text };
       }
@@ -196,7 +198,7 @@ export default function Summarizer() {
                 onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
               />
               <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: 6 }}>
-                The file will be uploaded to this selected course and summarized immediately.
+                This file is used one time for this summary request and is not saved to your course.
               </p>
             </div>
           )}

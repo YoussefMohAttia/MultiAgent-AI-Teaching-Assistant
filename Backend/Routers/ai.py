@@ -9,7 +9,7 @@ Endpoints:
     POST /api/ai/index-document  — Index an uploaded PDF into the course vector store
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -231,6 +231,47 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
     await db.refresh(db_summary)
 
     return SummarizeResponse(summary_id=db_summary.id, summary=summary_text)
+
+
+@router.post("/summarize-upload", response_model=SummarizeResponse)
+async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUser | None = _auth):
+    """Summarize a one-time uploaded PDF without saving it to DB or course documents."""
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+
+    import os
+    import tempfile
+
+    from services.pdf_processor import extract_text_from_pdf
+    from services.summarizer_service import summarize_text
+
+    temp_path = None
+    try:
+        payload = await file.read()
+        if not payload:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(payload)
+            temp_path = tmp.name
+
+        text = extract_text_from_pdf(temp_path)
+        if not text or not text.strip():
+            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+
+        summary_text = summarize_text(text)
+        return SummarizeResponse(summary_id=None, summary=summary_text)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
