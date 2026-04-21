@@ -1,0 +1,45 @@
+.agent-layout-root {
+  min-height: 100vh;
+  background: #000;
+  color: var(--text-primary);
+}
+
+.agent-layout-header {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.agent-layout-back {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.agent-layout-back:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.agent-layout-content {
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .agent-layout-header {
+    padding: 0 16px;
+  }
+
+  .agent-layout-content {
+    padding: 16px;
+  }
+}

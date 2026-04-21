@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import AgentPageLayout from './components/AgentPageLayout';
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
 import Courses from './pages/Courses';
@@ -53,15 +54,25 @@ function AppRoutes() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/pomodoro" element={<Pomodoro />} />
+          <Route path="/mini-games" element={<MiniGames />} />
+          <Route path="/user-manual" element={<UserManual />} />
+        </Route>
+
+        <Route
+          element={
+            <ProtectedRoute>
+              <AgentPageLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/quiz" element={<QuizGenerator />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/summarizer" element={<Summarizer />} />
           <Route path="/evaluator" element={<Evaluator />} />
           <Route path="/essay-grader" element={<EssayGrader />} />
-          <Route path="/pomodoro" element={<Pomodoro />} />
-          <Route path="/mini-games" element={<MiniGames />} />
-          <Route path="/user-manual" element={<UserManual />} />
         </Route>
+
         <Route
           path="/ai-agents"
           element={
