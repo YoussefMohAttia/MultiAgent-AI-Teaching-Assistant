@@ -1,6 +1,8 @@
 /* ===== DASHBOARD CONTENT (rendered inside shared Layout) ===== */
 .dash-root {
-  color: var(--text-primary);
+  min-height: 100%;
+  background: #000;
+  color: #ffffff;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   transition: color 0.25s;
 }
@@ -24,13 +26,13 @@
 .dash-greeting {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--text-heading);
+  color: #ffffff;
   margin: 0 0 4px;
   letter-spacing: -0.5px;
 }
 .dash-date {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
 }
 
@@ -58,7 +60,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -79,15 +82,15 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 18px 20px;
   transition: transform 0.2s, box-shadow 0.2s, background 0.25s;
 }
 .stat-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px var(--shadow-hover);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 .stat-icon {
   font-size: 1.6rem;
@@ -95,19 +98,19 @@
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-heading);
+  color: #ffffff;
   margin: 0;
 }
 .stat-label {
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
 }
 
-.stat-indigo { border-color: rgba(99, 102, 241, 0.3); }
-.stat-purple { border-color: rgba(139, 92, 246, 0.3); }
-.stat-cyan { border-color: rgba(6, 182, 212, 0.3); }
-.stat-orange { border-color: rgba(245, 158, 11, 0.3); }
+.stat-indigo { border-color: rgba(255, 255, 255, 0.14); }
+.stat-purple { border-color: rgba(255, 255, 255, 0.14); }
+.stat-cyan { border-color: rgba(255, 255, 255, 0.14); }
+.stat-orange { border-color: rgba(255, 255, 255, 0.14); }
 
 /* Section */
 .section {
@@ -122,13 +125,13 @@
 .section-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #ffffff;
   margin: 0 0 16px;
 }
 .section-action {
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
   font-size: 0.8rem;
   padding: 6px 14px;
   border-radius: 8px;
@@ -136,7 +139,7 @@
   transition: background 0.15s;
 }
 .section-action:hover {
-  background: var(--accent-hover);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 /* Courses grid */
@@ -146,15 +149,15 @@
   gap: 16px;
 }
 .course-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s, background 0.25s;
 }
 .course-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px var(--shadow-card-hover);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 .course-color-bar {
   height: 5px;
@@ -165,18 +168,18 @@
 .course-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #ffffff;
   margin: 0 0 4px;
 }
 .course-id {
   font-size: 0.75rem;
-  color: var(--text-xmuted);
+  color: rgba(255, 255, 255, 0.55);
   margin: 0 0 14px;
 }
 .course-btn {
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
   font-size: 0.8rem;
   padding: 6px 14px;
   border-radius: 8px;
@@ -184,7 +187,7 @@
   transition: background 0.15s;
 }
 .course-btn:hover {
-  background: var(--accent-hover);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 /* Skeleton loader */
@@ -195,7 +198,7 @@
 .course-skeleton {
   flex: 1;
   height: 140px;
-  background: var(--skeleton-bg);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -208,10 +211,10 @@
 .empty-state {
   text-align: center;
   padding: 48px 24px;
-  background: var(--bg-card);
-  border: 1px dashed var(--border-dashed);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
   border-radius: 16px;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
 }
 .empty-icon {
   font-size: 2.5rem;
@@ -226,18 +229,18 @@
   gap: 16px;
 }
 .action-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 22px 20px;
   cursor: pointer;
   transition: transform 0.2s, background 0.15s, box-shadow 0.2s, border-color 0.2s;
 }
 .action-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--accent-border);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px var(--shadow-hover);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 .action-icon {
   font-size: 1.8rem;
@@ -247,12 +250,12 @@
 .action-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #ffffff;
   margin: 0 0 6px;
 }
 .action-desc {
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
   line-height: 1.5;
 }

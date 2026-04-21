@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import './Dashboard.css';
 
 function formatLocalDate(date) {
@@ -45,7 +44,6 @@ function computeStreak(userId) {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   const [courses, setCourses] = useState([]);
@@ -127,13 +125,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="header-right">
-            <button
-              className="theme-toggle"
-              onClick={toggle}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
             <div className="header-avatar">{initials}</div>
           </div>
         </header>
