@@ -15,6 +15,7 @@ import EssayGrader from './pages/EssayGrader';
 import UserManual from './pages/UserManual';
 import Pomodoro from './pages/Pomodoro';
 import MiniGames from './pages/MiniGames';
+import AIAgents from './pages/AIAgents';
 import { PomodoroProvider } from './contexts/PomodoroContext';
 
 // Handles ?token= query param injected by the backend redirect
@@ -61,6 +62,14 @@ function AppRoutes() {
           <Route path="/mini-games" element={<MiniGames />} />
           <Route path="/user-manual" element={<UserManual />} />
         </Route>
+        <Route
+          path="/ai-agents"
+          element={
+            <ProtectedRoute>
+              <AIAgents />
+            </ProtectedRoute>
+          }
+        />
         {/* Catch-all */}
         <Route path="*" element={<SignIn />} />
       </Routes>

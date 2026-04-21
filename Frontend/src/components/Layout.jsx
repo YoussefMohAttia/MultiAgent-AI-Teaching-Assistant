@@ -4,18 +4,13 @@ import { usePomodoro } from '../contexts/PomodoroContext';
 import './Layout.css';
 
 const NAV = [
-  { section: 'Main' },
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/courses', icon: '📚', label: 'Courses' },
+  { to: '/ai-agents', icon: '🤖', label: 'AI Agents' },
+  { section: 'Others' },
   { to: '/pomodoro', icon: '⏱️', label: 'Pomodoro' },
   { to: '/mini-games', icon: '🎮', label: 'Mini Games' },
   { to: '/user-manual', icon: '📘', label: 'User Manual' },
-  { section: 'AI Tools' },
-  { to: '/summarizer', icon: '📝', label: 'Summarizer' },
-  { to: '/quiz', icon: '❓', label: 'Quiz Generator' },
-  { to: '/chat', icon: '💬', label: 'AI Tutor Chat' },
-  { to: '/evaluator', icon: '📊', label: 'Evaluator' },
-  { to: '/essay-grader', icon: '🧾', label: 'Essay Grader' },
 ];
 
 const pageTitle = {
