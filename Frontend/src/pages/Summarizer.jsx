@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { summarizeText, getCourses, getDocuments } from '../services/api';
+import { summarizeText, getCourses, getDocuments, uploadDocument } from '../services/api';
 import '../components/Shared.css';
 
 export default function Summarizer() {
   // Course + source
   const [courses, setCourses] = useState([]);
   const [courseId, setCourseId] = useState('');
-  const [sourceMode, setSourceMode] = useState('text'); // 'text' | 'document'
+  const [sourceMode, setSourceMode] = useState('text'); // 'text' | 'document' | 'upload'
   const [text, setText] = useState('');
   const [docs, setDocs] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
 
   // Result
   const [summary, setSummary] = useState('');
@@ -46,7 +47,13 @@ export default function Summarizer() {
     }
   }, [sourceMode, courseId]);
 
-  const isDisabled = loading || (sourceMode === 'text' ? !text.trim() : !selectedDocId);
+  const isDisabled = loading || !courseId || (
+    sourceMode === 'text'
+      ? !text.trim()
+      : sourceMode === 'document'
+        ? !selectedDocId
+        : !uploadFile
+  );
 
   const handleSummarize = async () => {
     if (isDisabled) return;
@@ -54,11 +61,21 @@ export default function Summarizer() {
     setError('');
     setSummary('');
     setElapsed(null);
-    const source = sourceMode === 'document'
-      ? { documentId: Number(selectedDocId) }
-      : { text };
     const t0 = Date.now();
+
     try {
+      let source;
+      if (sourceMode === 'document') {
+        source = { documentId: Number(selectedDocId) };
+      } else if (sourceMode === 'upload') {
+        const uploadRes = await uploadDocument(Number(courseId), uploadFile);
+        const uploadedDocId = uploadRes.data?.document_id;
+        if (!uploadedDocId) throw new Error('Upload succeeded but no document id was returned.');
+        source = { documentId: Number(uploadedDocId) };
+      } else {
+        source = { text };
+      }
+
       const res = await summarizeText(source);
       setSummary(res.data.summary);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
@@ -113,6 +130,13 @@ export default function Summarizer() {
               >
                 📄 Course Document
               </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${sourceMode === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSourceMode('upload')}
+              >
+                ⬆️ Upload Document
+              </button>
             </div>
           </div>
 
@@ -159,6 +183,21 @@ export default function Summarizer() {
                   ))}
                 </select>
               )}
+            </div>
+          )}
+
+          {sourceMode === 'upload' && (
+            <div className="form-group">
+              <label>Upload document from your machine (PDF)</label>
+              <input
+                type="file"
+                className="form-input"
+                accept="application/pdf,.pdf"
+                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+              />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: 6 }}>
+                The file will be uploaded to this selected course and summarized immediately.
+              </p>
             </div>
           )}
 

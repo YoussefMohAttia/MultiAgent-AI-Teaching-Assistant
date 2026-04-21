@@ -49,7 +49,7 @@ export default function Layout() {
       {/* ── Sidebar ──────────────────────────────────── */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src="/Tung-Tung-Tung-Sahur-PNG-Photos.png" alt="Tung Tung Tung Sahur" className="sidebar-brand-image" />
+          <img src="/squeelearn.png" alt="Squee Learn" className="sidebar-brand-image" />
           <span className="sidebar-brand-text">Squee Learn</span>
         </div>
         <nav className="sidebar-nav">
