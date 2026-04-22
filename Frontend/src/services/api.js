@@ -30,6 +30,9 @@ export const uploadDocument = (courseId, file) => {
   });
 };
 
+export const getDocumentBlob = (id) => 
+  api.get(`/documents/download/${id}`, { responseType: 'blob' });
+
 // ── AI Services ──────────────────────────────────────────────────────────────
 
 // source: { text: "..." }  OR  { documentId: 123 }
