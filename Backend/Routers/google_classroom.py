@@ -8,6 +8,7 @@ Endpoints:
   GET  /api/sync/courses/{user_id}     → list synced courses for a user
   GET  /api/sync/documents/{course_id} → list synced documents for a course
 """
+import asyncio
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -43,7 +44,7 @@ async def _background_index_documents(new_doc_ids: list):
 
 
 # ─────────────────────────────────────────────
-#Sync courses only
+# Sync courses only
 # ─────────────────────────────────────────────
 @router.post("/sync-courses")
 async def sync_courses(
@@ -88,7 +89,7 @@ async def sync_courses(
 
 
 # ─────────────────────────────────────────────
-#Full sync — courses + all content
+# Full sync — courses + all content (PARALLEL & DELTA OPTIMIZED)
 # ─────────────────────────────────────────────
 @router.post("/full-sync")
 async def full_sync(
@@ -102,14 +103,8 @@ async def full_sync(
     Steps:
       1. Get valid access token (auto-refresh if expired)
       2. Sync all courses (upsert)
-      3. For each course, sync in parallel:
-           a. courseWorkMaterials  → doc_type = "material"
-           b. announcements        → doc_type = "announcement"  (text stored in raw_text)
-           c. courseWork           → doc_type = "coursework"    (Drive-attached only)
-      4. Return full summary report
-
-    All document syncs are SKIP-IF-EXISTS (idempotent).
-    Re-running this endpoint will not duplicate data.
+      3. For each course, fetch ALL material types in parallel from Google API.
+      4. Idempotent Delta Sync: Only process and save items that don't exist in DB.
     """
 
     # ── Step 1: Token ─────────────────────────────
@@ -146,7 +141,7 @@ async def full_sync(
             courses_new += 1
             synced_courses.append((new_course.id, classroom_id))
 
-    # ── Step 3: Sync documents for each course ─────
+    # ── Step 3: Parallel Fetch & Delta Sync for documents ─────
     docs_materials = 0
     docs_announcements = 0
     docs_coursework = 0
@@ -154,17 +149,21 @@ async def full_sync(
     new_drive_doc_ids = []
 
     for db_course_id, classroom_id in synced_courses:
+        
+        
+        materials_list, announcements_list, coursework_list = await asyncio.gather(
+            google_service.fetch_course_materials(classroom_id, access_token),
+            google_service.fetch_announcements(classroom_id, access_token),
+            google_service.fetch_coursework(classroom_id, access_token)
+        )
 
         # ── 3a: Materials ──────────────────────────
-        materials = await google_service.fetch_course_materials(classroom_id, access_token)
-        for item in materials:
+        for item in materials_list:
             material_id = item.get("id")
-            if not material_id:
-                continue
+            if not material_id: continue
 
-            # Skip if already in DB (idempotent)
-            existing_doc = await crud.get_document_by_material_id(db, material_id)
-            if existing_doc:
+            # Delta Check (Instantly skips if exists)
+            if await crud.get_document_by_material_id(db, material_id):
                 docs_skipped += 1
                 continue
 
@@ -172,73 +171,53 @@ async def full_sync(
             drive_url = google_service.extract_drive_url(item.get("materials", []))
 
             new_doc = await crud.create_document(
-                db=db,
-                course_id=db_course_id,
-                classroom_material_id=material_id,
-                title=title,
-                doc_type="material",
-                google_drive_url=drive_url,
-                raw_text=item.get("description")  # optional description text
+                db=db, course_id=db_course_id, classroom_material_id=material_id,
+                title=title, doc_type="material", google_drive_url=drive_url,
+                raw_text=item.get("description")
             )
-            if drive_url:
-                new_drive_doc_ids.append(new_doc.id)
+            if drive_url: new_drive_doc_ids.append(new_doc.id)
             docs_materials += 1
 
         # ── 3b: Announcements ──────────────────────
-        announcements = await google_service.fetch_announcements(classroom_id, access_token)
-        for item in announcements:
+        for item in announcements_list:
             material_id = item.get("id")
-            if not material_id:
-                continue
+            if not material_id: continue
 
-            existing_doc = await crud.get_document_by_material_id(db, material_id)
-            if existing_doc:
+            # Delta Check
+            if await crud.get_document_by_material_id(db, material_id):
                 docs_skipped += 1
                 continue
 
-            # For announcements the text IS the content — use first 200 chars as title
             raw_text = item.get("text", "")
             title = raw_text[:200] if raw_text else "Untitled Announcement"
             drive_url = google_service.extract_drive_url(item.get("materials", []))
 
             await crud.create_document(
-                db=db,
-                course_id=db_course_id,
-                classroom_material_id=material_id,
-                title=title,
-                doc_type="announcement",
-                google_drive_url=drive_url,
-                raw_text=raw_text   # full announcement text for AI RAG pipeline
+                db=db, course_id=db_course_id, classroom_material_id=material_id,
+                title=title, doc_type="announcement", google_drive_url=drive_url,
+                raw_text=raw_text   
             )
             docs_announcements += 1
 
         # ── 3c: Coursework (Drive-attached only) ───
-        coursework = await google_service.fetch_coursework(classroom_id, access_token)
-        for item in coursework:
+        for item in coursework_list:
             material_id = item.get("id")
-            if not material_id:
-                continue
+            if not material_id: continue
 
-            existing_doc = await crud.get_document_by_material_id(db, material_id)
-            if existing_doc:
+            # Delta Check
+            if await crud.get_document_by_material_id(db, material_id):
                 docs_skipped += 1
                 continue
 
             title = item.get("title", "Untitled Assignment")
             drive_url = google_service.extract_drive_url(item.get("materials", []))
-            description = item.get("description", None)  # assignment instructions → raw_text
 
             new_doc = await crud.create_document(
-                db=db,
-                course_id=db_course_id,
-                classroom_material_id=material_id,
-                title=title,
-                doc_type="coursework",
-                google_drive_url=drive_url,
-                raw_text=description
+                db=db, course_id=db_course_id, classroom_material_id=material_id,
+                title=title, doc_type="coursework", google_drive_url=drive_url,
+                raw_text=item.get("description")
             )
-            if drive_url:
-                new_drive_doc_ids.append(new_doc.id)
+            if drive_url: new_drive_doc_ids.append(new_doc.id)
             docs_coursework += 1
 
     # ── Step 4: Schedule background indexing for new Drive documents ──────

@@ -169,6 +169,34 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
 async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
     """Summarise text or an uploaded document and persist results to DB."""
     from sqlalchemy.future import select as sa_select
+    from DB.schemas import (
+        Chunk as ChunkORM,
+        Summary as SummaryORM,
+        SummaryChunk as SummaryChunkORM,
+    )
+
+    # ── 1. GLOBAL CACHE CHECK (The Senior Optimization) ───────────────────
+    # If a document_id is provided, check if ANY user has already summarized it.
+    if req.document_id:
+        existing_summary_query = (
+            sa_select(SummaryORM)
+            .join(SummaryChunkORM, SummaryORM.id == SummaryChunkORM.summary_id)
+            .join(ChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
+            .where(ChunkORM.doc_id == req.document_id)
+            .limit(1)
+        )
+        existing_summary = (await db.execute(existing_summary_query)).scalars().first()
+
+        if existing_summary:
+            print(f"⚡ CACHE HIT: Returning existing summary for Document {req.document_id}")
+            # Return instantly. Cost: $0. Wait time: ~15ms.
+            return SummarizeResponse(
+                summary_id=existing_summary.id, 
+                summary=existing_summary.text
+            )
+
+    # ── 2. TEXT EXTRACTION (Cache Miss) ───────────────────────────────────
+    print(f"🔍 CACHE MISS: Generating new summary for Document {req.document_id}")
     text = req.text
     if not text and req.document_id:
         text = await _get_document_text(req.document_id, db)
@@ -178,18 +206,14 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
             detail="Provide either 'text' or 'document_id'.",
         )
 
+    # ── 3. AI GENERATION ──────────────────────────────────────────────────
     try:
         from services.summarizer_service import summarize_text
         summary_text = summarize_text(text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # ── Persist to DB ─────────────────────────────────────────────────────
-    from DB.schemas import (
-        Chunk as ChunkORM,
-        Summary as SummaryORM,
-        SummaryChunk as SummaryChunkORM,
-    )
+    # ── 4. PERSIST TO DB (For future cache hits) ──────────────────────────
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
     db_summary = SummaryORM(text=summary_text, method="llm")
@@ -223,7 +247,7 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
                 existing_chunks.append(c)
             await db.flush()  # get chunk ids
 
-        # Link every chunk to this summary
+        # Link every chunk to this summary so the next student gets the Cache Hit
         for chunk in existing_chunks:
             db.add(SummaryChunkORM(summary_id=db_summary.id, chunk_id=chunk.id))
 
@@ -231,7 +255,6 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
     await db.refresh(db_summary)
 
     return SummarizeResponse(summary_id=db_summary.id, summary=summary_text)
-
 
 @router.post("/summarize-upload", response_model=SummarizeResponse)
 async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUser | None = _auth):
