@@ -9,14 +9,18 @@ Endpoints:
     POST /api/ai/index-document  — Index an uploaded PDF into the course vector store
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File,Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
+import os
+import tempfile
+from typing import Optional
 from DB.session import get_db
 from DB.schemas import Document as DocumentORM
 from security.auth_dependency import get_optional_user, CurrentUser
-
+from services.pdf_processor import extract_text_from_pdf
+from services.summarizer_service import summarize_text
+from services.quiz_generator_service import generate_quiz as gen
 from models.ai_models import (
     ChatRequest, ChatResponse,
     QuizGenerateRequest, QuizGenerateResponse, QuizItem,
@@ -25,7 +29,12 @@ from models.ai_models import (
     EssayGradeRequest, EssayGradeResponse,
     IndexDocumentRequest, IndexDocumentResponse,
 )
-
+from sqlalchemy.future import select as sa_select
+from DB.schemas import (
+        Chunk as ChunkORM,
+        Summary as SummaryORM,
+        SummaryChunk as SummaryChunkORM,
+    )
 # Switch get_optional_user → get_current_user to enforce auth in production
 _auth = Depends(get_optional_user)
 
@@ -160,7 +169,67 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
     items = [QuizItem(**item) for item in raw_items]
     return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=items)
 
+@router.post("/generate-quiz-upload")
+async def generate_quiz_from_upload(
+    file: UploadFile = File(...),
+    objectives: Optional[str] = Form("General knowledge testing key concepts"),
+    n_items: int = Form(5),
+    n_options: int = Form(4),
+    user: CurrentUser | None = _auth
+):
+    """
+    Generate a one-off quiz from an uploaded PDF. 
+    The file is processed in memory and instantly deleted. No database records are created.
+    """
+    # 1. Validate File Type
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
+    
+
+    temp_path = None
+    try:
+        # 2. Read the file into memory
+        payload = await file.read()
+        if not payload:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        # 3. Create a temporary file on the OS that will be cleaned up
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(payload)
+            temp_path = tmp.name
+
+        # 4. Extract the text
+        text = extract_text_from_pdf(temp_path)
+        if not text or not text.strip():
+            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+
+        # 5. Generate the Quiz directly from the text (Bypassing the DB)
+        raw_items = gen(
+            passage=text,
+            objectives=objectives,
+            n_items=n_items,
+            n_options=n_options,
+        )
+
+        # 6. Return the raw items directly to the frontend
+        return {
+            "message": "Ephemeral quiz generated successfully",
+            "items": raw_items
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    finally:
+        # 7. GUARANTEED CLEANUP: This runs even if the AI crashes!
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+            print(f" Cleaned up temporary file: {temp_path}")
 # ══════════════════════════════════════════════════════════════════════════════
 #  3.  SUMMARIZATION
 # ══════════════════════════════════════════════════════════════════════════════
@@ -168,12 +237,7 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
     """Summarise text or an uploaded document and persist results to DB."""
-    from sqlalchemy.future import select as sa_select
-    from DB.schemas import (
-        Chunk as ChunkORM,
-        Summary as SummaryORM,
-        SummaryChunk as SummaryChunkORM,
-    )
+    
 
     # ── 1. GLOBAL CACHE CHECK (The Senior Optimization) ───────────────────
     # If a document_id is provided, check if ANY user has already summarized it.
@@ -262,11 +326,10 @@ async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUse
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-    import os
-    import tempfile
+    
 
-    from services.pdf_processor import extract_text_from_pdf
-    from services.summarizer_service import summarize_text
+   
+    
 
     temp_path = None
     try:

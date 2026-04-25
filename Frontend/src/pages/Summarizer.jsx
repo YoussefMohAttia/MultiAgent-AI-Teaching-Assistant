@@ -1,69 +1,76 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCourses, getDocuments } from '../services/api'; 
-import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle } from 'lucide-react';
+import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 export default function Summarizer() {
   const navigate = useNavigate();
-  const { user } = useAuth(); // <-- Brought in AuthContext to get the token
+  const { user } = useAuth();
   
   const [courses, setCourses] = useState([]);
   const [docs, setDocs] = useState([]);
   
+  const [sourceMode, setSourceMode] = useState('document'); // 'document' | 'upload'
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedDocId, setSelectedDocId] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
+  const fileInputRef = useRef(null);
   
   // App States
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState(''); 
   const [error, setError] = useState('');
 
-  // 1. Load Courses
   useEffect(() => {
     getCourses().then(r => setCourses(r.data.courses || [])).catch(() => {});
   }, []);
 
-  // 2. Load Documents when Course is selected
   useEffect(() => {
-    if (selectedCourseId) {
+    if (selectedCourseId && sourceMode === 'document') {
       getDocuments(selectedCourseId).then(r => setDocs(r.data.documents || [])).catch(() => {});
     } else {
       setDocs([]);
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId, sourceMode]);
 
-  // 3. The REAL Backend Integration
   const handleSummarize = async () => {
-    if (!selectedDocId || !user) return;
+    if (sourceMode === 'document' && !selectedDocId) return;
+    if (sourceMode === 'upload' && !uploadFile) return;
+    if (!user) return;
     
     setIsSummarizing(true);
     setError('');
     setSummary('');
 
     try {
-      // USING THE CORRECT BACKEND ENDPOINT
-      const response = await axios.post(
-        '/api/ai/summarize', 
-        {
-          text: null,
-          document_id: Number(selectedDocId) 
-        },
-        {
-          headers: { Authorization: `Bearer ${user.token}` },
-        }
-      );
+      let response;
       
-      // The original code expected res.data.summary
+      if (sourceMode === 'upload') {
+        // EPHEMERAL UPLOAD API
+        const formData = new FormData();
+        formData.append('file', uploadFile);
+        
+        response = await axios.post('/api/ai/summarize-upload', formData, {
+          headers: { 
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${user.token}` 
+          },
+        });
+      } else {
+        // STANDARD DATABASE API
+        response = await axios.post('/api/ai/summarize', 
+          { text: null, document_id: Number(selectedDocId) },
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+      }
+      
       setSummary(response.data.summary);
       
     } catch (err) {
       console.error("Summarization failed:", err);
-      setError(
-        err.response?.data?.detail || 
-        "Failed to generate summary. Please check your backend connection."
-      );
+      setError(err.response?.data?.detail || "Failed to generate summary. Please check your backend connection.");
     } finally {
       setIsSummarizing(false);
     }
@@ -78,7 +85,7 @@ export default function Summarizer() {
           AI Summarizer
         </h1>
         <p className="text-slate-400">
-          Transform lengthy lecture materials into concise, easy-to-read notes.
+          Transform lengthy lecture materials or uploaded PDFs into concise notes.
         </p>
       </div>
 
@@ -89,8 +96,7 @@ export default function Summarizer() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-white mb-4">Configuration</h2>
             
-            <div className="flex flex-col gap-4">
-              {/* Error Message Display */}
+            <div className="flex flex-col gap-5">
               {error && (
                 <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-lg text-sm flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -98,64 +104,86 @@ export default function Summarizer() {
                 </div>
               )}
 
-              {/* Custom Styled Dropdowns */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-400">Select Course</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                    value={selectedCourseId}
-                    onChange={(e) => {
-                      setSelectedCourseId(e.target.value);
-                      setSelectedDocId('');
-                      setError('');
-                    }}
-                  >
-                    <option value="" disabled>Choose a course...</option>
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                </div>
+              {/* Source Toggle */}
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  onClick={() => setSourceMode('document')}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Course Document
+                </button>
+                <button
+                  onClick={() => setSourceMode('upload')}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Upload PDF
+                </button>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-400">Select Document</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    value={selectedDocId}
-                    onChange={(e) => {
-                      setSelectedDocId(e.target.value);
-                      setError('');
-                    }}
-                    disabled={!selectedCourseId || docs.length === 0}
-                  >
-                    <option value="" disabled>
-                      {!selectedCourseId ? 'Select course first' : docs.length === 0 ? 'No documents found' : 'Choose a document...'}
-                    </option>
-                    {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              {sourceMode === 'document' ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-slate-400">Select Course</label>
+                    <div className="relative">
+                      <select 
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        value={selectedCourseId}
+                        onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedDocId(''); setError(''); }}
+                      >
+                        <option value="" disabled>Choose a course...</option>
+                        {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-slate-400">Select Document</label>
+                    <div className="relative">
+                      <select 
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        value={selectedDocId}
+                        onChange={(e) => { setSelectedDocId(e.target.value); setError(''); }}
+                        disabled={!selectedCourseId || docs.length === 0}
+                      >
+                        <option value="" disabled>{!selectedCourseId ? 'Select course first' : docs.length === 0 ? 'No documents found' : 'Choose a document...'}</option>
+                        {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group"
+                >
+                  <div className="w-12 h-12 bg-indigo-500/10 rounded-full flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+                    <UploadCloud className="w-6 h-6 text-indigo-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : 'Click to browse PDF'}</p>
+                    <p className="text-xs text-slate-500 mt-1">Processed in memory, never saved.</p>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="application/pdf" 
+                    className="hidden" 
+                    onChange={(e) => { setUploadFile(e.target.files[0]); setError(''); }}
+                  />
                 </div>
-              </div>
+              )}
 
               {/* Action Buttons */}
-              <div className="pt-4 flex flex-col gap-3 border-t border-slate-800 mt-2">
+              <div className="pt-4 flex flex-col gap-3 border-t border-slate-800">
                 <button 
                   onClick={handleSummarize}
-                  disabled={!selectedDocId || isSummarizing}
+                  disabled={(sourceMode === 'document' ? !selectedDocId : !uploadFile) || isSummarizing}
                   className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Zap className={`w-4 h-4 ${isSummarizing ? 'animate-pulse text-yellow-300' : ''}`} />
                   {isSummarizing ? 'Processing AI...' : 'Generate Summary'}
-                </button>
-
-                <button 
-                  onClick={() => navigate('/evaluator')}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-medium py-3 rounded-xl transition-colors"
-                >
-                  <BarChart className="w-4 h-4" />
-                  Evaluate Summary
                 </button>
               </div>
             </div>
@@ -179,7 +207,7 @@ export default function Summarizer() {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
                 <FileText className="w-12 h-12 mb-3 opacity-20" />
-                <p>Select a document and click generate to view the AI summary here.</p>
+                <p>Select a source and click generate to view the AI summary here.</p>
               </div>
             )}
           </div>
