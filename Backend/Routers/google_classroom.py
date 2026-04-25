@@ -132,12 +132,16 @@ async def full_sync(
         existing = await crud.get_course_by_classroom_id(db, classroom_id)
         if existing:
             await crud.update_course(db, existing, title)
+            # 🔥 THE FIX: Always ensure the user is linked, even if course existed!
+            await crud.link_user_to_course(db, user_id, existing.id) 
             courses_updated += 1
             synced_courses.append((existing.id, classroom_id))
         else:
+            # 🔥 THE FIX: Remove user_id from create parameter
             new_course = await crud.create_course(
-                db=db, user_id=user_id, classroom_id=classroom_id, title=title
+                db=db, classroom_id=classroom_id, title=title
             )
+            await crud.link_user_to_course(db, user_id, new_course.id)
             courses_new += 1
             synced_courses.append((new_course.id, classroom_id))
 

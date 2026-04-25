@@ -51,15 +51,6 @@ async def get_course_by_title(db: AsyncSession, title: str) -> Course:
     return result.scalars().first()
 
 
-async def get_student_courses(db: AsyncSession, student_id: int):
-    stmt = (
-        select(Course)
-        .join(UserCourse, Course.id == UserCourse.course_id)
-        .filter(UserCourse.user_id == student_id)
-    )
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
 # ---------------------------
 # QUIZZES OPERATIONS
 # ---------------------------
@@ -183,23 +174,24 @@ def is_token_valid(user: User) -> bool:
 # ---------------------------
 # GOOGLE CLASSROOM SYNC — COURSES
 # ---------------------------
+# ---------------------------
+# COURSES & SYNC OPERATIONS
+# ---------------------------
 async def get_course_by_classroom_id(db: AsyncSession, classroom_id: str) -> Optional[Course]:
     result = await db.execute(select(Course).filter(Course.classroom_id == classroom_id))
     return result.scalars().first()
-
 
 async def get_course_by_id(db: AsyncSession, course_id: int) -> Optional[Course]:
     result = await db.execute(select(Course).filter(Course.id == course_id))
     return result.scalars().first()
 
-
-async def create_course(db: AsyncSession, user_id: int, classroom_id: str, title: str) -> Course:
-    new_course = Course(classroom_id=classroom_id, title=title, user_id=user_id)
+# THE FIX: No longer requires user_id
+async def create_course(db: AsyncSession, classroom_id: str, title: str) -> Course:
+    new_course = Course(classroom_id=classroom_id, title=title)
     db.add(new_course)
     await db.commit()
     await db.refresh(new_course)
     return new_course
-
 
 async def update_course(db: AsyncSession, course: Course, title: str) -> Course:
     course.title = title
@@ -207,9 +199,23 @@ async def update_course(db: AsyncSession, course: Course, title: str) -> Course:
     await db.refresh(course)
     return course
 
+# THE FIX: New helper to securely link users to courses without duplicates
+async def link_user_to_course(db: AsyncSession, user_id: int, course_id: int):
+    result = await db.execute(
+        select(UserCourse).filter(UserCourse.user_id == user_id, UserCourse.course_id == course_id)
+    )
+    if not result.scalars().first():
+        db.add(UserCourse(user_id=user_id, course_id=course_id))
+        await db.commit()
+
 
 async def get_user_courses(db: AsyncSession, user_id: int):
-    result = await db.execute(select(Course).filter(Course.user_id == user_id))
+    stmt = (
+        select(Course)
+        .join(UserCourse, Course.id == UserCourse.course_id)
+        .filter(UserCourse.user_id == user_id)
+    )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 # ---------------------------

@@ -80,12 +80,14 @@ export default function Dashboard() {
       await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      localStorage.setItem('last_sync_ts', String(Date.now()));
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {
+      
+      localStorage.setItem('last_sync_ts', String(Date.now()));
       setSyncing(false);
     }
+    // Fetch whatever courses we currently have in the DB
     await fetchCourses();
   }
 

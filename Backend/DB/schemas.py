@@ -17,9 +17,6 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-# ---------------------------
-# User and User Courses
-# ---------------------------
 class User(Base):
     __tablename__ = "users"
     
@@ -27,16 +24,14 @@ class User(Base):
     google_id = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True)
     name = Column(String(255))
-    
-    # Google OAuth Tokens
     google_access_token = Column(Text, nullable=True)
     google_refresh_token = Column(Text, nullable=True)
     google_token_expires_at = Column(DateTime(timezone=True), nullable=True)
-    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    courses = relationship("Course", back_populates="user", cascade="all, delete-orphan")
+   
+    courses = relationship("Course", secondary="user_courses", back_populates="users")
+    
     posts = relationship("Post", back_populates="author", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
@@ -49,27 +44,23 @@ class UserCourse(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
 
 
-# ---------------------------
-# Courses and Documents
-# ---------------------------
 class Course(Base):
     __tablename__ = "courses"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     classroom_id = Column(String(255), unique=True, index=True)
     title = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user = relationship("User", back_populates="courses")
+    
+    users = relationship("User", secondary="user_courses", back_populates="courses")
+    
     documents = relationship("Document", back_populates="course", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="course", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
 
     class Config:
         from_attributes = True
-
 
 class Document(Base):
     __tablename__ = "documents"

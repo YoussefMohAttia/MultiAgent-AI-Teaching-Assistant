@@ -40,12 +40,12 @@ async def list_courses(request: Request, db: AsyncSession = Depends(get_db)):
     # Sub-query: course ids the user is enrolled in via UserCourse
     enrolled_ids_subq = select(UserCourse.course_id).where(UserCourse.user_id == user.id)
 
-    stmt = select(Course).where(
-        or_(
-            Course.user_id == user.id,          # courses they own / created
-            Course.id.in_(enrolled_ids_subq),   # courses they are enrolled in
-        )
+    stmt = (
+        select(Course)
+        .join(UserCourse, Course.id == UserCourse.course_id)
+        .where(UserCourse.user_id == user.id)
     )
+    
     result = await db.execute(stmt)
     courses = result.scalars().all()
     return {
