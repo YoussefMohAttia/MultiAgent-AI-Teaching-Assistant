@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
 
 export default function QuizGenerator() {
   const { user } = useAuth();
@@ -105,6 +105,7 @@ export default function QuizGenerator() {
   const handleSelectQuiz = (quiz) => {
     setActiveQuiz(quiz);
     const items = (quiz.questions || []).map((q) => {
+      // Safely handle options whether they come back as arrays or objects
       const opts = Array.isArray(q.options) ? q.options : Object.values(q.options || {});
       return { stem: q.question, options: opts, answer_index: opts.indexOf(q.correct_answer) };
     });
@@ -339,7 +340,7 @@ export default function QuizGenerator() {
   );
 }
 
-// ── Shared Quiz Taker UI ──
+// ── Shared Quiz Taker UI (Defensively Programmed) ──
 function QuizTaker({ items }) {
   const [selected, setSelected] = useState({});
   const [locked, setLocked] = useState({});
@@ -404,7 +405,8 @@ function QuizTaker({ items }) {
               </div>
 
               <div className="flex flex-col gap-2 pl-12">
-                {q.options.map((opt, oi) => {
+                {/* 🔥 THE DEFENSIVE FIX: Safely parse options array regardless of AI format */}
+                {(Array.isArray(q.options) ? q.options : Object.values(q.options || {})).map((opt, oi) => {
                   const isCorrectOption = oi === q.answer_index;
                   const isSelectedOption = chosen === oi;
                   const showAsCorrect = (isCorrectOption && locked[qi]) || (isCorrectOption && revealedAll);
@@ -431,7 +433,7 @@ function QuizTaker({ items }) {
                       className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left text-sm transition-all ${btnStyle} ${locked[qi] || revealedAll ? 'cursor-default opacity-90' : 'cursor-pointer'}`}
                     >
                       <span className="font-bold opacity-50 w-6">{String.fromCharCode(65 + oi)}.</span>
-                      <span className="flex-1">{opt}</span>
+                      <span className="flex-1">{String(opt)}</span>
                       {icon}
                     </button>
                   );
@@ -442,7 +444,8 @@ function QuizTaker({ items }) {
                 <div className="mt-5 pl-12">
                   <div className={`p-4 rounded-lg text-sm border ${isCorrectAnswered ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border-rose-500/20 text-rose-200'}`}>
                      <span className="font-bold mb-1 block">Answer: {String.fromCharCode(65 + q.answer_index)}</span>
-                     {q.options[q.answer_index]}
+                     {/* Defensive string conversion for the answer text too */}
+                     {String((Array.isArray(q.options) ? q.options : Object.values(q.options || {}))[q.answer_index] || 'Data not found')}
                   </div>
                 </div>
               )}

@@ -1,15 +1,8 @@
 """
-AI Router — exposes the four AI capabilities as REST endpoints.
-
-Endpoints:
-    POST /api/ai/chat            — RAG chatbot tutor
-    POST /api/ai/generate-quiz   — AI quiz generation
-    POST /api/ai/summarize       — Document / text summarization
-    POST /api/ai/evaluate        — Student summary evaluation (10 metrics)
-    POST /api/ai/index-document  — Index an uploaded PDF into the course vector store
+AI Router — exposes the AI capabilities as REST endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File,Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import os
@@ -35,201 +28,102 @@ from DB.schemas import (
         Summary as SummaryORM,
         SummaryChunk as SummaryChunkORM,
     )
-# Switch get_optional_user → get_current_user to enforce auth in production
-_auth = Depends(get_optional_user)
 
+_auth = Depends(get_optional_user)
 router = APIRouter()
 
-
 # ── Helper: resolve document text from DB ─────────────────────────────────────
-
 async def _get_document_text(document_id: int, db: AsyncSession) -> str:
-    """Return extractable text for a document.
-
-    Resolution order:
-      1. Local PDF already on disk (s3_path exists)       → extract via PyPDF
-      2. Google Drive URL present                          → auto-download, then extract
-      3. raw_text stored in DB (announcements/assignments) → return directly
-    """
-    result = await db.execute(
-        select(DocumentORM).where(DocumentORM.id == document_id)
-    )
+    result = await db.execute(select(DocumentORM).where(DocumentORM.id == document_id))
     doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    import os
-    from services.pdf_processor import extract_text_from_pdf
-
-    # 1 & 2 — local file or auto-downloadable Drive file
     if doc.s3_path or doc.google_drive_url:
         try:
             from services.drive_download_service import ensure_local_file
             local_path = await ensure_local_file(doc, db)
             return extract_text_from_pdf(local_path)
-        except PermissionError as e:
-            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
-            # Fall through to raw_text if download fails for any reason
-            print(f"⚠️  Drive download failed for doc {document_id}: {e}")
-
-    # 3 — raw text stored directly in DB
+            print(f"⚠️ Drive download failed: {e}")
     if doc.raw_text and doc.raw_text.strip():
         return doc.raw_text
-
-    raise HTTPException(
-        status_code=422,
-        detail=(
-            "This document has no extractable text. "
-            "It may be a non-PDF Drive file (image, video, etc.) "
-            "or a Drive link that is not accessible."
-        ),
-    )
-
+    raise HTTPException(status_code=422, detail="No extractable text found.")
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  1.  CHATBOT  —  RAG tutor scoped to a course's indexed documents
+#  1. CHATBOT
+# ══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+#  1.  CHATBOT  —  Hybrid RAG / General Tutor
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
-    """Ask the AI tutor a question. Answers are grounded in the course's documents."""
+    """Ask the AI tutor a question. Switches between RAG and General mode."""
     try:
         from services.chatbot_service import ask_tutor
+        
+        # ⚡ SENIOR FIX: Handle General Chat (No course_id)
+        # If course_id is 0, null, or missing, we pass None to the service.
+        effective_course_id = req.course_id if (req.course_id and req.course_id > 0) else None
+        
         answer, sources = ask_tutor(
-            course_id=req.course_id,
+            course_id=effective_course_id,
             question=req.question,
             conversation_id=req.conversation_id,
         )
         return ChatResponse(answer=answer, sources=sources)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ Chat Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="The chatbot encountered an error processing your request.")
 
+@router.post("/chat-upload")
+async def chat_upload(
+    file: UploadFile = File(...),
+    message: str = Form(...),
+    user: CurrentUser | None = _auth
+):
+    """Placeholder for ephemeral chat with uploaded PDF."""
+    return {"reply": "Chat-upload endpoint reached. Full RAG logic coming soon!"}
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  2.  QUIZ GENERATION
+#  2. QUIZ GENERATION
 # ══════════════════════════════════════════════════════════════════════════════
-
 @router.post("/generate-quiz", response_model=QuizGenerateResponse)
 async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
-    """Generate quiz questions from provided text or an uploaded document and persist to the database."""
-    from sqlalchemy.future import select as sa_select
-    from DB.schemas import Course as CourseORM, User as UserORM
-
-    # Validate course exists
-    course_result = await db.execute(sa_select(CourseORM).where(CourseORM.id == req.course_id))
-    if not course_result.scalars().first():
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    # Validate creator user exists
-    user_result = await db.execute(sa_select(UserORM).where(UserORM.id == req.created_by))
-    if not user_result.scalars().first():
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Resolve the source text
-    text = req.text
-    if not text and req.document_id:
-        text = await _get_document_text(req.document_id, db)
-    if not text:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide either 'text' or 'document_id'.",
-        )
-
-    try:
-        from services.quiz_generator_service import generate_quiz as gen
-        raw_items = gen(
-            passage=text,
-            objectives=req.objectives,
-            n_items=req.n_items,
-            n_options=req.n_options,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    # Persist quiz + questions to database
+    text = req.text if req.text else await _get_document_text(req.document_id, db)
+    raw_items = gen(passage=text[:15000], objectives=req.objectives, n_items=req.n_items, n_options=req.n_options)
     from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM
     db_quiz = QuizORM(course_id=req.course_id, created_by=req.created_by)
     db.add(db_quiz)
-    await db.flush()  # get db_quiz.id before inserting questions
-
+    await db.flush()
     for item in raw_items:
-        db_question = QuizQuestionORM(
-            quiz_id=db_quiz.id,
-            question=item["stem"],
-            type="multiple_choice",
-            options=item["options"],
-            correct_answer=item["options"][item["answer_index"]],
-        )
-        db.add(db_question)
-
+        db.add(QuizQuestionORM(quiz_id=db_quiz.id, question=item["stem"], type="mcq", options=item["options"], correct_answer=item["options"][item["answer_index"]]))
     await db.commit()
-    await db.refresh(db_quiz)
-
-    items = [QuizItem(**item) for item in raw_items]
-    return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=items)
+    return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=[QuizItem(**i) for i in raw_items])
 
 @router.post("/generate-quiz-upload")
 async def generate_quiz_from_upload(
     file: UploadFile = File(...),
-    objectives: Optional[str] = Form("General knowledge testing key concepts"),
+    objectives: str = Form("General knowledge"),
     n_items: int = Form(5),
     n_options: int = Form(4),
     user: CurrentUser | None = _auth
 ):
-    """
-    Generate a one-off quiz from an uploaded PDF. 
-    The file is processed in memory and instantly deleted. No database records are created.
-    """
-    # 1. Validate File Type
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-
-    
-
     temp_path = None
     try:
-        # 2. Read the file into memory
         payload = await file.read()
-        if not payload:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-        # 3. Create a temporary file on the OS that will be cleaned up
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(payload)
             temp_path = tmp.name
-
-        # 4. Extract the text
         text = extract_text_from_pdf(temp_path)
-        if not text or not text.strip():
-            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
-
-        # 5. Generate the Quiz directly from the text (Bypassing the DB)
-        raw_items = gen(
-            passage=text,
-            objectives=objectives,
-            n_items=n_items,
-            n_options=n_options,
-        )
-
-        # 6. Return the raw items directly to the frontend
-        return {
-            "message": "Ephemeral quiz generated successfully",
-            "items": raw_items
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-        
+        # Use Pydantic model for validation before returning
+        raw_items = gen(passage=text[:10000], objectives=objectives, n_items=n_items, n_options=n_options)
+        validated = [QuizItem(**i) for i in raw_items]
+        return {"items": validated}
     finally:
-        # 7. GUARANTEED CLEANUP: This runs even if the AI crashes!
-        try:
-            await file.close()
-        except Exception:
-            pass
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-            print(f" Cleaned up temporary file: {temp_path}")
+        if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  3.  SUMMARIZATION
 # ══════════════════════════════════════════════════════════════════════════════

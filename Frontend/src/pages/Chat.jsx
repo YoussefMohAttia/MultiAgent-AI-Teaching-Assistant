@@ -1,135 +1,147 @@
-import { useState, useEffect, useRef } from 'react';
-import { chatWithTutor, getCourses } from '../services/api';
-import '../components/Shared.css';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getCourses, getDocuments } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { Textarea } from '../components/ui/textarea';
+import { cn } from '../lib/utils';
+import { 
+  ArrowUpIcon, Paperclip, BookOpen, Bot, 
+  ChevronDown, Sparkles, X, FileText 
+} from 'lucide-react';
+
+// ── Auto-Resize Hook ──
+function useAutoResizeTextarea({ minHeight, maxHeight }) {
+  const textareaRef = useRef(null);
+  const adjustHeight = useCallback((reset) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    if (reset) { textarea.style.height = `${minHeight}px`; return; }
+    textarea.style.height = `${minHeight}px`;
+    const newHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight ?? Infinity));
+    textarea.style.height = `${newHeight}px`;
+  }, [minHeight, maxHeight]);
+  return { textareaRef, adjustHeight };
+}
+
+// ── Custom Animated Select Dropdown ──
+function CustomSelect({ value, onChange, options, placeholder, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  useEffect(() => {
+    const handleOutsideClick = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false); };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+  const selected = options.find(o => String(o.id) === String(value));
+  return (
+    <div className="relative flex-1" ref={containerRef}>
+      <button
+        type="button" disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn("w-full flex items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 text-xs rounded-xl px-4 py-3 text-slate-200 outline-none transition-all", disabled && "opacity-40 cursor-not-allowed", isOpen && "border-indigo-500/50 ring-1 ring-indigo-500/50")}
+      >
+        <span className="truncate">{selected ? selected.title : placeholder}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen && "rotate-180 text-indigo-400")} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute top-full left-0 w-full mt-2 bg-[#0f111a] border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-1 custom-scrollbar">
+            {options.map(opt => (
+              <button key={opt.id} onClick={() => { onChange(opt.id); setIsOpen(false); }} className={cn("w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-indigo-500/20", String(value) === String(opt.id) && "text-indigo-400 bg-indigo-500/10")}>
+                {opt.title}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function Chat() {
-  const [courses, setCourses] = useState([]);
-  const [courseId, setCourseId] = useState('');
+  const { user } = useAuth();
+  const [messages, setMessages] = useState([{ role: 'assistant', content: 'What are we learning today?' }]);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [convId] = useState(() => `conv-${Date.now()}`);
-  const endRef = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+  const [courses, setCourses] = useState([]);
+  const [docs, setDocs] = useState([]);
+  const [sourceMode, setSourceMode] = useState('general');
+  const [courseId, setCourseId] = useState('');
+  const [selectedDocId, setSelectedDocId] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
+  const fileInputRef = useRef(null);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({ minHeight: 52, maxHeight: 200 });
 
-  useEffect(() => {
-    getCourses()
-      .then((r) => {
-        const list = r.data.courses || [];
-        setCourses(list);
-        if (list.length) setCourseId(list[0].id);
-      })
-      .catch(() => {});
-  }, []);
+  useEffect(() => { getCourses().then(r => setCourses(r.data.courses || [])); }, []);
+  useEffect(() => { if (courseId && sourceMode === 'document') getDocuments(courseId).then(r => setDocs(r.data.documents || [])); }, [courseId, sourceMode]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const handleSendMessage = async () => {
+    if (!input.trim() || isTyping) return;
+    const userMsg = { role: 'user', content: input.trim() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput(''); adjustHeight(true); setIsTyping(true);
 
-  const send = async () => {
-    const q = input.trim();
-    if (!q || !courseId) return;
-    setMessages((prev) => [...prev, { role: 'user', text: q }]);
-    setInput('');
-    setLoading(true);
     try {
-      const res = await chatWithTutor(courseId, q, convId);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: res.data.answer, sources: res.data.sources },
-      ]);
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'error', text: e.response?.data?.detail || 'Request failed.' },
-      ]);
-    }
-    setLoading(false);
+      const payload = {
+        question: userMsg.content,
+        course_id: sourceMode === 'document' ? Number(courseId) : null,
+      };
+      const res = await axios.post('/api/ai/chat', payload, { headers: { Authorization: `Bearer ${user.token}` } });
+      setMessages(prev => [...prev, { role: 'assistant', content: res.data.answer }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Error connecting to chatbot. Please select a course if using Context Mode." }]);
+    } finally { setIsTyping(false); }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--header-h) - 64px)' }}>
-      {/* ── Header bar ────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <select
-          className="form-select"
-          style={{ width: 260 }}
-          value={courseId}
-          onChange={(e) => setCourseId(+e.target.value)}
-        >
-          <option value="">Select course…</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>{c.title}</option>
-          ))}
-        </select>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Conversation: {convId.slice(0, 12)}…
-        </span>
-      </div>
+    <div className="relative flex flex-col h-[calc(100vh-6rem)] w-full max-w-5xl mx-auto rounded-3xl bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
+      
+      <header className="relative z-20 flex flex-col items-center justify-center pt-8 pb-4">
+        <div className="p-2 bg-white/5 rounded-2xl border border-white/10 mb-3"><Sparkles className="w-5 h-5 text-indigo-400" /></div>
+        <h1 className="text-xl font-medium text-white tracking-tight">How can I assist you?</h1>
+      </header>
 
-      {/* ── Chat area ─────────────────────────────── */}
-      <div
-        className="card"
-        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: 20 }}
-      >
-        {messages.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontSize: '3rem' }}>💬</span>
-            <p>Ask the AI tutor a question about your course material.</p>
-          </div>
-        )}
-
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '75%',
-              background:
-                m.role === 'user'
-                  ? 'var(--primary)'
-                  : m.role === 'error'
-                    ? 'rgba(239,68,68,0.15)'
-                    : 'var(--bg-card-hover)',
-              color: m.role === 'user' ? '#fff' : m.role === 'error' ? '#f87171' : 'var(--text)',
-              padding: '12px 16px',
-              borderRadius: 14,
-              fontSize: '0.9rem',
-              whiteSpace: 'pre-wrap',
-              lineHeight: 1.6,
-            }}
-          >
-            {m.text}
-            {m.sources?.length > 0 && (
-              <div style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Sources: {m.sources.map((s, j) => (
-                  <span key={j}>p.{s.page ?? '?'} </span>
-                ))}
+      {/* Increased pb-72 to prevent overlap */}
+      <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-72 space-y-8 scroll-smooth custom-scrollbar">
+        <AnimatePresence>
+          {messages.map((msg, idx) => (
+            <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
+                {msg.content}
               </div>
-            )}
-          </div>
-        ))}
-
-        {loading && (
-          <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            <span className="spinner" /> Thinking…
-          </div>
-        )}
-        <div ref={endRef} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Input bar ─────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <input
-          className="form-input"
-          placeholder="Type your question…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-          disabled={loading || !courseId}
-        />
-        <button className="btn btn-primary" onClick={send} disabled={loading || !input.trim() || !courseId}>
-          Send
-        </button>
+      <div className="absolute bottom-6 inset-x-0 px-4 md:px-12 z-30 flex justify-center">
+        <div className="w-full max-w-3xl flex flex-col gap-3">
+          <div className="flex gap-2">
+            <button onClick={() => {setSourceMode('general'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'general' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>General Chat</button>
+            <button onClick={() => {setSourceMode('document'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'document' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>Course Context</button>
+          </div>
+
+          {sourceMode === 'document' && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col sm:flex-row gap-2">
+              <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder="Select Course..." />
+              <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder="Select Document..." disabled={!courseId} />
+            </motion.div>
+          )}
+
+          <div className="relative bg-black/60 backdrop-blur-2xl rounded-3xl border border-white/10 p-2 flex flex-col">
+            {uploadFile && <div className="px-3 py-1 mb-2 bg-indigo-500/10 rounded-xl text-xs text-indigo-300 flex justify-between">{uploadFile.name} <X size={14} className="cursor-pointer" onClick={() => setUploadFile(null)} /></div>}
+            <div className="flex items-center gap-2">
+              <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
+              <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={(e) => {setUploadFile(e.target.files[0]); setSourceMode('upload');}} />
+              <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder="Ask a question..." className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
+              <button onClick={handleSendMessage} className="bg-white text-black p-2.5 rounded-full hover:scale-105 transition-all"><ArrowUpIcon size={18} /></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
