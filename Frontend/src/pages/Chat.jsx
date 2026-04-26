@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Textarea } from '../components/ui/textarea';
 import { cn } from '../lib/utils';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import { streamChatResponse, typeOutText } from '../services/streaming';
 import { 
   ArrowUpIcon, Paperclip, BookOpen, Bot, 
   ChevronDown, Sparkles, X, FileText 
@@ -62,10 +63,13 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
 
 export default function Chat() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([{ role: 'assistant', content: 'What are we learning today?' }]);
+  const [messages, setMessages] = useState([{ id: 'seed-assistant', role: 'assistant', content: 'What are we learning today?' }]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const streamBufferRef = useRef('');
+  const streamRafRef = useRef(null);
+  const activeAssistantIdRef = useRef(null);
   const [courses, setCourses] = useState([]);
   const [docs, setDocs] = useState([]);
   const [sourceMode, setSourceMode] = useState('general');
@@ -79,22 +83,109 @@ export default function Chat() {
   useEffect(() => { if (courseId && sourceMode === 'document') getDocuments(courseId).then(r => setDocs(r.data.documents || [])); }, [courseId, sourceMode]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
 
+  const flushStreamBuffer = useCallback(() => {
+    const chunk = streamBufferRef.current;
+    const activeAssistantId = activeAssistantIdRef.current;
+    streamRafRef.current = null;
+
+    if (!chunk || !activeAssistantId) return;
+
+    streamBufferRef.current = '';
+    setMessages((prev) => prev.map((m) => (
+      m.id === activeAssistantId ? { ...m, content: `${m.content || ''}${chunk}` } : m
+    )));
+  }, []);
+
+  const queueChunk = useCallback((chunk) => {
+    if (!chunk) return;
+    streamBufferRef.current += chunk;
+    if (!streamRafRef.current) {
+      streamRafRef.current = requestAnimationFrame(flushStreamBuffer);
+    }
+  }, [flushStreamBuffer]);
+
+  const flushNow = useCallback(() => {
+    if (streamRafRef.current) {
+      cancelAnimationFrame(streamRafRef.current);
+      streamRafRef.current = null;
+    }
+    flushStreamBuffer();
+  }, [flushStreamBuffer]);
+
+  useEffect(() => () => {
+    if (streamRafRef.current) {
+      cancelAnimationFrame(streamRafRef.current);
+    }
+  }, []);
+
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
-    const userMsg = { role: 'user', content: input.trim() };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsg = { id: `u-${Date.now()}`, role: 'user', content: input.trim() };
+    const assistantId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    activeAssistantIdRef.current = assistantId;
+
+    setMessages(prev => [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }]);
     setInput(''); adjustHeight(true); setIsTyping(true);
 
     try {
       const payload = {
         question: userMsg.content,
-        course_id: sourceMode === 'document' ? Number(courseId) : null,
+        course_id: sourceMode === 'document' ? Number(courseId || 0) : 0,
       };
-      const res = await axios.post('/api/ai/chat', payload, { headers: { Authorization: `Bearer ${user.token}` } });
-      setMessages(prev => [...prev, { role: 'assistant', content: res.data.answer }]);
+
+      let streamedFinal = '';
+      let receivedAnyToken = false;
+
+      try {
+        const streamResult = await streamChatResponse({
+          payload,
+          token: user?.token,
+          onToken: (tokenChunk) => queueChunk(tokenChunk),
+          onDone: (answer) => {
+            streamedFinal = answer || '';
+          },
+        });
+        receivedAnyToken = streamResult.receivedAnyToken;
+        if (!streamedFinal && streamResult.finalAnswer) {
+          streamedFinal = streamResult.finalAnswer;
+        }
+      } catch {
+        receivedAnyToken = false;
+      }
+
+      flushNow();
+
+      if (receivedAnyToken) {
+        if (streamedFinal) {
+          setMessages((prev) => prev.map((m) => (
+            m.id === assistantId ? { ...m, content: streamedFinal } : m
+          )));
+        }
+      } else {
+        const fallbackAnswer = streamedFinal || (
+          await axios.post('/api/ai/chat', payload, { headers: { Authorization: `Bearer ${user.token}` } })
+        ).data.answer;
+
+        setMessages((prev) => prev.map((m) => (
+          m.id === assistantId ? { ...m, content: '' } : m
+        )));
+
+        await typeOutText(fallbackAnswer, (char) => queueChunk(char));
+        flushNow();
+        setMessages((prev) => prev.map((m) => (
+          m.id === assistantId ? { ...m, content: fallbackAnswer } : m
+        )));
+      }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Error connecting to chatbot. Please select a course if using Context Mode." }]);
-    } finally { setIsTyping(false); }
+      setMessages((prev) => prev.map((m) => (
+        m.id === assistantId
+          ? { ...m, content: "⚠️ Error connecting to chatbot. Please select a course if using Context Mode." }
+          : m
+      )));
+    } finally {
+      activeAssistantIdRef.current = null;
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -109,7 +200,7 @@ export default function Chat() {
       <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-72 space-y-8 scroll-smooth custom-scrollbar">
         <AnimatePresence>
           {messages.map((msg, idx) => (
-            <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <motion.div key={msg.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
                 {msg.role === 'assistant' ? (
                   <MarkdownRenderer content={msg.content} className="max-w-none" />

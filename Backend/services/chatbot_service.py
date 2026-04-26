@@ -12,9 +12,9 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
-from services.openrouter_client import chat_completion
+from services.openrouter_client import chat_completion, chat_completion_stream
 from services.pdf_processor import query_course_documents
 
 # ---------------------------------------------------------------------------
@@ -86,6 +86,66 @@ def ask_tutor(
     ]
 
     return answer, sources
+
+
+def ask_tutor_stream(
+    course_id: int | None,
+    question: str,
+    conversation_id: str = "default",
+) -> Tuple[Iterator[str], List[dict]]:
+    """
+    Stream a tutor answer token-by-token.
+
+    Returns (token_iterator, source_snippets).
+    """
+    retrieved = query_course_documents(course_id, question, n_results=4) if course_id else []
+    context_text = (
+        "\n\n---\n\n".join(d["content"] for d in retrieved)
+        if retrieved
+        else "(No documents indexed for this course yet.)"
+    )
+
+    history = _conversations.get(conversation_id, [])
+    history_text = ""
+    for msg in history[-6:]:
+        role = "Student" if msg["role"] == "user" else "Tutor"
+        history_text += f"{role}: {msg['content']}\n"
+
+    prompt = (
+        f"Context from documents:\n{context_text}\n\n"
+        f"Previous conversation:\n{history_text}\n"
+        f"Student's Question: {question}\n\n"
+        "Tutor's Answer:"
+    )
+
+    token_stream = chat_completion_stream(
+        prompt,
+        system=TUTOR_SYSTEM,
+        max_tokens=1500,
+        temperature=0.7,
+    )
+
+    def _wrapped_stream() -> Iterator[str]:
+        full_answer_parts: List[str] = []
+        for token in token_stream:
+            full_answer_parts.append(token)
+            yield token
+
+        final_answer = "".join(full_answer_parts).strip()
+        if conversation_id not in _conversations:
+            _conversations[conversation_id] = []
+        _conversations[conversation_id].append({"role": "user", "content": question})
+        _conversations[conversation_id].append({"role": "assistant", "content": final_answer})
+
+    sources = [
+        {
+            "page": d["metadata"].get("page"),
+            "snippet": d["content"][:300],
+        }
+        for d in retrieved
+    ]
+
+    return _wrapped_stream(), sources
 
 
 def reset_conversation(conversation_id: str) -> None:

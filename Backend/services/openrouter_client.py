@@ -4,6 +4,7 @@ Shared Google AI Studio / OpenAI-compatible client used by all AI services.
 
 from openai import OpenAI
 from Core.config import settings
+from typing import Iterator
 
 
 def get_ai_client() -> OpenAI:
@@ -57,3 +58,45 @@ def chat_completion(
         timeout=timeout_s,
     )
     return response.choices[0].message.content.strip()
+
+
+def chat_completion_stream(
+    prompt: str,
+    *,
+    system: str = "You are an expert academic assistant.",
+    model: str | None = None,
+    temperature: float = 0.3,
+    max_tokens: int = 1500,
+    timeout_s: float | None = None,
+) -> Iterator[str]:
+    """Stream assistant text chunks for a single prompt."""
+    client = get_ai_client()
+    resolved_model = model or settings.AI_MODEL_NAME
+
+    _models_without_system = {"gemma"}
+    model_lower = resolved_model.lower()
+    if any(tag in model_lower for tag in _models_without_system):
+        merged_prompt = f"{system}\n\n{prompt}" if system else prompt
+        messages = [{"role": "user", "content": merged_prompt}]
+    else:
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+
+    stream = client.chat.completions.create(
+        model=resolved_model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout=timeout_s,
+        stream=True,
+    )
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        token = getattr(delta, "content", None)
+        if token:
+            yield token

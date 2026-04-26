@@ -3,11 +3,13 @@ AI Router — exposes the AI capabilities as REST endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import os
 import tempfile
 from typing import Optional
+import json
 from DB.session import get_db
 from DB.schemas import Document as DocumentORM
 from security.auth_dependency import get_optional_user, CurrentUser
@@ -75,6 +77,41 @@ async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
     except Exception as e:
         print(f"❌ Chat Error: {str(e)}")
         raise HTTPException(status_code=500, detail="The chatbot encountered an error processing your request.")
+
+
+@router.post("/chat/stream")
+async def chat_with_tutor_stream(req: ChatRequest, user: CurrentUser | None = _auth):
+    """Stream tutor response progressively using Server-Sent Events (SSE)."""
+    try:
+        from services.chatbot_service import ask_tutor_stream
+
+        effective_course_id = req.course_id if (req.course_id and req.course_id > 0) else None
+        token_stream, _sources = ask_tutor_stream(
+            course_id=effective_course_id,
+            question=req.question,
+            conversation_id=req.conversation_id,
+        )
+
+        def event_generator():
+            full_text_parts = []
+            try:
+                for token in token_stream:
+                    full_text_parts.append(token)
+                    yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+
+                final_answer = "".join(full_text_parts)
+                yield f"data: {json.dumps({'type': 'done', 'answer': final_answer})}\n\n"
+            except Exception as stream_error:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(stream_error)})}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+    except Exception as e:
+        print(f"❌ Chat Stream Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="The chatbot stream failed to start.")
 
 @router.post("/chat-upload")
 async def chat_upload(
