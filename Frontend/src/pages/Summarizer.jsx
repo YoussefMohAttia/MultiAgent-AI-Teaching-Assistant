@@ -4,6 +4,7 @@ import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, Upload
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function Summarizer() {
   const navigate = useNavigate();
@@ -201,9 +202,7 @@ export default function Summarizer() {
           
           <div className="p-6 flex-1 text-slate-300 leading-relaxed overflow-y-auto custom-scrollbar">
             {summary ? (
-              <div className="prose prose-invert max-w-none whitespace-pre-wrap">
-                {summary}
-              </div>
+              <MarkdownRenderer content={summary} className="max-w-none text-slate-300" />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
                 <FileText className="w-12 h-12 mb-3 opacity-20" />

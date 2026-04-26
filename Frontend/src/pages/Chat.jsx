@@ -5,6 +5,7 @@ import { getCourses, getDocuments } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Textarea } from '../components/ui/textarea';
 import { cn } from '../lib/utils';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { 
   ArrowUpIcon, Paperclip, BookOpen, Bot, 
   ChevronDown, Sparkles, X, FileText 
@@ -110,7 +111,11 @@ export default function Chat() {
           {messages.map((msg, idx) => (
             <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  <MarkdownRenderer content={msg.content} className="max-w-none" />
+                ) : (
+                  msg.content
+                )}
               </div>
             </motion.div>
           ))}
