@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
 
 export default function QuizGenerator() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') === 'take' ? 'take' : 'generate');
 
@@ -97,7 +99,7 @@ export default function QuizGenerator() {
         setGeneratedQuizId(res.data.quiz_id);
       }
     } catch (e) {
-      setGenError(e.response?.data?.detail || 'Quiz generation failed.');
+      setGenError(e.response?.data?.detail || t('quizGenerationFailed'));
     }
     setGenLoading(false);
   };
@@ -120,9 +122,9 @@ export default function QuizGenerator() {
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
             <BrainCircuit className="w-8 h-8 text-indigo-400" />
-            AI Quiz Engine
+            {t('quizTitle')}
           </h1>
-          <p className="text-slate-400">Generate tests from your materials, or practice past quizzes.</p>
+          <p className="text-slate-400">{t('quizSubtitle')}</p>
         </div>
         
         {/* Main Tabs */}
@@ -131,13 +133,13 @@ export default function QuizGenerator() {
             onClick={() => setTab('generate')}
             className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'generate' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
           >
-            Generate Quiz
+            {t('quizTabGenerate')}
           </button>
           <button
             onClick={() => setTab('take')}
             className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'take' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
           >
-            Take a Quiz
+            {t('quizTabTake')}
           </button>
         </div>
       </div>
@@ -148,7 +150,7 @@ export default function QuizGenerator() {
         {tab === 'generate' && (
           <div className="w-full lg:w-1/3 flex flex-col gap-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-white mb-4">Quiz Settings</h2>
+              <h2 className="text-lg font-semibold text-white mb-4">{t('quizSettings')}</h2>
               
               <div className="flex flex-col gap-5">
                 {genError && (
@@ -160,20 +162,20 @@ export default function QuizGenerator() {
 
                 {/* Sub-tabs for Source */}
                 <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button onClick={() => setSourceMode('document')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Document</button>
-                  <button onClick={() => setSourceMode('upload')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Upload</button>
-                  <button onClick={() => setSourceMode('text')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Text</button>
+                  <button onClick={() => setSourceMode('document')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceDocument')}</button>
+                  <button onClick={() => setSourceMode('upload')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceUpload')}</button>
+                  <button onClick={() => setSourceMode('text')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceText')}</button>
                 </div>
 
                 {sourceMode !== 'upload' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Course Link</label>
+                    <label className="text-sm font-medium text-slate-400">{t('quizCourseLabel')}</label>
                     <div className="relative">
                       <select 
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500"
                         value={courseId} onChange={(e) => setCourseId(e.target.value)}
                       >
-                        {courses.length === 0 && <option value="">Loading courses…</option>}
+                        {courses.length === 0 && <option value="">{t('quizLoadingCourses')}</option>}
                         {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -183,13 +185,13 @@ export default function QuizGenerator() {
 
                 {sourceMode === 'document' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Select Document</label>
+                    <label className="text-sm font-medium text-slate-400">{t('quizSelectDocument')}</label>
                     <div className="relative">
                       <select 
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 disabled:opacity-50"
                         value={selectedDocId} onChange={(e) => setSelectedDocId(e.target.value)} disabled={!courseId || docs.length === 0}
                       >
-                        <option value="" disabled>{docsLoading ? 'Loading...' : docs.length === 0 ? 'No docs found' : 'Choose a document...'}</option>
+                        <option value="" disabled>{docsLoading ? t('quizLoading') : docs.length === 0 ? t('quizNoDocs') : t('quizChooseDocument')}</option>
                         {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -201,7 +203,7 @@ export default function QuizGenerator() {
                   <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group">
                     <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center group-hover:bg-indigo-500/20"><UploadCloud className="w-5 h-5 text-indigo-400" /></div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : 'Click to browse PDF'}</p>
+                      <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : t('quizUploadBrowse')}</p>
                     </div>
                     <input type="file" ref={fileInputRef} accept="application/pdf" className="hidden" onChange={(e) => setUploadFile(e.target.files[0])} />
                   </div>
@@ -209,20 +211,20 @@ export default function QuizGenerator() {
 
                 {sourceMode === 'text' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Paste Text</label>
-                    <textarea className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 custom-scrollbar" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste lecture notes here..." />
+                    <label className="text-sm font-medium text-slate-400">{t('quizPasteTextLabel')}</label>
+                    <textarea className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 custom-scrollbar" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('quizPasteTextPlaceholder')} />
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Questions</label>
+                    <label className="text-sm font-medium text-slate-400">{t('quizQuestionsLabel')}</label>
                     <select className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3" value={nItems} onChange={(e) => setNItems(+e.target.value)}>
                       {[3, 5, 7, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Options</label>
+                    <label className="text-sm font-medium text-slate-400">{t('quizOptionsLabel')}</label>
                     <select className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3" value={nOptions} onChange={(e) => setNOptions(+e.target.value)}>
                       {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
@@ -232,7 +234,7 @@ export default function QuizGenerator() {
                 <div className="pt-4 border-t border-slate-800">
                   <button onClick={handleGenerate} disabled={isGenerateDisabled} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50">
                     <Sparkles className={`w-4 h-4 ${genLoading ? 'animate-pulse text-yellow-300' : ''}`} />
-                    {genLoading ? 'Generating...' : 'Build Quiz'}
+                    {genLoading ? t('quizGenerating') : t('quizBuild')}
                   </button>
                 </div>
 
@@ -249,14 +251,14 @@ export default function QuizGenerator() {
               {generatedQuizId && sourceMode !== 'upload' && (
                 <div className="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5" />
-                  <p className="text-sm font-medium">Quiz saved! Find it in the "Take a Quiz" tab.</p>
+                  <p className="text-sm font-medium">{t('quizSaved')}</p>
                 </div>
               )}
               
               {!generatedQuizId && generatedItems.length > 0 && sourceMode === 'upload' && (
                 <div className="mb-6 bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-xl flex items-center gap-3">
                   <Zap className="w-5 h-5" />
-                  <p className="text-sm font-medium">Ephemeral Quiz generated! (Not saved to database).</p>
+                  <p className="text-sm font-medium">{t('quizEphemeral')}</p>
                 </div>
               )}
 
@@ -265,7 +267,7 @@ export default function QuizGenerator() {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
                   <BrainCircuit className="w-12 h-12 mb-3 opacity-20" />
-                  <p>Configure settings and generate a quiz to start practicing.</p>
+                  <p>{t('quizEmptyState')}</p>
                 </div>
               )}
             </div>
@@ -277,7 +279,7 @@ export default function QuizGenerator() {
               {!activeQuiz ? (
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-white">Your Quizzes</h2>
+                    <h2 className="text-xl font-bold text-white">{t('quizYourQuizzes')}</h2>
                     <div className="relative w-64">
                       <select 
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-indigo-500"
@@ -291,24 +293,24 @@ export default function QuizGenerator() {
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
                     {quizzesLoading ? (
-                       <p className="text-slate-400 text-sm">Loading quizzes...</p>
+                       <p className="text-slate-400 text-sm">{t('quizLoadingQuizzes')}</p>
                     ) : quizzes.length === 0 ? (
                       <div className="col-span-full py-12 text-center border border-dashed border-slate-700 rounded-xl bg-slate-900/50">
                         <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400">No quizzes for this course yet.</p>
+                        <p className="text-slate-400">{t('quizNoQuizzes')}</p>
                       </div>
                     ) : (
                       quizzes.map((quiz) => (
                         <div key={quiz.id} onClick={() => handleSelectQuiz(quiz)} className="bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-slate-800/80 p-5 rounded-xl cursor-pointer transition-all flex flex-col justify-between min-h-[120px] group">
                            <div>
                               <div className="flex justify-between items-start mb-2">
-                                <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-md">Quiz #{quiz.id}</span>
+                                <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-md">{t('quizLabel')} #{quiz.id}</span>
                                 <span className="text-xs text-slate-500">{new Date(quiz.created_at).toLocaleDateString()}</span>
                               </div>
-                              <p className="text-sm text-slate-300 font-medium">{quiz.questions?.length || 0} Questions</p>
+                              <p className="text-sm text-slate-300 font-medium">{quiz.questions?.length || 0} {t('quizQuestionsLabel')}</p>
                            </div>
                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                             <span className="text-xs font-bold text-indigo-400 flex items-center gap-1">Take Quiz <span className="text-lg leading-none">&rarr;</span></span>
+                             <span className="text-xs font-bold text-indigo-400 flex items-center gap-1">{t('quizTakeQuiz')} <span className="text-lg leading-none">&rarr;</span></span>
                            </div>
                         </div>
                       ))
@@ -319,11 +321,11 @@ export default function QuizGenerator() {
                 <div className="flex flex-col h-full overflow-hidden">
                   <div className="flex items-center gap-4 mb-6 flex-shrink-0">
                     <button onClick={() => { setActiveQuiz(null); setTakeItems([]); }} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors">
-                      &larr; Back to Quizzes
+                      &larr; {t('quizBackToQuizzes')}
                     </button>
                     <div>
-                      <h2 className="text-lg font-bold text-white">Quiz #{activeQuiz.id}</h2>
-                      <p className="text-xs text-slate-400">{takeItems.length} Questions</p>
+                      <h2 className="text-lg font-bold text-white">{t('quizLabel')} #{activeQuiz.id}</h2>
+                      <p className="text-xs text-slate-400">{takeItems.length} {t('quizQuestionsLabel')}</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -342,6 +344,7 @@ export default function QuizGenerator() {
 
 // ── Shared Quiz Taker UI (Defensively Programmed) ──
 function QuizTaker({ items }) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState({});
   const [locked, setLocked] = useState({});
   const [revealedAll, setRevealedAll] = useState(false);
@@ -374,13 +377,13 @@ function QuizTaker({ items }) {
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
         <div className="flex gap-2">
-          <button onClick={revealAllAnswers} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors">Reveal Answers</button>
-          <button onClick={resetAll} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors">Reset</button>
+          <button onClick={revealAllAnswers} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors">{t('quizRevealAnswers')}</button>
+          <button onClick={resetAll} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors">{t('quizReset')}</button>
         </div>
         
         {showScoreBar && (
           <div className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
-            <span className="text-sm font-medium text-slate-300">Score: <span className="text-white font-bold">{score}/{attempted}</span> <span className="text-slate-500">({Math.round((score / Math.max(items.length, 1)) * 100)}%)</span></span>
+            <span className="text-sm font-medium text-slate-300">{t('quizScoreLabel')}: <span className="text-white font-bold">{score}/{attempted}</span> <span className="text-slate-500">({Math.round((score / Math.max(items.length, 1)) * 100)}%)</span></span>
           </div>
         )}
       </div>
@@ -443,9 +446,9 @@ function QuizTaker({ items }) {
               {(locked[qi] || revealedAll) && (
                 <div className="mt-5 pl-12">
                   <div className={`p-4 rounded-lg text-sm border ${isCorrectAnswered ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border-rose-500/20 text-rose-200'}`}>
-                     <span className="font-bold mb-1 block">Answer: {String.fromCharCode(65 + q.answer_index)}</span>
+                    <span className="font-bold mb-1 block">{t('quizAnswerLabel')}: {String.fromCharCode(65 + q.answer_index)}</span>
                      {/* Defensive string conversion for the answer text too */}
-                     {String((Array.isArray(q.options) ? q.options : Object.values(q.options || {}))[q.answer_index] || 'Data not found')}
+                    {String((Array.isArray(q.options) ? q.options : Object.values(q.options || {}))[q.answer_index] || t('quizDataNotFound'))}
                   </div>
                 </div>
               )}

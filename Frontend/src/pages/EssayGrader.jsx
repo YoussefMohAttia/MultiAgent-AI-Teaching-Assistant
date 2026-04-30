@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gradeEssay } from '../services/api';
 import '../components/Shared.css';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function bandColor(score) {
   if (score >= 7.5) return 'var(--success)';
@@ -9,6 +10,7 @@ function bandColor(score) {
 }
 
 export default function EssayGrader() {
+  const { t } = useLanguage();
   const [question, setQuestion] = useState('');
   const [essayText, setEssayText] = useState('');
   const [result, setResult] = useState(null);
@@ -31,7 +33,7 @@ export default function EssayGrader() {
       setResult(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
     } catch (e) {
-      setError(e.response?.data?.detail || 'Essay grading failed.');
+      setError(e.response?.data?.detail || t('essayFailed'));
     }
 
     setLoading(false);
@@ -43,13 +45,13 @@ export default function EssayGrader() {
         <div className="card">
           <div className="card-header">
             <span className="icon">❓</span>
-            <h3 style={{ fontSize: '0.95rem' }}>Essay Prompt (Optional)</h3>
+            <h3 style={{ fontSize: '0.95rem' }}>{t('essayPromptTitle')}</h3>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <textarea
               className="form-textarea"
               rows={6}
-              placeholder="Paste the essay question/prompt if your model was trained with question context..."
+              placeholder={t('essayPromptPlaceholder')}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
             />
@@ -59,13 +61,13 @@ export default function EssayGrader() {
         <div className="card">
           <div className="card-header">
             <span className="icon">📝</span>
-            <h3 style={{ fontSize: '0.95rem' }}>Student Essay</h3>
+            <h3 style={{ fontSize: '0.95rem' }}>{t('essayStudentEssay')}</h3>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <textarea
               className="form-textarea"
               rows={10}
-              placeholder="Paste the full essay text to predict IELTS band..."
+              placeholder={t('essayTextPlaceholder')}
               value={essayText}
               onChange={(e) => setEssayText(e.target.value)}
             />
@@ -76,11 +78,11 @@ export default function EssayGrader() {
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
             <button className="btn btn-primary" onClick={handleGrade} disabled={isDisabled}>
-              {loading ? <><span className="spinner" /> Grading...</> : 'Predict IELTS Band'}
+              {loading ? <><span className="spinner" /> {t('essayGrading')}</> : t('essayPredict')}
             </button>
             {!loading && !essayText.trim() && (
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Enter text in Student Essay to enable grading.
+                {t('essayEnterTextHint')}
               </span>
             )}
           </div>
@@ -100,12 +102,12 @@ export default function EssayGrader() {
       {result && (
         <>
           <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>Predicted IELTS Band</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>{t('essayPredictedBand')}</p>
             <div style={{ fontSize: '3.5rem', fontWeight: 700, color: bandColor(result.predicted_band) }}>
               {result.predicted_band}<span style={{ fontSize: '1.5rem', opacity: 0.6 }}>/9</span>
             </div>
             <p style={{ marginTop: 10, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Objective: <strong>{result.objective}</strong>
+              {t('essayObjective')}: <strong>{result.objective}</strong>
             </p>
           </div>
         </>

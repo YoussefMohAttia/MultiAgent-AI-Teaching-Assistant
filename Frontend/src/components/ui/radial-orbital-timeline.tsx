@@ -6,6 +6,7 @@ import { ArrowRight, Link, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface TimelineItem {
   id: number;
@@ -31,6 +32,7 @@ export default function RadialOrbitalTimeline({
   onNodeSelect,
   openOnNodeClick = false,
 }: RadialOrbitalTimelineProps) {
+  const { t } = useLanguage();
   const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
   const [viewMode] = useState<'orbital'>('orbital');
   const [rotationAngle, setRotationAngle] = useState<number>(0);
@@ -271,10 +273,10 @@ export default function RadialOrbitalTimeline({
                           className={`px-2 text-xs ${getStatusStyles(item.status)}`}
                         >
                           {item.status === 'completed'
-                            ? 'COMPLETE'
+                            ? t('timelineComplete')
                             : item.status === 'in-progress'
-                              ? 'IN PROGRESS'
-                              : 'PENDING'}
+                              ? t('timelineInProgress')
+                              : t('timelinePending')}
                         </Badge>
                         <span className="text-xs font-mono text-white/50">
                           {item.date}
@@ -289,7 +291,7 @@ export default function RadialOrbitalTimeline({
                         <div className="flex justify-between items-center text-xs mb-1">
                           <span className="flex items-center">
                             <Zap size={10} className="mr-1" />
-                            Energy Level
+                            {t('timelineEnergy')}
                           </span>
                           <span className="font-mono">{item.energy}%</span>
                         </div>
@@ -306,7 +308,7 @@ export default function RadialOrbitalTimeline({
                           <div className="flex items-center mb-2">
                             <Link size={10} className="text-white/70 mr-1" />
                             <h4 className="text-xs uppercase tracking-wider font-medium text-white/70">
-                              Connected Nodes
+                              {t('timelineConnected')}
                             </h4>
                           </div>
                           <div className="flex flex-wrap gap-1">

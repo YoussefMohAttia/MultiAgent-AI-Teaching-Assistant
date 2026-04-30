@@ -1,11 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { getCourses, getDocuments, getDocumentBlob } from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   BookOpen, FileText, Download, ChevronRight, 
   Search, FolderOpen, Inbox, AlertCircle, FileDigit, Eye, X
 } from 'lucide-react';
 
 export default function Courses() {
+  const { t } = useLanguage();
   const [courses, setCourses] = useState([]);
   const [selected, setSelected] = useState(null);
   const [docs, setDocs] = useState([]);
@@ -25,7 +27,7 @@ export default function Courses() {
     setCoursesLoading(true);
     getCourses()
       .then((r) => setCourses(r.data.courses || []))
-      .catch(() => setError('Failed to load courses. Please try again.'))
+      .catch(() => setError(t('coursesLoadError')))
       .finally(() => setCoursesLoading(false));
   }, []);
 
@@ -65,7 +67,7 @@ export default function Courses() {
       window.URL.revokeObjectURL(blobUrl); 
     } catch (err) {
       console.error("Download failed", err);
-      setError("Failed to download document.");
+      setError(t('downloadError'));
     } finally {
       setIsProcessingFile(false);
     }
@@ -82,7 +84,7 @@ export default function Courses() {
       setPreviewTitle(doc.title);
     } catch (err) {
       console.error("Preview failed", err);
-      setError("Failed to load document preview.");
+      setError(t('previewError'));
     } finally {
       setIsProcessingFile(false);
     }
@@ -98,7 +100,7 @@ export default function Courses() {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-indigo-400" />
-                My Courses
+                {t('myCourses')}
               </h2>
               <span className="bg-slate-800 text-slate-300 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-700">
                 {courses.length}
@@ -109,7 +111,7 @@ export default function Courses() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search courses..."
+                placeholder={t('searchCourses')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
@@ -130,7 +132,7 @@ export default function Courses() {
             ) : filteredCourses.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-center px-4">
                 <FolderOpen className="w-8 h-8 text-slate-600 mb-2" />
-                <p className="text-slate-400 text-sm">No courses found matching your search.</p>
+                <p className="text-slate-400 text-sm">{t('noCoursesMatch')}</p>
               </div>
             ) : (
               filteredCourses.map((c) => {
@@ -164,9 +166,9 @@ export default function Courses() {
               <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-700">
                 <FileDigit className="w-10 h-10 text-slate-500" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">No Course Selected</h3>
+              <h3 className="text-xl font-bold text-white mb-2">{t('noCourseSelected')}</h3>
               <p className="text-slate-400 max-w-sm">
-                Select a course from the sidebar to view its official documents, assignments, and lecture materials.
+                {t('noCourseSelectedBody')}
               </p>
             </div>
           ) : (
@@ -176,11 +178,11 @@ export default function Courses() {
                   <div>
                     <h2 className="text-2xl font-bold text-white mb-1">{selected.title}</h2>
                     <p className="text-sm text-slate-400 flex items-center gap-2">
-                      <FolderOpen className="w-4 h-4" /> Course Materials
+                      <FolderOpen className="w-4 h-4" /> {t('courseMaterials')}
                     </p>
                   </div>
                   <div className="bg-indigo-500/10 text-indigo-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-indigo-500/20 whitespace-nowrap">
-                    {docs.length} Files
+                    {docs.length} {t('files')}
                   </div>
                 </div>
               </div>
@@ -195,8 +197,8 @@ export default function Courses() {
                     <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
                       <Inbox className="w-8 h-8 text-slate-500" />
                     </div>
-                    <h4 className="text-lg font-semibold text-slate-300 mb-1">Folder is Empty</h4>
-                    <p className="text-sm text-slate-500 max-w-xs">No documents have been synced from Google Classroom for this course yet.</p>
+                    <h4 className="text-lg font-semibold text-slate-300 mb-1">{t('folderEmpty')}</h4>
+                    <p className="text-sm text-slate-500 max-w-xs">{t('folderEmptyBody')}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePomodoro } from '../contexts/PomodoroContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import './MiniGames.css';
 
 const MEMORY_IMAGES = [
@@ -69,6 +70,7 @@ function buildShuffledDeck(previousDeck = []) {
 }
 
 function MemoryMatch({ fullScreen = false }) {
+  const { t } = useLanguage();
   const [deck, setDeck] = useState(() => buildShuffledDeck());
   const [flipped, setFlipped] = useState([]);
   const [moves, setMoves] = useState(0);
@@ -110,17 +112,17 @@ function MemoryMatch({ fullScreen = false }) {
   return (
     <div className={`card mini-card ${fullScreen ? 'mini-card-fullscreen' : ''}`}>
       <div className="mini-header">
-        <h3>Memory Match</h3>
-        <button className="btn btn-secondary btn-sm" onClick={resetGame}>Reset</button>
+        <h3>{t('miniMemoryMatch')}</h3>
+        <button className="btn btn-secondary btn-sm" onClick={resetGame}>{t('miniReset')}</button>
       </div>
-      <p className="mini-sub">Moves: {moves} {done && ' • Completed!'}</p>
+      <p className="mini-sub">{t('miniMoves')}: {moves} {done && ` • ${t('miniCompleted')}`}</p>
       <div className="memory-grid">
         {deck.map((card) => {
           const shown = card.matched || flipped.includes(card.id);
           return (
             <button key={card.id} className={`memory-tile ${shown ? 'shown' : ''}`} onClick={() => onFlip(card.id)}>
               {shown ? (
-                <img src={card.image} alt="Memory card" className="memory-tile-image" />
+                <img src={card.image} alt={t('miniMemoryCardAlt')} className="memory-tile-image" />
               ) : (
                 <span>❔</span>
               )}
@@ -161,6 +163,7 @@ function buildShuffledPuzzle() {
 }
 
 function EightPuzzle({ fullScreen = false }) {
+  const { t } = useLanguage();
   const [board, setBoard] = useState(() => buildShuffledPuzzle());
   const [moves, setMoves] = useState(0);
 
@@ -197,10 +200,10 @@ function EightPuzzle({ fullScreen = false }) {
   return (
     <div className={`card mini-card ${fullScreen ? 'mini-card-fullscreen' : ''}`}>
       <div className="mini-header">
-        <h3>8-Puzzle</h3>
-        <button className="btn btn-secondary btn-sm" onClick={resetPuzzle}>Reset</button>
+        <h3>{t('miniPuzzle')}</h3>
+        <button className="btn btn-secondary btn-sm" onClick={resetPuzzle}>{t('miniReset')}</button>
       </div>
-      <p className="mini-sub">Moves: {moves} {solved && ' • Solved!'}</p>
+      <p className="mini-sub">{t('miniMoves')}: {moves} {solved && ` • ${t('miniSolved')}`}</p>
       <div className="puzzle-grid" role="group" aria-label="8 puzzle board">
         {board.map((value, idx) => {
           const isEmpty = value === 0;
@@ -213,7 +216,7 @@ function EightPuzzle({ fullScreen = false }) {
               className={`puzzle-tile ${isEmpty ? 'empty' : ''} ${movable ? 'movable' : ''}`}
               onClick={() => moveTile(idx)}
               disabled={isEmpty || solved}
-              aria-label={isEmpty ? 'Empty tile' : `Tile ${value}`}
+              aria-label={isEmpty ? t('miniEmptyTile') : `${t('miniTile')} ${value}`}
             >
               {!isEmpty ? value : ''}
             </button>
@@ -225,12 +228,13 @@ function EightPuzzle({ fullScreen = false }) {
 }
 
 function GameLauncherCard({ title, description, onPlay, disabled = false }) {
+  const { t } = useLanguage();
   return (
     <div className="card mini-card mini-launcher-card">
       <h3>{title}</h3>
       <p>{description}</p>
       <button className="btn btn-primary" onClick={onPlay} disabled={disabled}>
-        ▶ Play
+        ▶ {t('miniPlay')}
       </button>
     </div>
   );
@@ -238,6 +242,7 @@ function GameLauncherCard({ title, description, onPlay, disabled = false }) {
 
 export default function MiniGames() {
   const { isBreak, secondsLeft } = usePomodoro();
+  const { t } = useLanguage();
   const [activeGame, setActiveGame] = useState(null);
 
   useEffect(() => {
@@ -247,8 +252,8 @@ export default function MiniGames() {
   if (!isBreak) {
     return (
       <div className="card mini-locked-card">
-        <h2>Mini Games Locked</h2>
-        <p>This tab is only available during Pomodoro breaks.</p>
+        <h2>{t('miniLockedTitle')}</h2>
+        <p>{t('miniLockedBody')}</p>
       </div>
     );
   }
@@ -257,8 +262,8 @@ export default function MiniGames() {
     return (
       <div className="mini-fullscreen-overlay">
         <div className="mini-fullscreen-topbar">
-          <h2>Memory Match</h2>
-          <button className="btn btn-secondary" onClick={() => setActiveGame(null)}>← Back to Games</button>
+          <h2>{t('miniMemoryMatch')}</h2>
+          <button className="btn btn-secondary" onClick={() => setActiveGame(null)}>← {t('miniBackToGames')}</button>
         </div>
         <MemoryMatch fullScreen />
       </div>
@@ -269,8 +274,8 @@ export default function MiniGames() {
     return (
       <div className="mini-fullscreen-overlay">
         <div className="mini-fullscreen-topbar">
-          <h2>8-Puzzle</h2>
-          <button className="btn btn-secondary" onClick={() => setActiveGame(null)}>← Back to Games</button>
+          <h2>{t('miniPuzzle')}</h2>
+          <button className="btn btn-secondary" onClick={() => setActiveGame(null)}>← {t('miniBackToGames')}</button>
         </div>
         <EightPuzzle fullScreen />
       </div>
@@ -280,25 +285,25 @@ export default function MiniGames() {
   return (
     <div className="mini-root">
       <section className="card mini-banner">
-        <p className="mini-kicker">Break Mode Active</p>
-        <h2>Relax with mini games</h2>
-        <p className="mini-sub">Break ends in {Math.floor(secondsLeft / 60)}m {String(secondsLeft % 60).padStart(2, '0')}s</p>
+        <p className="mini-kicker">{t('miniBreakMode')}</p>
+        <h2>{t('miniRelax')}</h2>
+        <p className="mini-sub">{t('miniBreakEnds')} {Math.floor(secondsLeft / 60)}m {String(secondsLeft % 60).padStart(2, '0')}s</p>
       </section>
 
       <section className="mini-grid">
         <GameLauncherCard
-          title="Memory Match"
-          description="Temporarily unavailable."
+          title={t('miniMemoryMatch')}
+          description={t('miniUnavailable')}
           disabled
         />
         <GameLauncherCard
-          title="8-Puzzle"
-          description="Slide tiles into order from 1 to 8."
+          title={t('miniPuzzle')}
+          description={t('miniSlideTiles')}
           onPlay={() => setActiveGame('puzzle')}
         />
         <GameLauncherCard
-          title="Reaction Clicker"
-          description="To be added soon"
+          title={t('miniReactionClicker')}
+          description={t('miniComingSoon')}
           disabled
         />
       </section>

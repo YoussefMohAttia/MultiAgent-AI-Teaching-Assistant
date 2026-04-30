@@ -1,8 +1,10 @@
 import { Outlet, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import './AgentPageLayout.css';
 
 export default function AgentPageLayout() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <div className="agent-layout-root">
@@ -11,9 +13,9 @@ export default function AgentPageLayout() {
           type="button"
           className="agent-layout-back"
           onClick={() => navigate('/ai-agents')}
-          aria-label="Back to AI Agents"
+          aria-label={t('backToAiAgents')}
         >
-          ← Back to AI Agents
+          ← {t('backToAiAgents')}
         </button>
       </header>
       <main className="agent-layout-content">

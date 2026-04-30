@@ -2,12 +2,15 @@
 
 import { SplineScene } from '@/components/ui/splite';
 import { Spotlight } from '@/components/ui/spotlight';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SplineSceneBasicProps {
   onSignIn?: () => void;
 }
 
 export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
+  const { t } = useLanguage();
+
   return (
     <section className="relative w-screen min-h-screen bg-black overflow-hidden">
       <Spotlight
@@ -23,7 +26,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
             SQUEE LEARN
           </h1>
           <p className="mt-5 text-neutral-300 max-w-xl text-base md:text-lg leading-relaxed">
-            Your personalized AI-powered learning companion to enhance your educational journey.
+            {t('signInTagline')}
           </p>
 
           <button
@@ -42,7 +45,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
               <path fill="#FBBC05" d="M10.1 28.7c-.6-1.8-.9-3.7-.9-5.7s.3-3.9.9-5.7l-7.4-5.7C1 15.2 0 19 0 23s1 7.8 2.7 11.4l7.4-5.7z"/>
               <path fill="#34A853" d="M24 47c6.5 0 11.9-2.1 15.9-5.8l-8-6.2c-2.1 1.4-4.9 2.4-7.9 2.4-6.4 0-11.9-4.5-13.9-10.6l-7.4 5.7C6.6 40.6 14.7 47 24 47z"/>
             </svg>
-            Continue with Google
+            {t('signInButton')}
           </button>
         </div>
 

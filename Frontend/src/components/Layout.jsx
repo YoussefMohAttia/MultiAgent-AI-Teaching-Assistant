@@ -2,27 +2,29 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Home, Library, Bot, Timer, Gamepad2, 
   BookOpen, LogOut, Lock, GraduationCap 
 } from 'lucide-react';
-
-const NAV = [
-  { to: '/dashboard', icon: Home, label: 'Home' }, 
-  { to: '/courses', icon: Library, label: 'Courses' },
-  { to: '/ai-agents', icon: Bot, label: 'AI Agents' },
-  { section: 'Focus & Break' },
-  { to: '/pomodoro', icon: Timer, label: 'Pomodoro' },
-  { to: '/mini-games', icon: Gamepad2, label: 'Mini Games' },
-  { section: 'Support' },
-  { to: '/user-manual', icon: BookOpen, label: 'User Manual' },
-];
 
 export default function Layout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { isBreak } = usePomodoro();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
+
+  const navItems = [
+    { to: '/dashboard', icon: Home, label: t('navHome') },
+    { to: '/courses', icon: Library, label: t('navCourses') },
+    { to: '/ai-agents', icon: Bot, label: t('navAiAgents') },
+    { section: t('navFocusBreak') },
+    { to: '/pomodoro', icon: Timer, label: t('navPomodoro') },
+    { to: '/mini-games', icon: Gamepad2, label: t('navMiniGames') },
+    { section: t('navSupport') },
+    { to: '/user-manual', icon: BookOpen, label: t('navUserManual') },
+  ];
 
   useEffect(() => {
     if (!isBreak && pathname === '/mini-games') {
@@ -55,7 +57,7 @@ export default function Layout() {
 
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto py-6 flex flex-col gap-1 custom-scrollbar">
-          {NAV.map((item, i) => {
+          {navItems.map((item, i) => {
             if (item.section) {
               return (
                 <div key={i} className="mt-6 mb-2 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -71,7 +73,7 @@ export default function Layout() {
                 <div 
                   key={item.to} 
                   className="flex items-center justify-between mx-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed text-slate-400 bg-transparent border-l-2 border-transparent"
-                  title="Available during break"
+                  title={t('availableDuringBreak')}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-5 h-5" />
@@ -124,7 +126,7 @@ export default function Layout() {
             
             <button 
               onClick={handleSignOut}
-              title="Sign out"
+              title={t('signOut')}
               className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />

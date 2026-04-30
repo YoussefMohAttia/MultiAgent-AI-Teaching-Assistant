@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import AgentPageLayout from './components/AgentPageLayout';
@@ -91,11 +92,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <PomodoroProvider>
-          <AppRoutes />
-        </PomodoroProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <PomodoroProvider>
+            <AppRoutes />
+          </PomodoroProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { usePomodoro } from '../contexts/PomodoroContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import './Pomodoro.css';
 
 function formatCountdown(totalSeconds) {
@@ -9,7 +10,7 @@ function formatCountdown(totalSeconds) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function TimeAdjuster({ label, value, onChange }) {
+function TimeAdjuster({ label, value, onChange, unit }) {
   return (
     <div className="pomodoro-adjust-card">
       <p>{label}</p>
@@ -25,12 +26,13 @@ function TimeAdjuster({ label, value, onChange }) {
         />
         <button className="btn btn-secondary btn-sm" onClick={() => onChange(value + 1)}>+</button>
       </div>
-      <small>minutes</small>
+      <small>{unit}</small>
     </div>
   );
 }
 
 export default function Pomodoro() {
+  const { t } = useLanguage();
   const {
     mode,
     isBreak,
@@ -52,8 +54,8 @@ export default function Pomodoro() {
   } = usePomodoro();
 
   const statusText = useMemo(
-    () => (isBreak ? 'Break Time' : 'Focus Session'),
-    [isBreak],
+    () => (isBreak ? t('pomodoroBreak') : t('pomodoroFocus')),
+    [isBreak, t],
   );
 
   return (
@@ -61,11 +63,11 @@ export default function Pomodoro() {
       <section className="card pomodoro-main-card">
         <div className="pomodoro-top-row">
           <div>
-            <p className="pomodoro-kicker">Productivity Focus</p>
+            <p className="pomodoro-kicker">{t('pomodoroKicker')}</p>
             <h2>{statusText}</h2>
           </div>
           <span className={`badge ${isBreak ? 'badge-success' : 'badge-warning'}`}>
-            {mode.toUpperCase()}
+            {isBreak ? t('pomodoroModeBreak') : t('pomodoroModeWork')}
           </span>
         </div>
 
@@ -77,13 +79,13 @@ export default function Pomodoro() {
 
         <div className="pomodoro-controls">
           {!isRunning ? (
-            <button className="btn btn-primary" onClick={start}>▶ Start</button>
+            <button className="btn btn-primary" onClick={start}>▶ {t('pomodoroStart')}</button>
           ) : (
-            <button className="btn btn-secondary" onClick={pause}>⏸ Pause</button>
+            <button className="btn btn-secondary" onClick={pause}>⏸ {t('pomodoroPause')}</button>
           )}
-          <button className="btn btn-secondary" onClick={reset}>↺ Reset</button>
+          <button className="btn btn-secondary" onClick={reset}>↺ {t('pomodoroReset')}</button>
           {isBreak && (
-            <button className="btn btn-secondary" onClick={skipBreak}>⏭ Skip Break</button>
+            <button className="btn btn-secondary" onClick={skipBreak}>⏭ {t('pomodoroSkipBreak')}</button>
           )}
         </div>
 
@@ -94,34 +96,34 @@ export default function Pomodoro() {
               checked={autoStartNext}
               onChange={(e) => setAutoStartNext(e.target.checked)}
             />
-            <span>Auto-start next session</span>
+            <span>{t('pomodoroAutoStart')}</span>
           </label>
         </div>
       </section>
 
       <section className="pomodoro-settings-grid">
         <div className="card">
-          <h3 className="pomodoro-section-title">Session Settings</h3>
+          <h3 className="pomodoro-section-title">{t('pomodoroSessionSettings')}</h3>
           <div className="pomodoro-adjust-grid">
-            <TimeAdjuster label="Work Session" value={workMinutes} onChange={updateWorkMinutes} />
-            <TimeAdjuster label="Short Break" value={breakMinutes} onChange={updateBreakMinutes} />
+            <TimeAdjuster label={t('pomodoroWorkSession')} value={workMinutes} onChange={updateWorkMinutes} unit={t('pomodoroMinutes')} />
+            <TimeAdjuster label={t('pomodoroShortBreak')} value={breakMinutes} onChange={updateBreakMinutes} unit={t('pomodoroMinutes')} />
           </div>
         </div>
 
         <div className="card">
-          <h3 className="pomodoro-section-title">Progress Bonus</h3>
+          <h3 className="pomodoro-section-title">{t('pomodoroProgressBonus')}</h3>
           <div className="pomodoro-metrics">
             <div>
               <p className="pomodoro-metric-value">{completedCycles}</p>
-              <p className="pomodoro-metric-label">Completed Cycles</p>
+              <p className="pomodoro-metric-label">{t('pomodoroCompletedCycles')}</p>
             </div>
             <div>
               <p className="pomodoro-metric-value">+{streakBonus}</p>
-              <p className="pomodoro-metric-label">Streak Bonus</p>
+              <p className="pomodoro-metric-label">{t('pomodoroStreakBonus')}</p>
             </div>
           </div>
           <small className="pomodoro-note">
-            Every full focus cycle adds +10 streak points.
+            {t('pomodoroNote')}
           </small>
         </div>
       </section>

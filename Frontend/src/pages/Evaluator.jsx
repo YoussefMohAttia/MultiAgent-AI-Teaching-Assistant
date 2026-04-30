@@ -1,59 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { evaluateSummary, getCourses, getDocuments } from '../services/api';
 import '../components/Shared.css';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const METRIC_INFO = {
-  correctness: {
-    label: 'Correctness',
-    icon: '✅',
-    desc: 'Hybrid: lecture grounding + reference alignment + lexical overlap',
-  },
-  relevance: {
-    label: 'Relevance',
-    icon: '🎯',
-    desc: 'Coverage of key lecture topics and ideas',
-  },
-  coherence: {
-    label: 'Coherence',
-    icon: '🔗',
-    desc: 'Logical flow and readability of the summary',
-  },
-  completeness: {
-    label: 'Completeness',
-    icon: '📋',
-    desc: 'Hybrid: key-point coverage plus recall against reference',
-  },
-  conciseness: {
-    label: 'Conciseness',
-    icon: '✂️',
-    desc: 'Length efficiency relative to the reference summary',
-  },
-  terminology: {
-    label: 'Terminology',
-    icon: '📖',
-    desc: 'Use of domain-specific lecture vocabulary',
-  },
-  hallucination: {
-    label: 'Hallucination',
-    icon: '👻',
-    desc: 'Penalty for unsupported claims not found in lecture',
-  },
-  missing_key_points: {
-    label: 'Missing Key Points',
-    icon: '🔑',
-    desc: 'Coverage of extracted lecture key points',
-  },
-  factual_accuracy: {
-    label: 'Factual Accuracy',
-    icon: '📐',
-    desc: 'Correctness of factual details and claims',
-  },
-  critical_analysis: {
-    label: 'Critical Analysis',
-    icon: '🧠',
-    desc: 'Depth of reasoning and analytical thinking',
-  },
-};
+function buildMetricInfo(t) {
+  return {
+    correctness: {
+      label: t('metricCorrectness'),
+      icon: '✅',
+      desc: t('metricCorrectnessDesc'),
+    },
+    relevance: {
+      label: t('metricRelevance'),
+      icon: '🎯',
+      desc: t('metricRelevanceDesc'),
+    },
+    coherence: {
+      label: t('metricCoherence'),
+      icon: '🔗',
+      desc: t('metricCoherenceDesc'),
+    },
+    completeness: {
+      label: t('metricCompleteness'),
+      icon: '📋',
+      desc: t('metricCompletenessDesc'),
+    },
+    conciseness: {
+      label: t('metricConciseness'),
+      icon: '✂️',
+      desc: t('metricConcisenessDesc'),
+    },
+    terminology: {
+      label: t('metricTerminology'),
+      icon: '📖',
+      desc: t('metricTerminologyDesc'),
+    },
+    hallucination: {
+      label: t('metricHallucination'),
+      icon: '👻',
+      desc: t('metricHallucinationDesc'),
+    },
+    missing_key_points: {
+      label: t('metricMissingKeyPoints'),
+      icon: '🔑',
+      desc: t('metricMissingKeyPointsDesc'),
+    },
+    factual_accuracy: {
+      label: t('metricFactualAccuracy'),
+      icon: '📐',
+      desc: t('metricFactualAccuracyDesc'),
+    },
+    critical_analysis: {
+      label: t('metricCriticalAnalysis'),
+      icon: '🧠',
+      desc: t('metricCriticalAnalysisDesc'),
+    },
+  };
+}
 
 function colorForScore(score) {
   if (score >= 8) return 'var(--success)';
@@ -62,6 +65,8 @@ function colorForScore(score) {
 }
 
 export default function Evaluator() {
+  const { t } = useLanguage();
+  const metricInfo = useMemo(() => buildMetricInfo(t), [t]);
   // Course + lecture source
   const [courses, setCourses] = useState([]);
   const [courseId, setCourseId] = useState('');
@@ -126,7 +131,7 @@ export default function Evaluator() {
       setResult(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
     } catch (e) {
-      setError(e.response?.data?.detail || 'Evaluation failed.');
+      setError(e.response?.data?.detail || t('evaluatorFailed'));
     }
     setLoading(false);
   };
@@ -136,13 +141,13 @@ export default function Evaluator() {
       {/* ── Course selector ───────────────────────── */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>Course</label>
+          <label>{t('evaluatorCourseLabel')}</label>
           <select
             className="form-select"
             value={courseId}
             onChange={(e) => { setCourseId(e.target.value); setResult(null); setDocs([]); setSelectedDocId(''); }}
           >
-            {courses.length === 0 && <option value="">Loading courses…</option>}
+            {courses.length === 0 && <option value="">{t('evaluatorLoadingCourses')}</option>}
             {courses.map((c) => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
@@ -156,26 +161,26 @@ export default function Evaluator() {
         <div className="card">
           <div className="card-header">
             <span className="icon">📄</span>
-            <h3 style={{ fontSize: '0.95rem' }}>Lecture / Source Material</h3>
+            <h3 style={{ fontSize: '0.95rem' }}>{t('evaluatorLectureTitle')}</h3>
           </div>
 
           {/* Source mode toggle */}
           <div className="form-group">
-            <label>Input type</label>
+            <label>{t('evaluatorInputType')}</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
                 className={`btn btn-sm ${sourceMode === 'text' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSourceMode('text')}
               >
-                ✏️ Enter Text
+                ✏️ {t('evaluatorInputText')}
               </button>
               <button
                 type="button"
                 className={`btn btn-sm ${sourceMode === 'document' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSourceMode('document')}
               >
-                📄 Course Document
+                📄 {t('evaluatorInputDocument')}
               </button>
             </div>
           </div>
@@ -185,28 +190,26 @@ export default function Evaluator() {
               <textarea
                 className="form-textarea"
                 rows={10}
-                placeholder="Paste the original lecture notes or source material…"
+                placeholder={t('evaluatorLecturePlaceholder')}
                 value={lectureText}
                 onChange={(e) => setLectureText(e.target.value)}
               />
               <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                {lectureText.length.toLocaleString()} chars
+                {lectureText.length.toLocaleString()} {t('evaluatorChars')}
               </div>
             </div>
           )}
 
           {sourceMode === 'document' && (
             <div className="form-group">
-              <label>Select document</label>
+              <label>{t('evaluatorSelectDocument')}</label>
               {docsLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <span className="spinner" style={{ marginRight: 6 }} />Loading documents…
+                  <span className="spinner" style={{ marginRight: 6 }} />{t('evaluatorLoadingDocuments')}
                 </p>
               ) : docs.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  No usable documents found for this course.
-                  Upload a PDF on the <strong>Courses</strong> page first,
-                  or paste text manually.
+                  {t('evaluatorNoUsableDocs')}
                 </p>
               ) : (
                 <select
@@ -230,18 +233,18 @@ export default function Evaluator() {
         <div className="card">
           <div className="card-header">
             <span className="icon">📝</span>
-            <h3 style={{ fontSize: '0.95rem' }}>Student Summary</h3>
+            <h3 style={{ fontSize: '0.95rem' }}>{t('evaluatorStudentSummaryTitle')}</h3>
           </div>
           <div className="form-group">
             <textarea
               className="form-textarea"
               rows={14}
-              placeholder="Paste the student's summary to evaluate…"
+              placeholder={t('evaluatorStudentSummaryPlaceholder')}
               value={studentSummary}
               onChange={(e) => setStudentSummary(e.target.value)}
             />
             <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              {studentSummary.length.toLocaleString()} chars
+              {studentSummary.length.toLocaleString()} {t('evaluatorChars')}
             </div>
           </div>
         </div>
@@ -253,7 +256,7 @@ export default function Evaluator() {
           onClick={handleEvaluate}
           disabled={isDisabled}
         >
-          {loading ? <><span className="spinner" /> Evaluating…</> : '🔍 Evaluate Summary'}
+          {loading ? <><span className="spinner" /> {t('evaluatorEvaluating')}</> : `🔍 ${t('evaluatorEvaluate')}`}
         </button>
         {elapsed && (
           <span className="badge" style={{ background: 'var(--primary)', color: '#fff' }}>
@@ -268,7 +271,7 @@ export default function Evaluator() {
       {result && (
         <>
           <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>Overall Score</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>{t('evaluatorOverallScore')}</p>
             <div style={{ fontSize: '3.5rem', fontWeight: 700, color: colorForScore(result.overall_score) }}>
               {result.overall_score}<span style={{ fontSize: '1.5rem', opacity: 0.6 }}>/10</span>
             </div>
@@ -281,21 +284,21 @@ export default function Evaluator() {
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student words</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorStudentWords')}</div>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{studentSummary.trim().split(/\s+/).filter(Boolean).length}</div>
             </div>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reference words</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorReferenceWords')}</div>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
                 {result.reference_summary ? result.reference_summary.trim().split(/\s+/).filter(Boolean).length : '-'}
               </div>
             </div>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Key points</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorKeyPoints')}</div>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{result.key_points?.length ?? '-'}</div>
             </div>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Metrics</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorMetrics')}</div>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{Object.keys(result.metrics || {}).length}</div>
             </div>
           </div>
@@ -304,14 +307,14 @@ export default function Evaluator() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-hover)' }}>
-                  <th style={{ textAlign: 'left', padding: 12 }}>Metric</th>
-                  <th style={{ textAlign: 'center', padding: 12, width: 120 }}>Score</th>
-                  <th style={{ textAlign: 'left', padding: 12, width: '30%' }}>Visual</th>
-                  <th style={{ textAlign: 'left', padding: 12 }}>Details / AI Feedback</th>
+                  <th style={{ textAlign: 'left', padding: 12 }}>{t('evaluatorMetric')}</th>
+                  <th style={{ textAlign: 'center', padding: 12, width: 120 }}>{t('evaluatorScore')}</th>
+                  <th style={{ textAlign: 'left', padding: 12, width: '30%' }}>{t('evaluatorVisual')}</th>
+                  <th style={{ textAlign: 'left', padding: 12 }}>{t('evaluatorDetails')}</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(METRIC_INFO).map(([key, info]) => {
+                {Object.entries(metricInfo).map(([key, info]) => {
                   const metric = result.metrics?.[key];
                   if (!metric) return null;
                   const score = Number(metric.score || 0);

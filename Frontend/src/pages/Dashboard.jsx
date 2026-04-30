@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
-  Bot, FileText, BrainCircuit, PenTool, Inbox
+  Bot, FileText, BrainCircuit, PenTool, Inbox,
+  Sun, Moon, Languages
 } from 'lucide-react';
 
 function formatLocalDate(date) {
@@ -45,8 +48,16 @@ function computeStreak(userId) {
   return current.streak;
 }
 
+function getGreeting(hour, copy) {
+  if (hour < 12) return copy.greetingMorning;
+  if (hour < 18) return copy.greetingAfternoon;
+  return copy.greetingEvening;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const { theme, toggle } = useTheme();
+  const { lang, toggleLang, copy } = useLanguage();
   const navigate = useNavigate();
 
   const [courses, setCourses] = useState([]);
@@ -64,6 +75,7 @@ export default function Dashboard() {
     setStreak(computeStreak(user.id));
     autoSync();
   }, [user]);
+
 
   async function autoSync() {
     const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
@@ -110,27 +122,48 @@ export default function Dashboard() {
     : 'U';
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = getGreeting(hour, copy);
+  const dateLocale = copy.dateLocale || 'en-US';
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
       
       {/* ── Header ── */}
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           {/* Changed text-slate-900 to text-white so it shows on dark background */}
           <h1 className="text-3xl font-bold tracking-tight text-white">
-            {greeting}, {user?.name?.split(' ')[0] || 'there'}
+            {greeting}, {user?.name?.split(' ')[0] || copy.greetingFallback}
           </h1>
           {/* Changed to text-slate-400 for a softer subtitle */}
           <p className="text-sm text-slate-400 font-medium">
-            {new Date().toLocaleDateString('en-US', {
+            {new Date().toLocaleDateString(dateLocale, {
               weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
             })}
           </p>
         </div>
-        <div className="h-12 w-12 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-lg font-bold shadow-sm border border-indigo-500/30">
-          {initials}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggle}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors"
+            aria-label={theme === 'dark' ? copy.lightMode : copy.darkMode}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            <span>{theme === 'dark' ? copy.lightMode : copy.darkMode}</span>
+          </button>
+          <button
+            type="button"
+            onClick={toggleLang}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors"
+            aria-label={copy.language}
+          >
+            <Languages className="w-4 h-4" />
+            <span>{lang === 'en' ? 'AR' : 'EN'}</span>
+          </button>
+          <div className="h-12 w-12 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-lg font-bold shadow-sm border border-indigo-500/30">
+            {initials}
+          </div>
         </div>
       </header>
 
@@ -138,19 +171,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard 
           icon={BookOpen} 
-          label="Active Courses" 
+          label={copy.activeCourses} 
           value={coursesLoading ? '—' : courses.length} 
           colorClass="bg-blue-500/20 text-blue-400" 
         />
         <StatCard 
           icon={Flame} 
-          label="Day Streak" 
+          label={copy.dayStreak} 
           value={streak} 
           colorClass="bg-orange-500/20 text-orange-400" 
         />
         <StatCard 
           icon={BrainCircuit} 
-          label="AI Interactions" 
+          label={copy.aiInteractions} 
           value="12" 
           colorClass="bg-emerald-500/20 text-emerald-400" 
         />
@@ -160,7 +193,7 @@ export default function Dashboard() {
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           {/* Section titles updated to white */}
-          <h2 className="text-xl font-bold text-white">Your Courses</h2>
+          <h2 className="text-xl font-bold text-white">{copy.yourCourses}</h2>
           <div className="flex gap-2">
             <button 
               onClick={runSync} 
@@ -168,7 +201,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               <CloudSync className={`w-4 h-4 ${syncing ? 'animate-pulse' : ''}`} />
-              {syncing ? 'Syncing...' : 'Sync Classroom'}
+              {syncing ? copy.syncing : copy.syncClassroom}
             </button>
             <button 
               onClick={fetchCourses}
@@ -190,9 +223,9 @@ export default function Dashboard() {
             <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mb-4">
               <Inbox className="w-6 h-6 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">No courses found</h3>
+            <h3 className="text-lg font-semibold text-white mb-1">{copy.noCoursesTitle}</h3>
             <p className="text-sm text-slate-400 max-w-sm">
-              Your dashboard is empty. Click "Sync Classroom" to fetch your official courses from Google.
+              {copy.noCoursesBody}
             </p>
           </div>
         ) : (
@@ -206,12 +239,12 @@ export default function Dashboard() {
 
       {/* ── Quick Actions Section ── */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-white">Quick Actions</h2>
+        <h2 className="text-xl font-bold text-white">{copy.quickActions}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <ActionCard icon={Bot} title="Ask AI" desc="Instant help from your teaching assistant" onClick={() => navigate('/chat')} />
-          <ActionCard icon={FileText} title="Summarize" desc="Condense lecture notes instantly" onClick={() => navigate('/summarizer')} />
-          <ActionCard icon={BrainCircuit} title="Take a Quiz" desc="Test knowledge with AI quizzes" onClick={() => navigate('/quiz?tab=take')} />
-          <ActionCard icon={PenTool} title="Grade Essay" desc="Predict your IELTS band score" onClick={() => navigate('/essay-grader')} />
+          <ActionCard icon={Bot} title={copy.askAi} desc={copy.askAiDesc} onClick={() => navigate('/chat')} />
+          <ActionCard icon={FileText} title={copy.summarize} desc={copy.summarizeDesc} onClick={() => navigate('/summarizer')} />
+          <ActionCard icon={BrainCircuit} title={copy.takeQuiz} desc={copy.takeQuizDesc} onClick={() => navigate('/quiz?tab=take')} />
+          <ActionCard icon={PenTool} title={copy.gradeEssay} desc={copy.gradeEssayDesc} onClick={() => navigate('/essay-grader')} />
         </div>
       </section>
 

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCourses, getDocuments } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Textarea } from '../components/ui/textarea';
 import { cn } from '../lib/utils';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -63,7 +64,10 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
 
 export default function Chat() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([{ id: 'seed-assistant', role: 'assistant', content: 'What are we learning today?' }]);
+  const { t, lang } = useLanguage();
+  const [messages, setMessages] = useState([
+    { id: 'seed-assistant', role: 'assistant', content: t('chatSeed') },
+  ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
@@ -82,6 +86,15 @@ export default function Chat() {
   useEffect(() => { getCourses().then(r => setCourses(r.data.courses || [])); }, []);
   useEffect(() => { if (courseId && sourceMode === 'document') getDocuments(courseId).then(r => setDocs(r.data.documents || [])); }, [courseId, sourceMode]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+  useEffect(() => {
+    setMessages((prev) => {
+      if (!prev.length) return prev;
+      const first = prev[0];
+      if (first.id !== 'seed-assistant' || first.role !== 'assistant') return prev;
+      if (prev.length > 1) return prev;
+      return [{ ...first, content: t('chatSeed') }];
+    });
+  }, [lang, t]);
 
   const flushStreamBuffer = useCallback(() => {
     const chunk = streamBufferRef.current;
@@ -179,7 +192,7 @@ export default function Chat() {
     } catch {
       setMessages((prev) => prev.map((m) => (
         m.id === assistantId
-          ? { ...m, content: "⚠️ Error connecting to chatbot. Please select a course if using Context Mode." }
+          ? { ...m, content: t('chatError') }
           : m
       )));
     } finally {
@@ -193,7 +206,7 @@ export default function Chat() {
       
       <header className="relative z-20 flex flex-col items-center justify-center pt-8 pb-4">
         <div className="p-2 bg-white/5 rounded-2xl border border-white/10 mb-3"><Sparkles className="w-5 h-5 text-indigo-400" /></div>
-        <h1 className="text-xl font-medium text-white tracking-tight">How can I assist you?</h1>
+        <h1 className="text-xl font-medium text-white tracking-tight">{t('chatHeader')}</h1>
       </header>
 
       {/* Increased pb-72 to prevent overlap */}
@@ -217,14 +230,14 @@ export default function Chat() {
       <div className="absolute bottom-6 inset-x-0 px-4 md:px-12 z-30 flex justify-center">
         <div className="w-full max-w-3xl flex flex-col gap-3">
           <div className="flex gap-2">
-            <button onClick={() => {setSourceMode('general'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'general' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>General Chat</button>
-            <button onClick={() => {setSourceMode('document'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'document' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>Course Context</button>
+            <button onClick={() => {setSourceMode('general'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'general' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatGeneral')}</button>
+            <button onClick={() => {setSourceMode('document'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'document' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatCourseContext')}</button>
           </div>
 
           {sourceMode === 'document' && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col sm:flex-row gap-2">
-              <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder="Select Course..." />
-              <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder="Select Document..." disabled={!courseId} />
+              <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder={t('chatSelectCourse')} />
+              <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder={t('chatSelectDocument')} disabled={!courseId} />
             </motion.div>
           )}
 
@@ -233,7 +246,7 @@ export default function Chat() {
             <div className="flex items-center gap-2">
               <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
               <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={(e) => {setUploadFile(e.target.files[0]); setSourceMode('upload');}} />
-              <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder="Ask a question..." className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
+              <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder={t('chatAskPlaceholder')} className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
               <button onClick={handleSendMessage} className="bg-white text-black p-2.5 rounded-full hover:scale-105 transition-all"><ArrowUpIcon size={18} /></button>
             </div>
           </div>

@@ -1,146 +1,140 @@
+import { useLanguage } from '../contexts/LanguageContext';
 import './UserManual.css';
 
-const TAB_GUIDE = [
-  {
-    tab: 'Dashboard',
-    icon: '📊',
-    purpose: 'Your home overview after sign-in.',
-    details: [
-      'Shows your greeting, date, and key study stats in one place.',
-      'Lets you sync Google Classroom and refresh your enrolled course list.',
-      'Provides quick action cards to open Chat, Summarizer, Quiz, and Essay Grader faster.',
-    ],
-  },
-  {
-    tab: 'Courses',
-    icon: '📚',
-    purpose: 'Manage courses and their study materials.',
-    details: [
-      'Open a course and upload PDF documents to build your study knowledge base.',
-      'Download previously uploaded documents when needed.',
-    ],
-  },
-  {
-    tab: 'Pomodoro',
-    icon: '⏱️',
-    purpose: 'Run focused study sessions with timed breaks.',
-    details: [
-      'Default cycle is 30 minutes work + 5 minutes break, with editable durations.',
-      'Includes Start, Pause, Reset, Skip Break, and optional auto-start next session.',
-      'Tracks completed cycles and streak bonus points during your study routine.',
-    ],
-  },
-  {
-    tab: 'Mini Games',
-    icon: '🎮',
-    purpose: 'Take short break-time game sessions to refresh focus.',
-    details: [
-      'Locked during work mode and unlocks only while Pomodoro break mode is active.',
-      'Currently includes Memory Match with image cards and full-screen play mode.',
-      'Returns you to study flow when break ends and game access is locked again.',
-    ],
-  },
-  {
-    tab: 'Summarizer',
-    icon: '📝',
-    purpose: 'Turn long content into concise study notes.',
-    details: [
-      'Paste text or select course documents to generate focused summaries.',
-      'Saves time before revision by extracting key concepts quickly.',
-      'Useful before exams to create rapid review material.',
-    ],
-  },
-  {
-    tab: 'Quiz Generator',
-    icon: '❓',
-    purpose: 'Create and take AI-generated quizzes.',
-    details: [
-      'Generate quiz questions from custom text or uploaded course files.',
-      'Adjust number of questions and options to match your level.',
-      'Switch to Take a Quiz mode to practice with saved quizzes by course.',
-    ],
-  },
-  {
-    tab: 'AI Tutor Chat',
-    icon: '💬',
-    purpose: 'Ask questions and get guided explanations.',
-    details: [
-      'Use conversational learning to clarify topics step-by-step.',
-      'Great for follow-up questions when lecture notes are confusing.',
-      'Supports quick concept checks while you study.',
-    ],
-  },
-  {
-    tab: 'Evaluator',
-    icon: '📊',
-    purpose: 'Evaluate summary quality and coverage.',
-    details: [
-      'Compare generated summaries against expected quality dimensions.',
-      'Highlights strengths and weak points to improve summary writing.',
-      'Helps verify whether your notes preserved the essential meaning.',
-    ],
-  },
-  {
-    tab: 'Essay Grader',
-    icon: '🧾',
-    purpose: 'Estimate essay quality using the grading model.',
-    details: [
-      'Submit essay text and receive an AI-based score with feedback cues.',
-      'Useful for iterative writing practice before final submissions.',
-      'Supports self-assessment and faster writing improvement cycles.',
-    ],
-  },
-];
-
-const USER_MANUAL_TAB = {
-  icon: '📘',
-  title: 'User Manual (Current Tab)',
-  purpose: 'This page is the central reference for using the platform and understanding how each feature fits your study workflow.',
-  description:
-    'It explains the website purpose, the function of every left-side tab, and a recommended way to move from setup to revision. You can also share it with first-time users as a quick onboarding guide.',
-};
-
 export default function UserManual() {
+  const { t } = useLanguage();
+
+  const tabGuide = [
+    {
+      tab: t('manualTabDashboard'),
+      icon: '📊',
+      purpose: t('manualTabDashboardPurpose'),
+      details: [
+        t('manualTabDashboardDetail1'),
+        t('manualTabDashboardDetail2'),
+        t('manualTabDashboardDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabCourses'),
+      icon: '📚',
+      purpose: t('manualTabCoursesPurpose'),
+      details: [t('manualTabCoursesDetail1'), t('manualTabCoursesDetail2')],
+    },
+    {
+      tab: t('manualTabPomodoro'),
+      icon: '⏱️',
+      purpose: t('manualTabPomodoroPurpose'),
+      details: [
+        t('manualTabPomodoroDetail1'),
+        t('manualTabPomodoroDetail2'),
+        t('manualTabPomodoroDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabMiniGames'),
+      icon: '🎮',
+      purpose: t('manualTabMiniGamesPurpose'),
+      details: [
+        t('manualTabMiniGamesDetail1'),
+        t('manualTabMiniGamesDetail2'),
+        t('manualTabMiniGamesDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabSummarizer'),
+      icon: '📝',
+      purpose: t('manualTabSummarizerPurpose'),
+      details: [
+        t('manualTabSummarizerDetail1'),
+        t('manualTabSummarizerDetail2'),
+        t('manualTabSummarizerDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabQuiz'),
+      icon: '❓',
+      purpose: t('manualTabQuizPurpose'),
+      details: [
+        t('manualTabQuizDetail1'),
+        t('manualTabQuizDetail2'),
+        t('manualTabQuizDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabChat'),
+      icon: '💬',
+      purpose: t('manualTabChatPurpose'),
+      details: [
+        t('manualTabChatDetail1'),
+        t('manualTabChatDetail2'),
+        t('manualTabChatDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabEvaluator'),
+      icon: '📊',
+      purpose: t('manualTabEvaluatorPurpose'),
+      details: [
+        t('manualTabEvaluatorDetail1'),
+        t('manualTabEvaluatorDetail2'),
+        t('manualTabEvaluatorDetail3'),
+      ],
+    },
+    {
+      tab: t('manualTabEssay'),
+      icon: '🧾',
+      purpose: t('manualTabEssayPurpose'),
+      details: [
+        t('manualTabEssayDetail1'),
+        t('manualTabEssayDetail2'),
+        t('manualTabEssayDetail3'),
+      ],
+    },
+  ];
+
+  const userManualTab = {
+    icon: '📘',
+    title: t('manualUserManualTitle'),
+    purpose: t('manualUserManualPurpose'),
+    description: t('manualUserManualDescription'),
+  };
   return (
     <div className="manual-root">
       <section className="manual-hero card">
-        <p className="manual-kicker">Platform Guide</p>
-        <h2>MultiAgent AI Teaching Assistant User Manual</h2>
-        <p className="manual-lead">
-          This website is built to help students study faster and smarter by combining multiple AI tools
-          in one workflow. Its main purpose is to support learning from classroom materials through
-          summarization, quiz practice, tutoring conversations, and writing evaluation.
-        </p>
+        <p className="manual-kicker">{t('manualKicker')}</p>
+        <h2>{t('manualTitle')}</h2>
+        <p className="manual-lead">{t('manualLead')}</p>
       </section>
 
       <section className="card manual-section">
-        <h3>Primary Purpose Of The Website</h3>
+        <h3>{t('manualPurposeTitle')}</h3>
         <ul className="manual-list">
-          <li>Centralize course content and AI learning tools in a single platform.</li>
-          <li>Transform raw study material into summaries, quizzes, and guided explanations.</li>
-          <li>Improve comprehension, retention, and writing performance with practical feedback loops.</li>
-          <li>Reduce study time while increasing confidence before assessments.</li>
+          <li>{t('manualPurposeList1')}</li>
+          <li>{t('manualPurposeList2')}</li>
+          <li>{t('manualPurposeList3')}</li>
+          <li>{t('manualPurposeList4')}</li>
         </ul>
       </section>
 
       <section className="card manual-section">
-        <h3>{USER_MANUAL_TAB.title}</h3>
+        <h3>{userManualTab.title}</h3>
         <article className="manual-tab-card">
           <header>
-            <span className="manual-tab-icon" aria-hidden="true">{USER_MANUAL_TAB.icon}</span>
+            <span className="manual-tab-icon" aria-hidden="true">{userManualTab.icon}</span>
             <div>
-              <h4>User Manual</h4>
-              <p>{USER_MANUAL_TAB.purpose}</p>
+              <h4>{t('manualUserManualHeading')}</h4>
+              <p>{userManualTab.purpose}</p>
             </div>
           </header>
-          <p>{USER_MANUAL_TAB.description}</p>
+          <p>{userManualTab.description}</p>
         </article>
       </section>
 
       <section className="card manual-section">
-        <h3>What Each Left-Side Tab Does</h3>
+        <h3>{t('manualLeftTabsTitle')}</h3>
         <div className="manual-grid">
-          {TAB_GUIDE.map((item) => (
+          {tabGuide.map((item) => (
             <article key={item.tab} className="manual-tab-card">
               <header>
                 <span className="manual-tab-icon" aria-hidden="true">{item.icon}</span>

@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { getCourses, getDocuments } from '../services/api'; 
 import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, UploadCloud } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import axios from 'axios';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function Summarizer() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   const [courses, setCourses] = useState([]);
   const [docs, setDocs] = useState([]);
@@ -71,7 +71,7 @@ export default function Summarizer() {
       
     } catch (err) {
       console.error("Summarization failed:", err);
-      setError(err.response?.data?.detail || "Failed to generate summary. Please check your backend connection.");
+      setError(err.response?.data?.detail || t('summarizerError'));
     } finally {
       setIsSummarizing(false);
     }
@@ -83,10 +83,10 @@ export default function Summarizer() {
       <div className="mb-6 flex-shrink-0">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
           <FileText className="w-8 h-8 text-indigo-400" />
-          AI Summarizer
+          {t('summarizerTitle')}
         </h1>
         <p className="text-slate-400">
-          Transform lengthy lecture materials or uploaded PDFs into concise notes.
+          {t('summarizerSubtitle')}
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export default function Summarizer() {
         {/* ── Left Column: Configuration ── */}
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-white mb-4">Configuration</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">{t('summarizerConfig')}</h2>
             
             <div className="flex flex-col gap-5">
               {error && (
@@ -111,27 +111,27 @@ export default function Summarizer() {
                   onClick={() => setSourceMode('document')}
                   className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  Course Document
+                  {t('summarizerSourceDocument')}
                 </button>
                 <button
                   onClick={() => setSourceMode('upload')}
                   className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  Upload PDF
+                  {t('summarizerSourceUpload')}
                 </button>
               </div>
 
               {sourceMode === 'document' ? (
                 <>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Select Course</label>
+                    <label className="text-sm font-medium text-slate-400">{t('summarizerSelectCourse')}</label>
                     <div className="relative">
                       <select 
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                         value={selectedCourseId}
                         onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedDocId(''); setError(''); }}
                       >
-                        <option value="" disabled>Choose a course...</option>
+                        <option value="" disabled>{t('summarizerChooseCourse')}</option>
                         {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -139,7 +139,7 @@ export default function Summarizer() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">Select Document</label>
+                    <label className="text-sm font-medium text-slate-400">{t('summarizerSelectDocument')}</label>
                     <div className="relative">
                       <select 
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -147,7 +147,7 @@ export default function Summarizer() {
                         onChange={(e) => { setSelectedDocId(e.target.value); setError(''); }}
                         disabled={!selectedCourseId || docs.length === 0}
                       >
-                        <option value="" disabled>{!selectedCourseId ? 'Select course first' : docs.length === 0 ? 'No documents found' : 'Choose a document...'}</option>
+                        <option value="" disabled>{!selectedCourseId ? t('summarizerSelectCourseFirst') : docs.length === 0 ? t('summarizerNoDocs') : t('summarizerChooseDocument')}</option>
                         {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -163,8 +163,8 @@ export default function Summarizer() {
                     <UploadCloud className="w-6 h-6 text-indigo-400" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : 'Click to browse PDF'}</p>
-                    <p className="text-xs text-slate-500 mt-1">Processed in memory, never saved.</p>
+                    <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : t('summarizerClickBrowse')}</p>
+                    <p className="text-xs text-slate-500 mt-1">{t('summarizerProcessedMemory')}</p>
                   </div>
                   <input 
                     type="file" 
@@ -184,7 +184,7 @@ export default function Summarizer() {
                   className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Zap className={`w-4 h-4 ${isSummarizing ? 'animate-pulse text-yellow-300' : ''}`} />
-                  {isSummarizing ? 'Processing AI...' : 'Generate Summary'}
+                  {isSummarizing ? t('summarizerProcessing') : t('summarizerGenerate')}
                 </button>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function Summarizer() {
           <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
             <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              Summary Output
+              {t('summarizerOutput')}
             </h2>
           </div>
           
@@ -206,7 +206,7 @@ export default function Summarizer() {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
                 <FileText className="w-12 h-12 mb-3 opacity-20" />
-                <p>Select a source and click generate to view the AI summary here.</p>
+                <p>{t('summarizerEmpty')}</p>
               </div>
             )}
           </div>
