@@ -215,11 +215,19 @@ async def full_sync(
 
             title = item.get("title", "Untitled Assignment")
             drive_url = google_service.extract_drive_url(item.get("materials", []))
-
+            due_date_obj = google_service._parse_google_due_date(
+                item.get("dueDate"), 
+                item.get("dueTime")
+            )
             new_doc = await crud.create_document(
-                db=db, course_id=db_course_id, classroom_material_id=material_id,
-                title=title, doc_type="coursework", google_drive_url=drive_url,
-                raw_text=item.get("description")
+                db=db, 
+                course_id=db_course_id, 
+                classroom_material_id=material_id,
+                title=title, 
+                doc_type="coursework", 
+                google_drive_url=drive_url,
+                raw_text=item.get("description"), # raw_text is populated here!
+                due_date=due_date_obj             # ⚡ FIX: Passing the parsed date!
             )
             if drive_url: new_drive_doc_ids.append(new_doc.id)
             docs_coursework += 1

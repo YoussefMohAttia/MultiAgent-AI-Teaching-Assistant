@@ -1,3 +1,4 @@
+# Backend/DB/schemas.py
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from sqlalchemy.sql import func
@@ -9,8 +10,6 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
-    Boolean,
-    Enum,
     JSON
 )
 from sqlalchemy.orm import relationship
@@ -29,20 +28,18 @@ class User(Base):
     google_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-   
     courses = relationship("Course", secondary="user_courses", back_populates="users")
     
-    posts = relationship("Post", back_populates="author", cascade="all, delete-orphan")
+    # ⚡ Removed posts relationship
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
     quizzes_created = relationship("Quiz", back_populates="creator")
 
-
+# ⚡ Restored exactly as you had it
 class UserCourse(Base):
     __tablename__ = "user_courses"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     course_id = Column(Integer, ForeignKey("courses.id"), primary_key=True)
-
 
 class Course(Base):
     __tablename__ = "courses"
@@ -52,88 +49,118 @@ class Course(Base):
     title = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    
     users = relationship("User", secondary="user_courses", back_populates="courses")
     
     documents = relationship("Document", back_populates="course", cascade="all, delete-orphan")
-    posts = relationship("Post", back_populates="course", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
-
+    # ⚡ Removed posts relationship
+    
     class Config:
         from_attributes = True
 
 class Document(Base):
     __tablename__ = "documents"
-    
+    """
+    The Universal Content Container.
+    Handles Materials, Announcements, Assignments, and raw Posts.
+    """
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False, index=True)
-    classroom_material_id = Column(String(255), index=True)
+    
+    # Google Classroom Identifiers
+    classroom_material_id = Column(String(255), index=True, nullable=True)
+    
+    # Content Data
     title = Column(String(255), nullable=False)
     google_drive_url = Column(String(500), nullable=True)
     s3_path = Column(String(500), nullable=True)
-
-    # NEW: type of document — "material", "announcement", "coursework"
-    # Will be reclassified by AI team into "lecture", "assignment", "announcement"
+    
+    # Classification: "material", "announcement", "coursework", "manual_upload"
     doc_type = Column(String(50), nullable=True, index=True)
-
-    # NEW: raw text content — populated for announcements and assignment descriptions
-    # NULL for materials (they are Drive files, no text body)
+    
+    # Text Content (Captions, Instructions, Announcement body)
     raw_text = Column(Text, nullable=True)
-
+    
+    # ⚡ NEW: Added due_date for assignments (coursework)
+    due_date = Column(DateTime(timezone=True), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     course = relationship("Course", back_populates="documents")
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
-
+    
+    # ⚡ NEW: Comments are now linked directly to the Document pipeline
+    comments = relationship("Comment", back_populates="document", cascade="all, delete-orphan")
+    
     class Config:
         from_attributes = True
 
+# ⚡ UPDATED: Comment Table Refactored
+class Comment(Base):
+    __tablename__ = "comments"
+    
+    id = Column(Integer, primary_key=True)
+    
+    # Changed from post_id to doc_id
+    doc_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    
+    # Added Classroom ID to prevent syncing duplicates
+    classroom_comment_id = Column(String(255), unique=True, index=True)
+    
+    content = Column(Text)
+    
+    # We remove user_id FK requirement and store raw data from Google Classroom
+    # (Kept user_id optional just in case a native platform user comments later)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    author_name = Column(String(255))
+    author_photo_url = Column(String(500))
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    document = relationship("Document", back_populates="comments")
+    user = relationship("User", back_populates="comments")
+    
+    class Config:
+        from_attributes = True
 
 class Chunk(Base):
     __tablename__ = "chunks"
-
     id = Column(Integer, primary_key=True)
     doc_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     sequence_number = Column(Integer)
     text = Column(Text)
-
+    
     # Relationships
     document = relationship("Document", back_populates="chunks")
     summary_links = relationship("SummaryChunk", back_populates="chunk", cascade="all, delete-orphan")
-
 
 # ---------------------------
 # Summaries
 # ---------------------------
 class Summary(Base):
     __tablename__ = "summaries"
-
     id = Column(Integer, primary_key=True)
     text = Column(Text)
     method = Column(String(100))
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    
     # Relationships
     chunks = relationship("SummaryChunk", back_populates="summary", cascade="all, delete-orphan")
 
-
 class SummaryChunk(Base):
     __tablename__ = "summary_chunks"
-
     summary_id = Column(Integer, ForeignKey("summaries.id"), primary_key=True)
     chunk_id = Column(Integer, ForeignKey("chunks.id"), primary_key=True)
-
     summary = relationship("Summary", back_populates="chunks")
     chunk = relationship("Chunk", back_populates="summary_links")
-
 
 # ---------------------------
 # Evaluations
 # ---------------------------
 class Evaluation(Base):
     __tablename__ = "evaluations"
-
     id = Column(Integer, primary_key=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     student_summary = Column(Text, nullable=False)
@@ -142,57 +169,47 @@ class Evaluation(Base):
     overall_feedback = Column(Text, nullable=True)
     method = Column(String(100), default="hybrid")
     created_at = Column(DateTime, default=datetime.utcnow)
-
     metrics = relationship("EvaluationMetric", back_populates="evaluation", cascade="all, delete-orphan")
-
 
 class EvaluationMetric(Base):
     __tablename__ = "evaluation_metrics"
-
     id = Column(Integer, primary_key=True)
     evaluation_id = Column(Integer, ForeignKey("evaluations.id"), nullable=False)
     metric_name = Column(String(100), nullable=False)
     score = Column(Float, nullable=False)
     feedback = Column(Text, nullable=True)
-
     evaluation = relationship("Evaluation", back_populates="metrics")
-
 
 # ---------------------------
 # Quizzes
 # ---------------------------
 class Quiz(Base):
     __tablename__ = "quizzes"
-
     id = Column(Integer, primary_key=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"))
-
+    
     # Relationships
     course = relationship("Course", back_populates="quizzes")
     creator = relationship("User", back_populates="quizzes_created")
     questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
     attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")
 
-
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
-
     id = Column(Integer, primary_key=True)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
     question = Column(Text, nullable=False)
     type = Column(String(50))
     options = Column(JSON)
     correct_answer = Column(String(255))
-
+    
     # Relationships
     quiz = relationship("Quiz", back_populates="questions")
 
-
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
-    
     id = Column(Integer, primary_key=True)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -202,42 +219,3 @@ class QuizAttempt(Base):
     # Relationships
     quiz = relationship("Quiz", back_populates="attempts")
     user = relationship("User", back_populates="quiz_attempts")
-
-
-# ---------------------------
-# Posts & Comments
-# ---------------------------
-class Post(Base):
-    __tablename__ = "posts"
-
-    id = Column(Integer, primary_key=True)
-    subject = Column(String(255))
-    content = Column(Text)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    author = relationship("User", back_populates="posts")
-    course = relationship("Course", back_populates="posts")
-    comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
-
-    class Config:
-        from_attributes = True
-
-
-class Comment(Base):
-    __tablename__ = "comments"
-
-    id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    content = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    post = relationship("Post", back_populates="comments")
-    user = relationship("User", back_populates="comments")
-
-    class Config:
-        from_attributes = True

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from Core.config import settings
 
-from Routers import login, courses, posts, quizzes , documents,comments,google_classroom
+from Routers import login, courses, quizzes , documents,comments,google_classroom
 from Routers import ai
 from Routers.login import google_auth
 from DB.session import create_all_tables, get_db
@@ -51,7 +51,7 @@ async def startup_event():
 
 app.include_router(login.router, prefix="/api/login", tags=["Authentication"])
 app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
-app.include_router(posts.router, prefix="/api/posts", tags=["Posts"])
+
 app.include_router(quizzes.router, prefix="/api/quizzes", tags=["Quizzes"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])

@@ -10,7 +10,7 @@ Endpoints used:
 """
 import httpx
 from typing import List, Dict, Optional
-
+from datetime import datetime, timezone
 
 class GoogleClassroomService:
     """Service for all Google Classroom API calls"""
@@ -178,3 +178,27 @@ class GoogleClassroomService:
             if "youtubeVideo" in m:
                 return m["youtubeVideo"].get("alternateLink")
         return None
+    def _parse_google_due_date(self, due_date: dict, due_time: dict) -> datetime | None:
+        """Parses Google Classroom dueDate and dueTime dicts into a UTC datetime object."""
+        if not due_date:
+            return None
+        
+        year = due_date.get("year")
+        month = due_date.get("month")
+        day = due_date.get("day")
+        
+        if not year or not month or not day:
+            return None
+
+        # dueTime is optional in Google's API
+        hours = 0
+        minutes = 0
+        if due_time:
+            hours = due_time.get("hours", 0)
+            minutes = due_time.get("minutes", 0)
+            
+        try:
+            # Google Classroom returns these in UTC
+            return datetime(year, month, day, hours, minutes, tzinfo=timezone.utc)
+        except ValueError:
+            return None
