@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .schemas import Quiz, QuizQuestion, Course, UserCourse, User, Comment, Document
+from .schemas import Quiz, QuizQuestion, Course, UserCourse, User, Comment, Document, OTPVerification
 from .models import QuizCreate
 from datetime import datetime, timedelta, timezone
 from services.google_token_services import refresh_google_token
@@ -83,6 +83,99 @@ async def authenticate_local_user(db: AsyncSession, email: str, password: str) -
     if not verify_password(password, user.password_hash):
         return None
     return user
+
+
+# ---------------------------
+# OTP OPERATIONS
+# ---------------------------
+
+async def create_otp(db: AsyncSession, email: str, otp_code: str, expiration_minutes: int = 10) -> OTPVerification:
+    """Create or update OTP for email verification."""
+    normalized_email = email.lower()
+    existing = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = existing.scalars().first()
+    
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=expiration_minutes)
+    
+    if otp_record:
+        otp_record.otp_code = otp_code
+        otp_record.created_at = datetime.now(timezone.utc)
+        otp_record.expires_at = expires_at
+        otp_record.is_verified = 0
+        otp_record.attempts = 0
+    else:
+        otp_record = OTPVerification(
+            email=normalized_email,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            is_verified=0,
+            attempts=0
+        )
+        db.add(otp_record)
+    
+    await db.commit()
+    await db.refresh(otp_record)
+    return otp_record
+
+
+async def verify_otp(db: AsyncSession, email: str, otp_code: str) -> bool:
+    """Verify OTP code. Returns True if valid, False otherwise."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = result.scalars().first()
+    
+    if not otp_record:
+        return False
+    
+    # Check expiration
+    if datetime.now(timezone.utc) > otp_record.expires_at:
+        return False
+    
+    # Check attempts (max 5)
+    if otp_record.attempts >= 5:
+        return False
+    
+    # Increment attempts
+    otp_record.attempts += 1
+    await db.commit()
+    
+    # Check code
+    if otp_record.otp_code != otp_code.strip():
+        return False
+    
+    # Mark as verified
+    otp_record.is_verified = 1
+    await db.commit()
+    return True
+
+
+async def get_verified_otp(db: AsyncSession, email: str) -> Optional[OTPVerification]:
+    """Get verified OTP record for email."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(
+            (OTPVerification.email == normalized_email) &
+            (OTPVerification.is_verified == 1) &
+            (OTPVerification.expires_at > datetime.now(timezone.utc))
+        )
+    )
+    return result.scalars().first()
+
+
+async def delete_otp(db: AsyncSession, email: str) -> None:
+    """Delete OTP record after account creation."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = result.scalars().first()
+    if otp_record:
+        await db.delete(otp_record)
+        await db.commit()
 
 
 # ---------------------------

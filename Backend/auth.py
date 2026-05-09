@@ -23,6 +23,23 @@ class LocalAccountPayload(BaseModel):
     email: str
     password: str
     name: Optional[str] = None
+    otp_code: Optional[str] = None  # Optional for backwards compatibility
+
+
+class SendOTPPayload(BaseModel):
+    email: str
+
+
+class VerifyOTPPayload(BaseModel):
+    email: str
+    otp_code: str
+
+
+class RegisterWithOTPPayload(BaseModel):
+    email: str
+    otp_code: str
+    password: str
+    name: Optional[str] = None
 
 
 
@@ -81,6 +98,18 @@ class GoogleAuthorization:
             endpoint=self._login_local_account,
             methods=["POST"],
             response_model=BearerToken,
+            include_in_schema=True,
+        )
+        self.router.add_api_route(
+            path="/send-otp",
+            endpoint=self._send_otp,
+            methods=["POST"],
+            include_in_schema=True,
+        )
+        self.router.add_api_route(
+            path="/verify-otp",
+            endpoint=self._verify_otp_endpoint,
+            methods=["POST"],
             include_in_schema=True,
         )
 
@@ -187,8 +216,22 @@ class GoogleAuthorization:
         if existing_user:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
 
+        if not payload.otp_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP code is required. Verify your email before creating the account.",
+            )
+
+        otp_record = await crud.get_verified_otp(db, payload.email)
+        if not otp_record:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email not verified. Please verify your email with OTP first.",
+            )
+
         try:
             user = await crud.create_local_user(db, payload.email, payload.password, payload.name)
+            await crud.delete_otp(db, payload.email)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
@@ -218,6 +261,58 @@ class GoogleAuthorization:
                 auth_provider=user.auth_provider,
             )
         )
+
+    async def _send_otp(
+        self,
+        payload: SendOTPPayload,
+        db: AsyncSession = Depends(get_db),
+    ) -> dict:
+        """Send OTP code to email for verification."""
+        import secrets
+        from services.email_service import send_otp_email
+
+        if not settings.SMTP_USER or not settings.SMTP_PASSWORD or not settings.SENDER_EMAIL:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Email service is not configured. Set SMTP_USER, SMTP_PASSWORD, and SENDER_EMAIL in Backend/.env.",
+            )
+        
+        # Check if email already registered
+        existing_user = await crud.get_user_by_email(db, payload.email.lower())
+        if existing_user:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+        
+        # Generate 6-digit OTP
+        otp_code = str(secrets.randbelow(1000000)).zfill(6)
+        
+        # Store in database
+        await crud.create_otp(db, payload.email, otp_code, expiration_minutes=settings.OTP_EXPIRATION_MINUTES)
+        
+        # Send email
+        email_sent = await send_otp_email(payload.email, otp_code)
+        if not email_sent:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OTP could not be sent. Check SMTP credentials and server access.",
+            )
+        
+        return {
+            "success": True,
+            "message": "OTP sent to email",
+            "email": payload.email
+        }
+
+    async def _verify_otp_endpoint(
+        self,
+        payload: VerifyOTPPayload,
+        db: AsyncSession = Depends(get_db),
+    ) -> dict:
+        """Verify OTP code."""
+        is_valid = await crud.verify_otp(db, payload.email, payload.otp_code)
+        if not is_valid:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired OTP code")
+        
+        return {"success": True, "message": "OTP verified successfully"}
 
     async def get_session_token(self, request: Request) -> Optional[AuthToken]:
         return await self.handler.get_token_from_session(request=request)
