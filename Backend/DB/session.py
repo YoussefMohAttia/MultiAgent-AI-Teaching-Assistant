@@ -2,6 +2,7 @@
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 from Core.config import settings
 from .schemas import Base        # ← this imports your real models from schemas.py
 
@@ -32,3 +33,8 @@ async def get_db() -> AsyncSession:
 async def create_all_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if settings.DATABASE_URL.startswith("postgresql"):
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50)"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
+            await conn.execute(text("UPDATE users SET auth_provider = 'google' WHERE auth_provider IS NULL OR auth_provider = ''"))
+            await conn.execute(text("ALTER TABLE users ALTER COLUMN auth_provider SET DEFAULT 'google'"))

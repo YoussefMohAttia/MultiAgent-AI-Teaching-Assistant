@@ -23,6 +23,8 @@ class User(Base):
     google_id = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True)
     name = Column(String(255))
+    auth_provider = Column(String(50), nullable=False, default="google")
+    password_hash = Column(String(255), nullable=True)
     google_access_token = Column(Text, nullable=True)
     google_refresh_token = Column(Text, nullable=True)
     google_token_expires_at = Column(DateTime(timezone=True), nullable=True)

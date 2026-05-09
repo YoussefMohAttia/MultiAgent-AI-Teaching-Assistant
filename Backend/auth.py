@@ -1,7 +1,9 @@
 from typing import Annotated, Optional
 from datetime import datetime, timedelta  
 import jwt
-from fastapi import APIRouter, Form, Header
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from Core.config import settings
@@ -14,6 +16,13 @@ from security.google_scheme import GoogleScheme
 from Core.google_client_config import GoogleClientConfig
 from models.id_token_claims import TokenStatus
 from DB import crud 
+from DB.session import get_db
+
+
+class LocalAccountPayload(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None
 
 
 
@@ -59,6 +68,33 @@ class GoogleAuthorization:
             self._logout_route,
             methods=["GET"],
             include_in_schema=client_config.show_in_docs,
+        )
+        self.router.add_api_route(
+            path="/register",
+            endpoint=self._register_local_account,
+            methods=["POST"],
+            response_model=BearerToken,
+            include_in_schema=True,
+        )
+        self.router.add_api_route(
+            path="/password",
+            endpoint=self._login_local_account,
+            methods=["POST"],
+            response_model=BearerToken,
+            include_in_schema=True,
+        )
+
+    def _build_jwt(self, *, user_id: str, email: str, name: str, auth_provider: str) -> str:
+        return jwt.encode(
+            {
+                "sub": user_id,
+                "email": email,
+                "name": name,
+                "auth_provider": auth_provider,
+                "exp": datetime.utcnow() + timedelta(days=30),
+            },
+            settings.SECRET_KEY,
+            algorithm="HS256",
         )
 
     async def _login_route(
@@ -114,9 +150,15 @@ class GoogleAuthorization:
         
         
         jwt_token = jwt.encode(
-            {"sub": google_id, "email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=30)},
+            {
+                "sub": google_id,
+                "email": email,
+                "name": name,
+                "auth_provider": user.auth_provider,
+                "exp": datetime.utcnow() + timedelta(days=30),
+            },
             settings.SECRET_KEY,
-            algorithm="HS256"
+            algorithm="HS256",
         )
 
         redirect_url = f"{self.return_to_path}?token={jwt_token}"
@@ -135,6 +177,47 @@ class GoogleAuthorization:
         # check if callback_url is set, if not try to get it from referer header
         callback_url = callback_url or referer or str(self.return_to_path)
         return self.handler.logout(request=request, callback_url=callback_url)
+
+    async def _register_local_account(
+        self,
+        payload: LocalAccountPayload,
+        db: AsyncSession = Depends(get_db),
+    ) -> BearerToken:
+        existing_user = await crud.get_user_by_email(db, payload.email.lower())
+        if existing_user:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
+
+        try:
+            user = await crud.create_local_user(db, payload.email, payload.password, payload.name)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+        return BearerToken(
+            access_token=self._build_jwt(
+                user_id=user.google_id,
+                email=user.email,
+                name=user.name,
+                auth_provider=user.auth_provider,
+            )
+        )
+
+    async def _login_local_account(
+        self,
+        payload: LocalAccountPayload,
+        db: AsyncSession = Depends(get_db),
+    ) -> BearerToken:
+        user = await crud.authenticate_local_user(db, payload.email, payload.password)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+        return BearerToken(
+            access_token=self._build_jwt(
+                user_id=user.google_id,
+                email=user.email,
+                name=user.name,
+                auth_provider=user.auth_provider,
+            )
+        )
 
     async def get_session_token(self, request: Request) -> Optional[AuthToken]:
         return await self.handler.get_token_from_session(request=request)

@@ -1,8 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { SplineScene } from '@/components/ui/splite';
 import { Spotlight } from '@/components/ui/spotlight';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { registerLocalAccount, loginLocalAccount } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Mail, Lock, UserRound } from 'lucide-react';
 
 interface SplineSceneBasicProps {
   onSignIn?: () => void;
@@ -10,6 +14,43 @@ interface SplineSceneBasicProps {
 
 export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
   const { t } = useLanguage();
+  const { user, login } = useAuth();
+  const [mode, setMode] = useState<'register' | 'login'>('register');
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setMode('register');
+    }
+  }, [user]);
+
+  async function handleLocalSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const payload: { email: string; password: string; name?: string } = {
+      email: form.email.trim(),
+      password: form.password,
+    };
+
+    if (mode === 'register') {
+      payload.name = form.name.trim();
+    }
+
+    try {
+      const response = mode === 'register'
+        ? await registerLocalAccount(payload)
+        : await loginLocalAccount(payload);
+      login(response.data.access_token);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Unable to complete email sign in.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <section className="relative w-screen min-h-screen bg-black overflow-hidden">
@@ -47,6 +88,95 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
             </svg>
             {t('signInButton')}
           </button>
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setMode('register')}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${mode === 'register' ? 'bg-white text-black' : 'text-neutral-300 hover:bg-white/10'}`}
+              >
+                Create account
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${mode === 'login' ? 'bg-white text-black' : 'text-neutral-300 hover:bg-white/10'}`}
+              >
+                Sign in
+              </button>
+            </div>
+
+            <div className="group relative">
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-bold text-neutral-200 hover:bg-white/10"
+                aria-label="Local account disclaimer"
+              >
+                ?
+              </button>
+              <div className="pointer-events-none absolute left-1/2 top-12 z-20 w-72 -translate-x-1/2 rounded-2xl border border-white/10 bg-black/90 px-4 py-3 text-left text-xs leading-relaxed text-neutral-200 opacity-0 shadow-2xl transition group-hover:opacity-100 group-focus-within:opacity-100">
+                Local accounts are stored in the database, but they do not get Google Classroom sync or classroom benefits. They can still use uploaded documents and the study tools.
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleLocalSubmit} className="mt-5 max-w-xl space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {mode === 'register' && (
+                <label className="relative block">
+                  <span className="sr-only">Name</span>
+                  <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    value={form.name}
+                    onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+                    placeholder="Your name"
+                    className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                    required
+                  />
+                </label>
+              )}
+              <label className="relative block sm:col-span-1">
+                <span className="sr-only">Email</span>
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
+                  placeholder="Email"
+                  className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                  required
+                />
+              </label>
+            </div>
+
+            <label className="relative block">
+              <span className="sr-only">Password</span>
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="password"
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                value={form.password}
+                onChange={(e) => setForm((current) => ({ ...current, password: e.target.value }))}
+                placeholder="Password"
+                className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                required
+              />
+            </label>
+
+            {error && <p className="text-sm text-rose-400">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-fit rounded-xl bg-white text-black px-6 py-3 font-semibold hover:bg-neutral-200 transition disabled:opacity-70"
+            >
+              {loading ? 'Please wait...' : mode === 'register' ? 'Create account' : 'Sign in with email'}
+            </button>
+          </form>
         </div>
 
         <div className="relative min-h-[45vh] md:min-h-screen">

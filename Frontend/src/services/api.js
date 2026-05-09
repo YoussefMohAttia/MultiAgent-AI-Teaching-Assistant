@@ -20,6 +20,10 @@ export const getCourses = () => api.get('/courses/');
 export const createCourse = (title) => api.post(`/courses/?title=${encodeURIComponent(title)}`);
 export const deleteCourse = (id) => api.delete(`/courses/${id}`);
 
+// ── Authentication ───────────────────────────────────────────────────────────
+export const registerLocalAccount = (payload) => api.post('/login/register', payload);
+export const loginLocalAccount = (payload) => api.post('/login/password', payload);
+
 // ── Documents ────────────────────────────────────────────────────────────────
 export const getDocuments = (courseId) => api.get(`/documents/${courseId}`);
 export const uploadDocument = (courseId, file) => {

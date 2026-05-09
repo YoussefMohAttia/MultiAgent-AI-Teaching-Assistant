@@ -105,6 +105,7 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db)):
         "name": user.name,
         "email": user.email,
         "sub": user.google_id,
+        "auth_provider": user.auth_provider,
     }
 
 
