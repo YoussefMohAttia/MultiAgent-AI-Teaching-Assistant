@@ -1,0 +1,319 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { usePomodoro } from '../contexts/PomodoroContext';
+import { getCourses } from '../services/api';
+import { getRecentActivity, getStats } from '../lib/activity';
+import {
+  Award,
+  BookOpen,
+  Calendar,
+  ChevronRight,
+  Flame,
+  GraduationCap,
+  MessageCircle,
+  Moon,
+  Settings,
+  Sparkles,
+  Sun,
+  Target,
+} from 'lucide-react';
+
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function computeStreak(userId) {
+  const key = `dashboard_streak_${userId}`;
+  const today = new Date();
+  const todayStr = formatLocalDate(today);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayStr = formatLocalDate(yesterday);
+
+  let current = { streak: 1, lastDate: todayStr };
+
+  try {
+    const savedRaw = localStorage.getItem(key);
+    if (savedRaw) {
+      const saved = JSON.parse(savedRaw);
+      const prevStreak = Number(saved?.streak) || 0;
+      const prevDate = saved?.lastDate;
+
+      if (prevDate === todayStr) {
+        current = { streak: Math.max(prevStreak, 1), lastDate: todayStr };
+      } else if (prevDate === yesterdayStr) {
+        current = { streak: Math.max(prevStreak + 1, 1), lastDate: todayStr };
+      }
+    }
+  } catch {
+    current = { streak: 1, lastDate: todayStr };
+  }
+
+  localStorage.setItem(key, JSON.stringify(current));
+  return current.streak;
+}
+
+function formatTime(ts, locale) {
+  try {
+    return new Date(ts).toLocaleString(locale || 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
+export default function Profile() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { theme, toggle } = useTheme();
+  const { lang, toggleLang, t, copy } = useLanguage();
+  const { completedCycles, streakBonus, workMinutes } = usePomodoro();
+
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [streak, setStreak] = useState(1);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const raw = localStorage.getItem('profile_notifications');
+    return raw ? raw === 'true' : true;
+  });
+  const [recentActivity, setRecentActivity] = useState(() => getRecentActivity());
+  const [stats, setStats] = useState(() => getStats());
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/');
+      return;
+    }
+
+    setStreak(computeStreak(user.id));
+
+    setCoursesLoading(true);
+    getCourses()
+      .then((res) => setCourses(res.data.courses || []))
+      .catch(() => setCourses([]))
+      .finally(() => setCoursesLoading(false));
+
+    setRecentActivity(getRecentActivity());
+    setStats(getStats());
+  }, [user, navigate]);
+
+  useEffect(() => {
+    localStorage.setItem('profile_notifications', String(notificationsEnabled));
+  }, [notificationsEnabled]);
+
+  const initials = user?.name
+    ? user.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+
+  const focusMinutes = useMemo(() => completedCycles * workMinutes, [completedCycles, workMinutes]);
+
+  const quickStats = [
+    { id: 'courses', label: t('profileActiveCourses'), value: coursesLoading ? '—' : courses.length, icon: BookOpen },
+    { id: 'streak', label: t('profileStreak'), value: streak, icon: Flame },
+    { id: 'focus', label: t('profileFocusHours'), value: (focusMinutes / 60).toFixed(1), icon: Calendar },
+    { id: 'cycles', label: t('profileCompletedCycles'), value: completedCycles, icon: Target },
+  ];
+
+  const achievements = [
+    { id: 'streak-3', label: t('profileAchievementStreak'), goal: 3, value: streak },
+    { id: 'summaries-3', label: t('profileAchievementSummaries'), goal: 3, value: stats.summaries },
+    { id: 'quizzes-2', label: t('profileAchievementQuizzes'), goal: 2, value: stats.quizzesGenerated },
+    { id: 'focus-3', label: t('profileAchievementFocus'), goal: 3, value: completedCycles },
+  ];
+
+  const totalInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
+
+  const learningAction = (() => {
+    if (stats.summaries === 0) return t('profileNextSummary');
+    if (stats.quizzesGenerated === 0) return t('profileNextQuiz');
+    if (completedCycles === 0) return t('profileNextFocus');
+    return t('profileNextReview');
+  })();
+
+  return (
+    <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-8 shadow-xl">
+        <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.25), transparent 55%)' }} />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-2xl font-bold text-indigo-200">
+              {initials}
+            </div>
+            <div>
+              <p className="text-sm text-indigo-200/80 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" /> {t('profileKicker')}
+              </p>
+              <h1 className="text-3xl font-bold text-white tracking-tight">
+                {user?.name || t('profileTitleFallback')}
+              </h1>
+              <p className="text-slate-400 text-sm">{user?.email || t('profileSubtitle')}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-400">{t('profileTotalInteractions')}</p>
+              <p className="text-lg font-semibold text-white">{totalInteractions}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-400">{t('profileStreakBonus')}</p>
+              <p className="text-lg font-semibold text-white">+{streakBonus}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {quickStats.map(({ id, label, value, icon: Icon }) => (
+          <div key={id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center">
+              <Icon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+              <p className="text-2xl font-semibold text-white">{value}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-400" /> {t('profileAchievements')}
+              </h2>
+              <span className="text-xs text-slate-500">{t('profileAchievementsHint')}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {achievements.map((achievement) => {
+                const earned = achievement.value >= achievement.goal;
+                const progress = Math.min(100, Math.round((achievement.value / achievement.goal) * 100));
+                return (
+                  <div key={achievement.id} className="border border-slate-800 rounded-xl p-4 bg-slate-950/40">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-200 font-medium">{achievement.label}</p>
+                      <span className={`text-xs font-semibold ${earned ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {earned ? t('profileAchieved') : `${achievement.value}/${achievement.goal}`}
+                      </span>
+                    </div>
+                    <div className="mt-3 h-2 w-full rounded-full bg-slate-800">
+                      <div className={`h-full rounded-full ${earned ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-400" /> {t('profileRecentActivity')}
+              </h2>
+            </div>
+            {recentActivity.length === 0 ? (
+              <div className="text-sm text-slate-500">{t('profileNoActivity')}</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                    <div>
+                      <p className="text-sm text-slate-200">{activity.title}</p>
+                      <p className="text-xs text-slate-500">{formatTime(activity.timestamp, copy?.dateLocale)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(activity.route)}
+                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    >
+                      {t('profileResume')} <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+              <BookOpen className="w-5 h-5 text-sky-400" /> {t('profileLearningProfile')}
+            </h2>
+            {coursesLoading ? (
+              <p className="text-sm text-slate-500">{t('profileLoadingCourses')}</p>
+            ) : courses.length === 0 ? (
+              <p className="text-sm text-slate-500">{t('profileNoCourses')}</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {courses.slice(0, 3).map((course) => (
+                  <div key={course.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                    <p className="text-sm text-white font-medium line-clamp-1">{course.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">{t('profileNextAction')}: {learningAction}</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/courses')}
+                      className="mt-3 text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    >
+                      {t('profileOpenCourse')} <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+              <Settings className="w-5 h-5 text-slate-300" /> {t('profileSettings')}
+            </h2>
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={toggle}
+                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200"
+              >
+                <span className="flex items-center gap-2">
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  {t('profileTheme')}
+                </span>
+                <span className="text-xs text-slate-400">{theme === 'dark' ? t('profileThemeDark') : t('profileThemeLight')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleLang}
+                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200"
+              >
+                <span className="flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  {t('profileLanguage')}
+                </span>
+                <span className="text-xs text-slate-400">{lang === 'en' ? 'English' : 'Arabic'}</span>
+              </button>
+              <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+                <span>{t('profileNotifications')}</span>
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-indigo-500"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

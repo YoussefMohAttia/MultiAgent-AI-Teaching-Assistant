@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import axios from 'axios';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import { incrementStat, recordActivity } from '../lib/activity';
 
 export default function Summarizer() {
   const { user } = useAuth();
@@ -68,6 +69,12 @@ export default function Summarizer() {
       }
       
       setSummary(response.data.summary);
+      incrementStat('summaries');
+      recordActivity({
+        type: 'summarizer',
+        title: t('summarizerTitle'),
+        route: '/summarizer',
+      });
       
     } catch (err) {
       console.error("Summarization failed:", err);

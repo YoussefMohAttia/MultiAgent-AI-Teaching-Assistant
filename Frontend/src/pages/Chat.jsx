@@ -8,6 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { cn } from '../lib/utils';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { streamChatResponse, typeOutText } from '../services/streaming';
+import { incrementStat, recordActivity } from '../lib/activity';
 import { 
   ArrowUpIcon, Paperclip, BookOpen, Bot, 
   ChevronDown, Sparkles, X, FileText 
@@ -136,6 +137,7 @@ export default function Chat() {
     const userMsg = { id: `u-${Date.now()}`, role: 'user', content: input.trim() };
     const assistantId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     activeAssistantIdRef.current = assistantId;
+    let didRespond = false;
 
     setMessages(prev => [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }]);
     setInput(''); adjustHeight(true); setIsTyping(true);
@@ -174,6 +176,7 @@ export default function Chat() {
             m.id === assistantId ? { ...m, content: streamedFinal } : m
           )));
         }
+        didRespond = true;
       } else {
         const fallbackAnswer = streamedFinal || (
           await axios.post('/api/ai/chat', payload, { headers: { Authorization: `Bearer ${user.token}` } })
@@ -188,6 +191,7 @@ export default function Chat() {
         setMessages((prev) => prev.map((m) => (
           m.id === assistantId ? { ...m, content: fallbackAnswer } : m
         )));
+        didRespond = true;
       }
     } catch {
       setMessages((prev) => prev.map((m) => (
@@ -196,6 +200,14 @@ export default function Chat() {
           : m
       )));
     } finally {
+      if (didRespond) {
+        incrementStat('chats');
+        recordActivity({
+          type: 'chat',
+          title: t('chatHeader'),
+          route: '/chat',
+        });
+      }
       activeAssistantIdRef.current = null;
       setIsTyping(false);
     }

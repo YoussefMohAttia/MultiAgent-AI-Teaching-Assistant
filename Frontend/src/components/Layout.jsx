@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Home, Library, Bot, Timer, Gamepad2, 
-  BookOpen, LogOut, Lock, GraduationCap 
+  BookOpen, LogOut, Lock, GraduationCap, User
 } from 'lucide-react';
 
 export default function Layout() {
@@ -19,6 +19,7 @@ export default function Layout() {
     { to: '/dashboard', icon: Home, label: t('navHome') },
     { to: '/courses', icon: Library, label: t('navCourses') },
     { to: '/ai-agents', icon: Bot, label: t('navAiAgents') },
+    { to: '/profile', icon: User, label: t('navProfile') },
     { section: t('navFocusBreak') },
     { to: '/pomodoro', icon: Timer, label: t('navPomodoro') },
     { to: '/mini-games', icon: Gamepad2, label: t('navMiniGames') },
@@ -111,18 +112,21 @@ export default function Layout() {
         {/* Footer / User Profile & Sign Out */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 text-xs font-bold border border-slate-700">
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-3 text-left group"
+            >
+              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 text-xs font-bold border border-slate-700 group-hover:border-indigo-500/40 group-hover:text-indigo-300 transition-colors">
                 {initials}
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-slate-200 truncate w-24">
+                <span className="text-sm font-medium text-slate-200 truncate w-24 group-hover:text-white transition-colors">
                   {user?.name?.split(' ')[0] || 'Student'}
                 </span>
-                {/* Changed "Free Tier" to something contextual */}
-                <span className="text-xs text-slate-500"></span>
+                <span className="text-xs text-slate-500">{t('navProfile')}</span>
               </div>
-            </div>
+            </button>
             
             <button 
               onClick={handleSignOut}
