@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     PDF_UPLOAD_DIR: str = "./uploaded_files"
+    AUTO_SUMMARIZE_MATERIALS: bool = True
 
     @property
     def AUTHORITY(self) -> str:

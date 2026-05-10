@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSummaryStatus } from '../services/api';
+import { useToasts } from '../contexts/ToastContext';
 import { getStats } from '../lib/activity';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
@@ -58,15 +60,17 @@ function getGreeting(hour, copy) {
 export default function Dashboard() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
-  const { lang, toggleLang, copy } = useLanguage();
+  const { lang, toggleLang, copy, t } = useLanguage();
   const navigate = useNavigate();
   const isLocalAccount = user?.auth_provider === 'local';
+  const { pushToast } = useToasts();
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [streak, setStreak] = useState(1);
   const [stats, setStats] = useState(() => getStats());
+  const summaryPollRef = useRef(null);
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -95,6 +99,50 @@ export default function Dashboard() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  useEffect(() => () => {
+    if (summaryPollRef.current) {
+      clearTimeout(summaryPollRef.current);
+      summaryPollRef.current = null;
+    }
+  }, []);
+
+  function scheduleSummaryPolling(items) {
+    if (summaryPollRef.current) {
+      clearTimeout(summaryPollRef.current);
+      summaryPollRef.current = null;
+    }
+
+    const pending = items.slice();
+    const maxAttempts = 12;
+
+    const poll = async (attempt) => {
+      if (!pending.length || attempt >= maxAttempts) return;
+      try {
+        const res = await getSummaryStatus(pending.map((doc) => doc.id));
+        const statuses = res.data?.statuses || {};
+        for (let i = pending.length - 1; i >= 0; i -= 1) {
+          const doc = pending[i];
+          if (statuses[String(doc.id)] === 'ready') {
+            pushToast({
+              title: t('syncSummaryReadyTitle'),
+              message: doc.title,
+              tone: 'success',
+            });
+            pending.splice(i, 1);
+          }
+        }
+      } catch {
+        return;
+      }
+
+      if (pending.length) {
+        summaryPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
+      }
+    };
+
+    poll(0);
+  }
+
 
   async function autoSync() {
     const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
@@ -108,9 +156,36 @@ export default function Dashboard() {
   async function runSync() {
     setSyncing(true);
     try {
-      await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
+      const res = await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
+
+      const payload = res?.data || {};
+      const newMaterials = payload.new_materials || [];
+      const scheduledSummaryIds = payload.auto_summary?.scheduled_doc_ids || [];
+
+      if (newMaterials.length) {
+        newMaterials.forEach((doc) => {
+          pushToast({ title: t('syncNewDocTitle'), message: doc.title, tone: 'info' });
+        });
+      }
+
+      const summaryCandidates = newMaterials.filter((doc) =>
+        scheduledSummaryIds.includes(doc.id)
+      );
+
+      if (summaryCandidates.length) {
+        summaryCandidates.forEach((doc) => {
+          pushToast({ title: t('syncSummaryQueuedTitle'), message: doc.title, tone: 'warning' });
+        });
+        scheduleSummaryPolling(summaryCandidates);
+      } else if (scheduledSummaryIds.length) {
+        pushToast({
+          title: t('syncSummaryQueuedTitle'),
+          message: t('syncSummaryQueuedGeneric'),
+          tone: 'warning',
+        });
+      }
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {

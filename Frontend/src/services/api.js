@@ -54,6 +54,19 @@ export const summarizeUploadedFile = (file) => {
   });
 };
 
+export const getSummaries = (userId, courseId = null) =>
+  api.get('/ai/summaries', {
+    params: {
+      user_id: userId,
+      ...(courseId ? { course_id: courseId } : {}),
+    },
+  });
+
+export const getSummaryStatus = (docIds) =>
+  api.get('/ai/summary-status', {
+    params: { doc_ids: (docIds || []).join(',') },
+  });
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {
