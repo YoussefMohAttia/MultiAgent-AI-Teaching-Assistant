@@ -3,7 +3,7 @@ WORKDIR /app
 
 COPY package*.json ./
 ENV NODE_ENV=development
-RUN npm install --production=false && test -f node_modules/.bin/vite
+RUN npm ci --include=dev && test -f node_modules/.bin/vite
 
 COPY . .
 RUN npm run build
