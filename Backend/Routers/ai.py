@@ -14,7 +14,7 @@ import json
 from DB.session import get_db
 from DB.schemas import Document as DocumentORM
 from security.auth_dependency import get_optional_user, CurrentUser
-from services.pdf_processor import extract_text_from_pdf
+from services.pdf_processor import extract_text_from_pdf, load_pdf, split_documents
 from services.summarizer_service import summarize_text
 from services.quiz_generator_service import generate_quiz as gen
 from models.ai_models import (
@@ -184,8 +184,86 @@ async def chat_upload(
     message: str = Form(...),
     user: CurrentUser | None = _auth
 ):
-    """Placeholder for ephemeral chat with uploaded PDF."""
-    return {"reply": "Chat-upload endpoint reached. Full RAG logic coming soon!"}
+    """Ephemeral chat with a one-time uploaded PDF (no persistence)."""
+    if not message or not message.strip():
+        raise HTTPException(status_code=400, detail="Message is required.")
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+
+    temp_path = None
+    try:
+        payload = await file.read()
+        if not payload:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(payload)
+            temp_path = tmp.name
+
+        docs = load_pdf(temp_path)
+        if not docs:
+            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+
+        chunks = split_documents(docs)
+        if not chunks:
+            raise HTTPException(status_code=422, detail="No readable content found in uploaded PDF.")
+
+        import re
+        query_terms = {
+            t for t in re.findall(r"[A-Za-z0-9']+", message.lower()) if len(t) > 2
+        }
+
+        def score_chunk(text: str) -> int:
+            if not query_terms:
+                return 0
+            tokens = {
+                t for t in re.findall(r"[A-Za-z0-9']+", text.lower()) if len(t) > 2
+            }
+            return len(tokens & query_terms)
+
+        ranked = sorted(
+            chunks,
+            key=lambda c: score_chunk(c.page_content),
+            reverse=True,
+        )
+        top_chunks = ranked[:4]
+        if not any(score_chunk(c.page_content) for c in top_chunks):
+            top_chunks = chunks[:4]
+
+        context_text = "\n\n---\n\n".join(c.page_content for c in top_chunks)
+
+        from services.chatbot_service import TUTOR_SYSTEM
+        from services.openrouter_client import chat_completion
+
+        prompt = (
+            f"Context from uploaded document:\n{context_text}\n\n"
+            f"Student's Question: {message}\n\n"
+            "Tutor's Answer:"
+        )
+
+        answer = chat_completion(
+            prompt,
+            system=TUTOR_SYSTEM,
+            max_tokens=1500,
+            temperature=0.7,
+        )
+
+        sources = [
+            {
+                "page": c.metadata.get("page"),
+                "snippet": c.page_content[:300],
+            }
+            for c in top_chunks
+        ]
+
+        return ChatResponse(answer=answer, sources=sources)
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  2. QUIZ GENERATION

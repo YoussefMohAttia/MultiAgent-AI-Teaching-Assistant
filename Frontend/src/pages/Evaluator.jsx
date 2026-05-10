@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { evaluateSummary, getCourses, getDocuments, logProgressEvent } from '../services/api';
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
-import { incrementStat, recordActivity } from '../lib/activity';
+import { incrementStat } from '../lib/activity';
 
 function buildMetricInfo(t) {
   return {
@@ -132,11 +132,6 @@ export default function Evaluator() {
       setResult(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
       incrementStat('evaluations');
-      recordActivity({
-        type: 'evaluator',
-        title: t('aiEvaluatorTitle'),
-        route: '/evaluator',
-      });
       logProgressEvent({ event_type: 'evaluation_completed' }).catch(() => {});
     } catch (e) {
       setError(e.response?.data?.detail || t('evaluatorFailed'));

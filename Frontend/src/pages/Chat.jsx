@@ -368,6 +368,7 @@ export default function Chat() {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
+    if (sourceMode === 'upload' && !uploadFile) return;
     const userMsg = { id: `u-${Date.now()}`, role: 'user', content: input.trim() };
     const assistantId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     activeAssistantIdRef.current = assistantId;
@@ -376,6 +377,35 @@ export default function Chat() {
     setInput(''); adjustHeight(true); setIsTyping(true);
 
     try {
+      if (sourceMode === 'upload' && uploadFile) {
+        const formData = new FormData();
+        formData.append('file', uploadFile);
+        formData.append('message', userMsg.content);
+
+        const uploadConfig = user?.token
+          ? { headers: { Authorization: `Bearer ${user.token}` } }
+          : undefined;
+
+        const response = await axios.post(
+          '/api/ai/chat-upload',
+          formData,
+          {
+            ...uploadConfig,
+            headers: {
+              ...uploadConfig?.headers,
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+
+        const uploadAnswer = response.data?.answer || response.data?.reply || '';
+        setMessages((prev) => prev.map((m) => (
+          m.id === assistantId ? { ...m, content: uploadAnswer || t('chatError') } : m
+        )));
+        setUploadFile(null);
+        return;
+      }
+
       const payload = {
         question: userMsg.content,
         course_id: sourceMode === 'document' ? Number(courseId || 0) : 0,

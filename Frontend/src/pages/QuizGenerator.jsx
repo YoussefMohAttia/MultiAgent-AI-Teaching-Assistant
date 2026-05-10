@@ -5,7 +5,7 @@ import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments, logProgress
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
-import { incrementStat, recordActivity } from '../lib/activity';
+import { incrementStat } from '../lib/activity';
 
 export default function QuizGenerator() {
   const { user } = useAuth();
@@ -101,11 +101,6 @@ export default function QuizGenerator() {
       }
 
       incrementStat('quizzesGenerated');
-      recordActivity({
-        type: 'quiz',
-        title: `${t('quizTitle')} - ${t('quizTabGenerate')}`,
-        route: '/quiz',
-      });
       logProgressEvent({ event_type: 'quiz_generated' }).catch(() => {});
     } catch (e) {
       setGenError(e.response?.data?.detail || t('quizGenerationFailed'));
@@ -380,11 +375,6 @@ function QuizTaker({ items }) {
 
     if (!completionLogged) {
       incrementStat('quizzesTaken');
-      recordActivity({
-        type: 'quiz',
-        title: `${t('quizTitle')} - ${t('quizTabTake')}`,
-        route: '/quiz?tab=take',
-      });
       logProgressEvent({ event_type: 'quiz_completed', correct: score, total: attempted }).catch(() => {});
       setCompletionLogged(true);
     }

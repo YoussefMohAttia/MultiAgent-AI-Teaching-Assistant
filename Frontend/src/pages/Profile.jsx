@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { getCourses, getProgress } from '../services/api';
-import { getRecentActivity, getStats } from '../lib/activity';
+import { getStats } from '../lib/activity';
 import {
   Award,
   BookOpen,
@@ -59,24 +59,11 @@ function computeStreak(userId) {
   return current.streak;
 }
 
-function formatTime(ts, locale) {
-  try {
-    return new Date(ts).toLocaleString(locale || 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '';
-  }
-}
-
 export default function Profile() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
-  const { lang, toggleLang, t, copy } = useLanguage();
+  const { lang, toggleLang, t } = useLanguage();
   const { completedCycles, streakBonus, workMinutes } = usePomodoro();
 
   const [courses, setCourses] = useState([]);
@@ -88,7 +75,6 @@ export default function Profile() {
     const raw = localStorage.getItem('profile_notifications');
     return raw ? raw === 'true' : true;
   });
-  const [recentActivity, setRecentActivity] = useState(() => getRecentActivity());
   const [stats, setStats] = useState(() => getStats());
 
   useEffect(() => {
@@ -111,7 +97,6 @@ export default function Profile() {
       .catch(() => setProgress(null))
       .finally(() => setProgressLoading(false));
 
-    setRecentActivity(getRecentActivity());
     setStats(getStats());
   }, [user, navigate]);
 
@@ -304,34 +289,6 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-400" /> {t('profileRecentActivity')}
-              </h2>
-            </div>
-            {recentActivity.length === 0 ? (
-              <div className="text-sm text-slate-500">{t('profileNoActivity')}</div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
-                    <div>
-                      <p className="text-sm text-slate-200">{activity.title}</p>
-                      <p className="text-xs text-slate-500">{formatTime(activity.timestamp, copy?.dateLocale)}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate(activity.route)}
-                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                    >
-                      {t('profileResume')} <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="flex flex-col gap-6">

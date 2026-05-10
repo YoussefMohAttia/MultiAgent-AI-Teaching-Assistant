@@ -1,6 +1,4 @@
-const ACTIVITY_KEY = 'profile_recent_activity_v1';
 const STATS_KEY = 'profile_stats_v1';
-const MAX_ITEMS = 10;
 
 function safeParse(value, fallback) {
   try {
@@ -30,37 +28,3 @@ export function incrementStat(key, amount = 1) {
   return next;
 }
 
-export function getRecentActivity() {
-  const raw = localStorage.getItem(ACTIVITY_KEY);
-  return safeParse(raw, []);
-}
-
-export function recordActivity(item) {
-  if (!item || !item.title) return;
-  const list = getRecentActivity();
-  const now = Date.now();
-
-  const entry = {
-    id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
-    type: item.type || 'general',
-    title: item.title,
-    route: item.route || '/dashboard',
-    detail: item.detail || '',
-    timestamp: now,
-  };
-
-  const first = list[0];
-  if (
-    first &&
-    first.title === entry.title &&
-    first.type === entry.type &&
-    first.route === entry.route
-  ) {
-    list[0] = { ...first, timestamp: now };
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(list.slice(0, MAX_ITEMS)));
-    return;
-  }
-
-  const next = [entry, ...list].slice(0, MAX_ITEMS);
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
-}

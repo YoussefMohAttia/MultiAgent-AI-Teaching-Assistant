@@ -32,6 +32,11 @@ TUTOR_SYSTEM = (
     "Break down complex concepts when needed."
 )
 
+GENERAL_SYSTEM = (
+    "You are a helpful, concise general-purpose assistant. "
+    "Answer conversationally and directly without assuming a tutoring role."
+)
+
 
 def ask_tutor(
     course_id: int,
@@ -43,9 +48,13 @@ def ask_tutor(
 
     Returns (answer_text, source_snippets).
     """
-    # 1.  Retrieve relevant chunks from the course's vector store
-    retrieved = query_course_documents(course_id, question, n_results=4)
-    context_text = "\n\n---\n\n".join(d["content"] for d in retrieved) if retrieved else "(No documents indexed for this course yet.)"
+    if course_id:
+        # 1.  Retrieve relevant chunks from the course's vector store
+        retrieved = query_course_documents(course_id, question, n_results=4)
+        context_text = "\n\n---\n\n".join(d["content"] for d in retrieved) if retrieved else "(No documents indexed for this course yet.)"
+    else:
+        retrieved = []
+        context_text = ""
 
     # 2.  Build conversation history snippet (last 6 turns)
     history = _conversations.get(conversation_id, [])
@@ -55,17 +64,26 @@ def ask_tutor(
         history_text += f"{role}: {msg['content']}\n"
 
     # 3.  Build the full prompt
-    prompt = (
-        f"Context from documents:\n{context_text}\n\n"
-        f"Previous conversation:\n{history_text}\n"
-        f"Student's Question: {question}\n\n"
-        "Tutor's Answer:"
-    )
+    if course_id:
+        prompt = (
+            f"Context from documents:\n{context_text}\n\n"
+            f"Previous conversation:\n{history_text}\n"
+            f"Student's Question: {question}\n\n"
+            "Tutor's Answer:"
+        )
+        system_prompt = TUTOR_SYSTEM
+    else:
+        prompt = (
+            f"Previous conversation:\n{history_text}\n"
+            f"User: {question}\n\n"
+            "Assistant:"
+        )
+        system_prompt = GENERAL_SYSTEM
 
     # 4.  Call the LLM
     answer = chat_completion(
         prompt,
-        system=TUTOR_SYSTEM,
+        system=system_prompt,
         max_tokens=1500,
         temperature=0.7,
     )
@@ -111,16 +129,25 @@ def ask_tutor_stream(
         role = "Student" if msg["role"] == "user" else "Tutor"
         history_text += f"{role}: {msg['content']}\n"
 
-    prompt = (
-        f"Context from documents:\n{context_text}\n\n"
-        f"Previous conversation:\n{history_text}\n"
-        f"Student's Question: {question}\n\n"
-        "Tutor's Answer:"
-    )
+    if course_id:
+        prompt = (
+            f"Context from documents:\n{context_text}\n\n"
+            f"Previous conversation:\n{history_text}\n"
+            f"Student's Question: {question}\n\n"
+            "Tutor's Answer:"
+        )
+        system_prompt = TUTOR_SYSTEM
+    else:
+        prompt = (
+            f"Previous conversation:\n{history_text}\n"
+            f"User: {question}\n\n"
+            "Assistant:"
+        )
+        system_prompt = GENERAL_SYSTEM
 
     token_stream = chat_completion_stream(
         prompt,
-        system=TUTOR_SYSTEM,
+        system=system_prompt,
         max_tokens=1500,
         temperature=0.7,
     )
