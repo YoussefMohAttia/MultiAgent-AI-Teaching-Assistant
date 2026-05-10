@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCourses, getDocuments, logProgressEvent } from '../services/api'; 
+import { getCourses, getDocuments, getSummaries, logProgressEvent } from '../services/api'; 
 import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, UploadCloud } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -19,6 +19,13 @@ export default function Summarizer() {
   const [selectedDocId, setSelectedDocId] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const fileInputRef = useRef(null);
+
+  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'library'
+  const [libraryCourseId, setLibraryCourseId] = useState('');
+  const [librarySummaries, setLibrarySummaries] = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState('');
+  const [selectedSummary, setSelectedSummary] = useState(null);
   
   // App States
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -30,12 +37,38 @@ export default function Summarizer() {
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId && sourceMode === 'document') {
+    if (selectedCourseId && sourceMode === 'document' && activeTab === 'generate') {
       getDocuments(selectedCourseId).then(r => setDocs(r.data.documents || [])).catch(() => {});
     } else {
       setDocs([]);
     }
-  }, [selectedCourseId, sourceMode]);
+  }, [selectedCourseId, sourceMode, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'library' || !user) return;
+    loadSummaries();
+  }, [activeTab, libraryCourseId, user]);
+
+  const loadSummaries = async () => {
+    if (!user) return;
+    setLibraryLoading(true);
+    setLibraryError('');
+    try {
+      const res = await getSummaries(user.id, libraryCourseId ? Number(libraryCourseId) : null);
+      const items = res.data.summaries || [];
+      setLibrarySummaries(items);
+      if (items.length) {
+        setSelectedSummary(items[0]);
+      } else {
+        setSelectedSummary(null);
+      }
+    } catch (err) {
+      console.error('Failed to load summaries', err);
+      setLibraryError(t('summarizerLibraryError'));
+    } finally {
+      setLibraryLoading(false);
+    }
+  };
 
   const handleSummarize = async () => {
     if (sourceMode === 'document' && !selectedDocId) return;
@@ -96,9 +129,26 @@ export default function Summarizer() {
         <p className="text-slate-400">
           {t('summarizerSubtitle')}
         </p>
+        <div className="mt-5 flex bg-slate-950 p-1 rounded-xl border border-slate-800 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab('generate')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'generate' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            {t('summarizerTabGenerate')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('library')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'library' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            {t('summarizerTabLibrary')}
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">
+      {activeTab === 'generate' ? (
+        <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">
         
         {/* ── Left Column: Configuration ── */}
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
@@ -220,7 +270,95 @@ export default function Summarizer() {
           </div>
         </div>
 
-      </div>
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0">
+          <div className="w-full lg:w-1/3 flex flex-col gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">{t('summarizerLibraryTitle')}</h2>
+                <button
+                  type="button"
+                  onClick={loadSummaries}
+                  className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors"
+                  disabled={libraryLoading}
+                >
+                  {t('summarizerLibraryRefresh')}
+                </button>
+              </div>
+
+              {libraryError && (
+                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-lg text-sm mb-4">
+                  {libraryError}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 mb-4">
+                <label className="text-sm font-medium text-slate-400">{t('summarizerLibrarySelectCourse')}</label>
+                <div className="relative">
+                  <select
+                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    value={libraryCourseId}
+                    onChange={(e) => setLibraryCourseId(e.target.value)}
+                  >
+                    <option value="">{t('summarizerLibraryAllCourses')}</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[calc(100vh-24rem)] overflow-y-auto custom-scrollbar pr-1">
+                {libraryLoading ? (
+                  <div className="text-sm text-slate-500">{t('summarizerLibraryLoading')}</div>
+                ) : librarySummaries.length ? (
+                  librarySummaries.map((item) => (
+                    <button
+                      key={item.summary_id}
+                      type="button"
+                      onClick={() => setSelectedSummary(item)}
+                      className={`w-full text-left p-3 rounded-xl border transition-colors ${selectedSummary?.summary_id === item.summary_id ? 'border-indigo-500/60 bg-indigo-500/10' : 'border-slate-800 bg-slate-950 hover:bg-slate-900'}`}
+                    >
+                      <div className="text-sm font-semibold text-white truncate">{item.document_title}</div>
+                      <div className="text-xs text-slate-500 mt-1">{item.course_title}</div>
+                      <div className="text-xs text-slate-600 mt-2">
+                        {item.summary?.slice(0, 120)}{item.summary?.length > 120 ? '...' : ''}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-sm text-slate-500">{t('summarizerLibraryEmpty')}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-2/3 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden h-full">
+            <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                {selectedSummary ? selectedSummary.document_title : t('summarizerOutput')}
+              </h2>
+              {selectedSummary && (
+                <div className="text-xs text-slate-500">{selectedSummary.course_title}</div>
+              )}
+            </div>
+
+            <div className="p-6 flex-1 text-slate-300 leading-relaxed overflow-y-auto custom-scrollbar">
+              {selectedSummary ? (
+                <MarkdownRenderer content={selectedSummary.summary} className="max-w-none text-slate-300" />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
+                  <FileText className="w-12 h-12 mb-3 opacity-20" />
+                  <p>{t('summarizerLibrarySelectHint')}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

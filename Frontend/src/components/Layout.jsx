@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import ToastHost from './ToastHost';
 import { 
   Home, Library, Bot, Timer, Gamepad2, 
   BookOpen, LogOut, Lock, GraduationCap, User
@@ -44,6 +45,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden font-sans">
+      <ToastHost />
       
       {/* ── Sidebar ──────────────────────────────────── */}
       <aside className="w-64 flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300">

@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import AgentPageLayout from './components/AgentPageLayout';
@@ -89,9 +90,11 @@ export default function App() {
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
-          <PomodoroProvider>
-            <AppRoutes />
-          </PomodoroProvider>
+          <ToastProvider>
+            <PomodoroProvider>
+              <AppRoutes />
+            </PomodoroProvider>
+          </ToastProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
