@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCourses, getDocuments, transcribeAudio } from '../services/api';
+import { getCourses, getDocuments, synthesizeSpeech, transcribeAudio } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Textarea } from '../components/ui/textarea';
@@ -167,7 +167,7 @@ export default function Chat() {
     if (!activeAudioRef.current) return;
     const previous = activeAudioRef.current;
     previous.pause();
-    if (previous.src) {
+    if (previous.src && previous.src.startsWith('blob:')) {
       URL.revokeObjectURL(previous.src);
     }
     activeAudioRef.current = null;
@@ -185,13 +185,45 @@ export default function Chat() {
   }, []);
 
   const handleSpeakMessage = useCallback(async (message) => {
-    if (!message?.content) return;
+    const spokenText = cleanAssistantText(message?.content);
+    if (!spokenText) return;
     setTtsError('');
     stopActiveAudio();
 
-    const fallbackWorked = trySpeakWithBrowser(message.content);
-    if (!fallbackWorked) {
-      setTtsError(t('chatTtsError'));
+    try {
+      const response = await synthesizeSpeech(spokenText);
+      const audioBlob = response?.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: response?.headers?.['content-type'] || 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      activeAudioRef.current = audio;
+      audio.onended = () => {
+        if (activeAudioRef.current === audio) {
+          if (audio.src && audio.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audio.src);
+          }
+          activeAudioRef.current = null;
+        }
+      };
+      audio.onerror = () => {
+        if (audio.src && audio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audio.src);
+        }
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null;
+        }
+        setTtsError(t('chatTtsError'));
+      };
+
+      await audio.play();
+      return;
+    } catch {
+      const fallbackWorked = trySpeakWithBrowser(spokenText);
+      if (!fallbackWorked) {
+        setTtsError(t('chatTtsError'));
+      }
     }
   }, [stopActiveAudio, t, trySpeakWithBrowser]);
 
@@ -422,7 +454,7 @@ export default function Chat() {
               <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
                 {msg.role === 'assistant' ? (
                   <div className="flex items-start gap-3">
-                    <MarkdownRenderer content={msg.content} className="max-w-none" />
+                    <MarkdownRenderer content={cleanAssistantText(msg.content)} className="max-w-none" />
                     {msg.content && (
                       <button
                         type="button"
@@ -494,4 +526,25 @@ export default function Chat() {
       </div>
     </div>
   );
+}
+
+function cleanAssistantText(text) {
+  if (!text) return '';
+  let cleaned = String(text);
+  // Remove XML-style thought/think tags
+  cleaned = cleaned.replace(/<thought>[\s\S]*?<\/thought>/gi, '');
+  cleaned = cleaned.replace(/<thought>[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  cleaned = cleaned.replace(/<think>[\s\S]*$/gi, '');
+  // Remove code fence thinking blocks
+  cleaned = cleaned.replace(/```(?:thought|think|thinking|thoughts?)[\s\S]*?```/gi, '');
+  cleaned = cleaned.replace(/```(?:thought|think|thinking|thoughts?)[\s\S]*$/gi, '');
+  // Remove [thinking] tags
+  cleaned = cleaned.replace(/\[thought\][\s\S]*?\[\/thought\]/gi, '');
+  cleaned = cleaned.replace(/\[THOUGHT\][\s\S]*?\[\/THOUGHT\]/gi, '');
+  cleaned = cleaned.replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '');
+  cleaned = cleaned.replace(/\[THINKING\][\s\S]*?\[\/THINKING\]/gi, '');
+  // Remove lines that start with "Thinking:" or similar
+  cleaned = cleaned.split('\n').filter(line => !line.match(/^(thinking|thought|reasoning|analysis):/i)).join('\n');
+  return cleaned.trim();
 }

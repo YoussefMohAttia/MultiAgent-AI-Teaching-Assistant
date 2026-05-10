@@ -79,9 +79,21 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
     }
   }, [otpResendCountdown]);
 
+  const isValidEmail = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+  };
+
   async function handleSendOTP() {
     setError('');
     setLoading(true);
+
+    if (!isValidEmail(form.email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/login/send-otp', {
@@ -361,10 +373,10 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
 
                   <button
                     type="submit"
-                    disabled={loading || (otpSent && !otpVerified)}
+                    disabled={loading || (otpSent && !otpVerified) || !isValidEmail(form.email)}
                     className="w-fit rounded-xl bg-white text-black px-6 py-3 font-semibold hover:bg-neutral-200 transition disabled:opacity-70"
                   >
-                    {loading ? 'Sending...' : otpSent ? 'OTP Sent' : 'Send OTP'}
+                    {loading ? 'Sending...' : otpSent ? 'OTP Sent' : 'Verify email'}
                   </button>
                 </form>
               )}
