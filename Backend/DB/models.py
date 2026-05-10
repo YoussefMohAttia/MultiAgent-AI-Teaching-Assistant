@@ -58,3 +58,53 @@ class Token(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: str
+
+
+# ---------------------------
+# Gamification / Progress
+# ---------------------------
+
+class ProgressEvent(BaseModel):
+    event_type: str
+    amount: int = 1
+    correct: Optional[int] = None
+    total: Optional[int] = None
+
+
+class AchievementProgress(BaseModel):
+    key: str
+    title: str
+    goal: int
+    progress: int
+    completed: bool
+
+
+class TaskProgress(BaseModel):
+    key: str
+    title: str
+    description: Optional[str] = None
+    goal: int
+    progress: int
+    xp_reward: int
+    completed: bool
+
+
+class LeaderboardEntry(BaseModel):
+    user_id: int
+    name: str
+    xp: int
+    level: int
+    rank: str
+
+
+class ProgressSummary(BaseModel):
+    xp: int
+    level: int
+    rank: str
+    next_level_xp: int
+    level_progress: float
+    day_streak: int
+    totals: dict
+    achievements: List[AchievementProgress]
+    tasks: List[TaskProgress]
+    leaderboard: List[LeaderboardEntry]

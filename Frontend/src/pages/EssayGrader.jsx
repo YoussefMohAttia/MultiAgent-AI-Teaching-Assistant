@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { gradeEssay } from '../services/api';
+import { gradeEssay, logProgressEvent } from '../services/api';
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
+import { incrementStat, recordActivity } from '../lib/activity';
 
 function bandColor(score) {
   if (score >= 7.5) return 'var(--success)';
@@ -32,6 +33,13 @@ export default function EssayGrader() {
       const res = await gradeEssay(essayText, question.trim() || null);
       setResult(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
+      incrementStat('essays');
+      recordActivity({
+        type: 'essay',
+        title: t('aiEssayTitle'),
+        route: '/essay-grader',
+      });
+      logProgressEvent({ event_type: 'essay_graded' }).catch(() => {});
     } catch (e) {
       setError(e.response?.data?.detail || t('essayFailed'));
     }

@@ -20,6 +20,10 @@ export const getCourses = () => api.get('/courses/');
 export const createCourse = (title) => api.post(`/courses/?title=${encodeURIComponent(title)}`);
 export const deleteCourse = (id) => api.delete(`/courses/${id}`);
 
+// ── Authentication ───────────────────────────────────────────────────────────
+export const registerLocalAccount = (payload) => api.post('/login/register', payload);
+export const loginLocalAccount = (payload) => api.post('/login/password', payload);
+
 // ── Documents ────────────────────────────────────────────────────────────────
 export const getDocuments = (courseId) => api.get(`/documents/${courseId}`);
 export const uploadDocument = (courseId, file) => {
@@ -106,5 +110,14 @@ export const gradeEssay = (essayText, question = null) =>
 
 export const indexDocument = (documentId, courseId) =>
   api.post('/ai/index-document', { document_id: documentId, course_id: courseId });
+
+// ── Progress / Gamification ───────────────────────────────────────────────
+
+export const getProgress = () => api.get('/progress/me');
+
+export const logProgressEvent = (payload) =>
+  api.post('/progress/event', payload);
+
+export const getLeaderboard = () => api.get('/progress/leaderboard');
 
 export default api;

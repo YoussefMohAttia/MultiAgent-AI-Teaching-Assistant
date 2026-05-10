@@ -1,12 +1,25 @@
 # Backend/DB/crud.py
+from passlib.context import CryptContext
+from uuid import uuid4
+from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .schemas import Quiz, QuizQuestion, Course, UserCourse, User, Comment, Document
+from .schemas import Quiz, QuizQuestion, Course, UserCourse, User, Comment, Document, OTPVerification
 from .models import QuizCreate
 from datetime import datetime, timedelta, timezone
 from services.google_token_services import refresh_google_token
 from typing import Optional
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 # ---------------------------
 # USER OPERATIONS
@@ -15,16 +28,154 @@ async def get_user_by_google_id(db: AsyncSession, google_id: str) -> Optional[Us
     result = await db.execute(select(User).where(User.google_id == google_id))
     return result.scalars().first()
 
+
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    normalized_email = email.lower()
+    result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+    return result.scalars().first()
+
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalars().first()
 
-async def create_new_user(db: AsyncSession, google_id: str, email: str, name: str) -> User:
-    new_user = User(google_id=google_id, email=email, name=name)
+async def create_new_user(
+    db: AsyncSession,
+    google_id: str,
+    email: str,
+    name: str,
+    auth_provider: str = "google",
+    password_hash: Optional[str] = None,
+) -> User:
+    new_user = User(
+        google_id=google_id,
+        email=email.lower(),
+        name=name,
+        auth_provider=auth_provider,
+        password_hash=password_hash,
+    )
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
     return new_user
+
+
+async def create_local_user(db: AsyncSession, email: str, password: str, name: Optional[str] = None) -> User:
+    existing_user = await get_user_by_email(db, email)
+    if existing_user:
+        raise ValueError("Email already registered")
+
+    safe_name = name.strip() if name and name.strip() else email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    local_id = f"local_{uuid4().hex}"
+    return await create_new_user(
+        db=db,
+        google_id=local_id,
+        email=email.lower(),
+        name=safe_name,
+        auth_provider="local",
+        password_hash=get_password_hash(password),
+    )
+
+
+async def authenticate_local_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
+    user = await get_user_by_email(db, email.lower())
+    if not user or not user.password_hash:
+        return None
+    if not verify_password(password, user.password_hash):
+        return None
+    return user
+
+
+# ---------------------------
+# OTP OPERATIONS
+# ---------------------------
+
+async def create_otp(db: AsyncSession, email: str, otp_code: str, expiration_minutes: int = 10) -> OTPVerification:
+    """Create or update OTP for email verification."""
+    normalized_email = email.lower()
+    existing = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = existing.scalars().first()
+    
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=expiration_minutes)
+    
+    if otp_record:
+        otp_record.otp_code = otp_code
+        otp_record.created_at = datetime.now(timezone.utc)
+        otp_record.expires_at = expires_at
+        otp_record.is_verified = 0
+        otp_record.attempts = 0
+    else:
+        otp_record = OTPVerification(
+            email=normalized_email,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            is_verified=0,
+            attempts=0
+        )
+        db.add(otp_record)
+    
+    await db.commit()
+    await db.refresh(otp_record)
+    return otp_record
+
+
+async def verify_otp(db: AsyncSession, email: str, otp_code: str) -> bool:
+    """Verify OTP code. Returns True if valid, False otherwise."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = result.scalars().first()
+    
+    if not otp_record:
+        return False
+    
+    # Check expiration
+    if datetime.now(timezone.utc) > otp_record.expires_at:
+        return False
+    
+    # Check attempts (max 5)
+    if otp_record.attempts >= 5:
+        return False
+    
+    # Increment attempts
+    otp_record.attempts += 1
+    await db.commit()
+    
+    # Check code
+    if otp_record.otp_code != otp_code.strip():
+        return False
+    
+    # Mark as verified
+    otp_record.is_verified = 1
+    await db.commit()
+    return True
+
+
+async def get_verified_otp(db: AsyncSession, email: str) -> Optional[OTPVerification]:
+    """Get verified OTP record for email."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(
+            (OTPVerification.email == normalized_email) &
+            (OTPVerification.is_verified == 1) &
+            (OTPVerification.expires_at > datetime.now(timezone.utc))
+        )
+    )
+    return result.scalars().first()
+
+
+async def delete_otp(db: AsyncSession, email: str) -> None:
+    """Delete OTP record after account creation."""
+    normalized_email = email.lower()
+    result = await db.execute(
+        select(OTPVerification).where(OTPVerification.email == normalized_email)
+    )
+    otp_record = result.scalars().first()
+    if otp_record:
+        await db.delete(otp_record)
+        await db.commit()
 
 
 # ---------------------------

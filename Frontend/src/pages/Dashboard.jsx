@@ -4,10 +4,11 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getStats } from '../lib/activity';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
   Bot, FileText, BrainCircuit, PenTool, Inbox,
-  Sun, Moon, Languages
+  Sun, Moon, Languages, ShieldCheck
 } from 'lucide-react';
 
 function formatLocalDate(date) {
@@ -59,11 +60,13 @@ export default function Dashboard() {
   const { theme, toggle } = useTheme();
   const { lang, toggleLang, copy } = useLanguage();
   const navigate = useNavigate();
+  const isLocalAccount = user?.auth_provider === 'local';
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [streak, setStreak] = useState(1);
+  const [stats, setStats] = useState(() => getStats());
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -73,8 +76,24 @@ export default function Dashboard() {
       return;
     }
     setStreak(computeStreak(user.id));
+    setStats(getStats());
+    if (isLocalAccount) {
+      fetchCourses();
+      return;
+    }
     autoSync();
-  }, [user]);
+  }, [user, isLocalAccount]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        setStats(getStats());
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
 
   async function autoSync() {
@@ -124,6 +143,7 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greeting = getGreeting(hour, copy);
   const dateLocale = copy.dateLocale || 'en-US';
+  const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -184,7 +204,7 @@ export default function Dashboard() {
         <StatCard 
           icon={BrainCircuit} 
           label={copy.aiInteractions} 
-          value="12" 
+          value={aiInteractions} 
           colorClass="bg-emerald-500/20 text-emerald-400" 
         />
       </div>
@@ -195,14 +215,21 @@ export default function Dashboard() {
           {/* Section titles updated to white */}
           <h2 className="text-xl font-bold text-white">{copy.yourCourses}</h2>
           <div className="flex gap-2">
-            <button 
-              onClick={runSync} 
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              <CloudSync className={`w-4 h-4 ${syncing ? 'animate-pulse' : ''}`} />
-              {syncing ? copy.syncing : copy.syncClassroom}
-            </button>
+            {isLocalAccount ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 text-sm font-medium rounded-lg">
+                <ShieldCheck className="w-4 h-4" />
+                Local account only
+              </div>
+            ) : (
+              <button 
+                onClick={runSync} 
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                <CloudSync className={`w-4 h-4 ${syncing ? 'animate-pulse' : ''}`} />
+                {syncing ? copy.syncing : copy.syncClassroom}
+              </button>
+            )}
             <button 
               onClick={fetchCourses}
               className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors"
@@ -225,7 +252,9 @@ export default function Dashboard() {
             </div>
             <h3 className="text-lg font-semibold text-white mb-1">{copy.noCoursesTitle}</h3>
             <p className="text-sm text-slate-400 max-w-sm">
-              {copy.noCoursesBody}
+              {isLocalAccount
+                ? 'This account was created locally, so Google Classroom sync is disabled. Create a course manually and upload documents to use the study tools.'
+                : copy.noCoursesBody}
             </p>
           </div>
         ) : (

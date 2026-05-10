@@ -9,8 +9,10 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    Date,
     ForeignKey,
-    JSON
+    JSON,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -23,6 +25,8 @@ class User(Base):
     google_id = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True)
     name = Column(String(255))
+    auth_provider = Column(String(50), nullable=False, default="google")
+    password_hash = Column(String(255), nullable=True)
     google_access_token = Column(Text, nullable=True)
     google_refresh_token = Column(Text, nullable=True)
     google_token_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -34,8 +38,21 @@ class User(Base):
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
     quizzes_created = relationship("Quiz", back_populates="creator")
+    progress = relationship("UserProgress", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    tasks = relationship("UserTask", back_populates="user", cascade="all, delete-orphan")
 
 # ⚡ Restored exactly as you had it
+class OTPVerification(Base):
+    __tablename__ = "otp_verifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    otp_code = Column(String(6), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_verified = Column(Integer, default=0)  # 0 = not verified, 1 = verified
+    attempts = Column(Integer, default=0)
+
 class UserCourse(Base):
     __tablename__ = "user_courses"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
@@ -219,3 +236,52 @@ class QuizAttempt(Base):
     # Relationships
     quiz = relationship("Quiz", back_populates="attempts")
     user = relationship("User", back_populates="quiz_attempts")
+
+# ---------------------------
+# Gamification / Progress
+# ---------------------------
+class UserProgress(Base):
+    __tablename__ = "user_progress"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    xp = Column(Integer, nullable=False, default=0)
+    level = Column(Integer, nullable=False, default=1)
+    rank_title = Column(String(50), nullable=False, default="Rookie")
+    day_streak = Column(Integer, nullable=False, default=1)
+    last_active_date = Column(Date, nullable=True)
+
+    summaries = Column(Integer, nullable=False, default=0)
+    quizzes_generated = Column(Integer, nullable=False, default=0)
+    quizzes_taken = Column(Integer, nullable=False, default=0)
+    quiz_correct = Column(Integer, nullable=False, default=0)
+    pomodoro_cycles = Column(Integer, nullable=False, default=0)
+    chats = Column(Integer, nullable=False, default=0)
+    essays = Column(Integer, nullable=False, default=0)
+    evaluations = Column(Integer, nullable=False, default=0)
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="progress")
+
+
+class UserTask(Base):
+    __tablename__ = "user_tasks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "task_key", "cycle_start", name="ux_user_task_cycle"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    task_key = Column(String(100), index=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    goal = Column(Integer, nullable=False, default=1)
+    progress = Column(Integer, nullable=False, default=0)
+    xp_reward = Column(Integer, nullable=False, default=0)
+    metric_key = Column(String(50), nullable=False)
+    cycle = Column(String(20), nullable=False, default="daily")
+    cycle_start = Column(Date, nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="tasks")

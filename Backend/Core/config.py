@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     CORS_ALLOWED_ORIGINS: str = ""
 
+    # ── Email / OTP Settings ──────────────────────────────────────
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SENDER_EMAIL: str = ""
+    OTP_EXPIRATION_MINUTES: int = 10
+
     # ── AI / Google AI Studio Settings ─────────────────────────────────────
     GOOGLE_AI_API_KEY: str = ""
     GOOGLE_AI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"

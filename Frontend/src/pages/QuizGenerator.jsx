@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments } from '../services/api';
+import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments, logProgressEvent } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { incrementStat, recordActivity } from '../lib/activity';
 
 export default function QuizGenerator() {
   const { user } = useAuth();
@@ -98,6 +99,14 @@ export default function QuizGenerator() {
         setGeneratedItems(res.data.items || []);
         setGeneratedQuizId(res.data.quiz_id);
       }
+
+      incrementStat('quizzesGenerated');
+      recordActivity({
+        type: 'quiz',
+        title: `${t('quizTitle')} - ${t('quizTabGenerate')}`,
+        route: '/quiz',
+      });
+      logProgressEvent({ event_type: 'quiz_generated' }).catch(() => {});
     } catch (e) {
       setGenError(e.response?.data?.detail || t('quizGenerationFailed'));
     }
@@ -349,6 +358,7 @@ function QuizTaker({ items }) {
   const [locked, setLocked] = useState({});
   const [revealedAll, setRevealedAll] = useState(false);
   const [showScoreBar, setShowScoreBar] = useState(false);
+  const [completionLogged, setCompletionLogged] = useState(false);
 
   const attempted = Object.values(selected).filter(v => v !== '__revealed__').length;
   const score = items.filter((q, i) => selected[i] !== '__revealed__' && selected[i] === q.answer_index).length;
@@ -367,9 +377,26 @@ function QuizTaker({ items }) {
       if (nextSelected[i] === undefined) nextSelected[i] = '__revealed__';
     });
     setLocked(nextLocked); setSelected(nextSelected); setRevealedAll(true); setShowScoreBar(true);
+
+    if (!completionLogged) {
+      incrementStat('quizzesTaken');
+      recordActivity({
+        type: 'quiz',
+        title: `${t('quizTitle')} - ${t('quizTabTake')}`,
+        route: '/quiz?tab=take',
+      });
+      logProgressEvent({ event_type: 'quiz_completed', correct: score, total: attempted }).catch(() => {});
+      setCompletionLogged(true);
+    }
   };
 
-  const resetAll = () => { setSelected({}); setLocked({}); setRevealedAll(false); setShowScoreBar(false); };
+  const resetAll = () => {
+    setSelected({});
+    setLocked({});
+    setRevealedAll(false);
+    setShowScoreBar(false);
+    setCompletionLogged(false);
+  };
 
   return (
     <div className="flex flex-col gap-8">
