@@ -355,8 +355,6 @@ async def full_sync(
             ).scalars().all()
 
             candidate_ids = list({*missing_summary_ids, *new_material_doc_ids})
-                            asyncio.create_task(_background_auto_summarize_materials(candidate_ids))
-                            print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
             if candidate_ids:
                 auto_summary_doc_ids = candidate_ids
                 background_tasks.add_task(_background_auto_summarize_materials, candidate_ids)
