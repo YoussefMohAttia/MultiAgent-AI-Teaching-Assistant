@@ -24,6 +24,17 @@ class ChatResponse(BaseModel):
     sources: List[SourceSnippet] = []
 
 
+class TTSRequest(BaseModel):
+    text: str = Field(min_length=1)
+    voice: Optional[str] = None
+    model: Optional[str] = None
+    response_format: Optional[str] = None
+
+
+class STTResponse(BaseModel):
+    text: str
+
+
 # ── Quiz Generation ──────────────────────────────────────────────────────────
 
 class QuizGenerateRequest(BaseModel):

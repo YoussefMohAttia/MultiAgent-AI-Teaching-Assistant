@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import os
 import tempfile
+import io
 from typing import Optional
 import json
 from DB.session import get_db
@@ -23,6 +24,7 @@ from models.ai_models import (
     EvaluateRequest, EvaluateResponse, MetricScore,
     EssayGradeRequest, EssayGradeResponse,
     IndexDocumentRequest, IndexDocumentResponse,
+    TTSRequest, STTResponse,
 )
 from sqlalchemy.future import select as sa_select
 from DB.schemas import (
@@ -112,6 +114,69 @@ async def chat_with_tutor_stream(req: ChatRequest, user: CurrentUser | None = _a
     except Exception as e:
         print(f"❌ Chat Stream Error: {str(e)}")
         raise HTTPException(status_code=500, detail="The chatbot stream failed to start.")
+
+
+@router.post("/chat/tts")
+async def chat_text_to_speech(req: TTSRequest, user: CurrentUser | None = _auth):
+    """Convert assistant text into speech audio."""
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Text is required for TTS.")
+
+    try:
+        from services.audio_service import synthesize_speech
+
+        audio_bytes = synthesize_speech(
+            req.text,
+            voice=req.voice,
+            model=req.model,
+            response_format=req.response_format,
+        )
+
+        media_type = "audio/mpeg"
+        if req.response_format:
+            fmt = req.response_format.lower()
+            if fmt in {"wav", "wave"}:
+                media_type = "audio/wav"
+            elif fmt == "ogg":
+                media_type = "audio/ogg"
+            elif fmt in {"mp3", "mpeg"}:
+                media_type = "audio/mpeg"
+
+        return StreamingResponse(
+            io.BytesIO(audio_bytes),
+            media_type=media_type,
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception as e:
+        print(f"❌ TTS Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Text-to-speech failed.")
+
+
+@router.post("/chat/stt", response_model=STTResponse)
+async def chat_speech_to_text(
+    file: UploadFile = File(...),
+    user: CurrentUser | None = _auth,
+):
+    """Transcribe uploaded speech audio to text."""
+    try:
+        audio_bytes = await file.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Audio file is empty.")
+
+        from services.audio_service import transcribe_audio
+
+        transcript = transcribe_audio(
+            audio_bytes,
+            filename=file.filename or "speech.webm",
+            content_type=file.content_type,
+        )
+
+        return STTResponse(text=transcript)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ STT Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Speech-to-text failed.")
 
 @router.post("/chat-upload")
 async def chat_upload(

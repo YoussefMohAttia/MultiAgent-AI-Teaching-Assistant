@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCourses, getDocuments } from '../services/api';
+import { getCourses, getDocuments, transcribeAudio } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Textarea } from '../components/ui/textarea';
@@ -9,8 +9,8 @@ import { cn } from '../lib/utils';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { streamChatResponse, typeOutText } from '../services/streaming';
 import { 
-  ArrowUpIcon, Paperclip, BookOpen, Bot, 
-  ChevronDown, Sparkles, X, FileText 
+  ArrowUpIcon, Paperclip, 
+  ChevronDown, Sparkles, X, Mic, MicOff, Volume2, Loader2
 } from 'lucide-react';
 
 // ── Auto-Resize Hook ──
@@ -82,6 +82,17 @@ export default function Chat() {
   const [uploadFile, setUploadFile] = useState(null);
   const fileInputRef = useRef(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({ minHeight: 52, maxHeight: 200 });
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [micError, setMicError] = useState('');
+  const [ttsError, setTtsError] = useState('');
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const activeAudioRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
+  const speechResultRef = useRef(false);
+  const speechErrorRef = useRef(false);
+  const speechTimeoutRef = useRef(null);
 
   useEffect(() => { getCourses().then(r => setCourses(r.data.courses || [])); }, []);
   useEffect(() => { if (courseId && sourceMode === 'document') getDocuments(courseId).then(r => setDocs(r.data.documents || [])); }, [courseId, sourceMode]);
@@ -131,6 +142,198 @@ export default function Chat() {
     }
   }, []);
 
+  useEffect(() => () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+    }
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current = null;
+    }
+  }, []);
+
+  const stopActiveAudio = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (!activeAudioRef.current) return;
+    const previous = activeAudioRef.current;
+    previous.pause();
+    if (previous.src) {
+      URL.revokeObjectURL(previous.src);
+    }
+    activeAudioRef.current = null;
+  }, []);
+
+  const trySpeakWithBrowser = useCallback((text) => {
+    if (!text) return false;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return false;
+    if (typeof SpeechSynthesisUtterance === 'undefined') return false;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+    return true;
+  }, []);
+
+  const handleSpeakMessage = useCallback(async (message) => {
+    if (!message?.content) return;
+    setTtsError('');
+    stopActiveAudio();
+
+    const fallbackWorked = trySpeakWithBrowser(message.content);
+    if (!fallbackWorked) {
+      setTtsError(t('chatTtsError'));
+    }
+  }, [stopActiveAudio, t, trySpeakWithBrowser]);
+
+  const handleStartRecording = useCallback(async () => {
+    setMicError('');
+    const BrowserSpeechRecognition =
+      typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    if (BrowserSpeechRecognition) {
+      try {
+        const recognition = new BrowserSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
+        if (lang === 'en') {
+          recognition.lang = 'en-US';
+        } else if (browserLang) {
+          recognition.lang = browserLang;
+        }
+
+        speechResultRef.current = false;
+        speechErrorRef.current = false;
+        if (speechTimeoutRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+        }
+        speechTimeoutRef.current = setTimeout(() => {
+          if (!speechResultRef.current && speechRecognitionRef.current) {
+            speechErrorRef.current = true;
+            setMicError(t('chatMicEmpty'));
+            speechRecognitionRef.current.stop();
+          }
+        }, 12000);
+
+        recognition.onresult = (event) => {
+          const result = event.results?.[0]?.[0]?.transcript?.trim();
+          if (result) {
+            speechResultRef.current = true;
+            setInput((prev) => (prev ? `${prev} ${result}` : result));
+            adjustHeight();
+            setIsTranscribing(false);
+          } else {
+            setMicError(t('chatMicEmpty'));
+          }
+        };
+
+        recognition.onerror = () => {
+          speechErrorRef.current = true;
+          setMicError(t('chatMicError'));
+          setIsTranscribing(false);
+        };
+
+        recognition.onend = () => {
+          if (speechTimeoutRef.current) {
+            clearTimeout(speechTimeoutRef.current);
+            speechTimeoutRef.current = null;
+          }
+          if (!speechResultRef.current && !speechErrorRef.current) {
+            setMicError(t('chatMicEmpty'));
+          }
+          setIsRecording(false);
+          setIsTranscribing(false);
+          speechRecognitionRef.current = null;
+        };
+
+        speechRecognitionRef.current = recognition;
+        setIsRecording(true);
+        setIsTranscribing(true);
+        recognition.start();
+        return;
+      } catch {
+        setMicError(t('chatMicError'));
+        return;
+      }
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setMicError(t('chatMicUnsupported'));
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        if (!blob.size) {
+          setMicError(t('chatMicEmpty'));
+          return;
+        }
+
+        setIsTranscribing(true);
+        try {
+          const file = new File([blob], 'speech.webm', { type: blob.type || 'audio/webm' });
+          const result = await transcribeAudio(file);
+          const transcript = result?.data?.text?.trim();
+          if (transcript) {
+            setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+            adjustHeight();
+          } else {
+            setMicError(t('chatMicEmpty'));
+          }
+        } catch {
+          setMicError(t('chatMicError'));
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      setMicError(t('chatMicError'));
+    }
+  }, [adjustHeight, lang, t]);
+
+  const handleStopRecording = useCallback(() => {
+    if (speechRecognitionRef.current) {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+        speechTimeoutRef.current = null;
+      }
+      speechRecognitionRef.current.stop();
+      return;
+    }
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
     const userMsg = { id: `u-${Date.now()}`, role: 'user', content: input.trim() };
@@ -175,8 +378,11 @@ export default function Chat() {
           )));
         }
       } else {
+        const fallbackConfig = user?.token
+          ? { headers: { Authorization: `Bearer ${user.token}` } }
+          : undefined;
         const fallbackAnswer = streamedFinal || (
-          await axios.post('/api/ai/chat', payload, { headers: { Authorization: `Bearer ${user.token}` } })
+          await axios.post('/api/ai/chat', payload, fallbackConfig)
         ).data.answer;
 
         setMessages((prev) => prev.map((m) => (
@@ -209,14 +415,25 @@ export default function Chat() {
         <h1 className="text-xl font-medium text-white tracking-tight">{t('chatHeader')}</h1>
       </header>
 
-      {/* Increased pb-72 to prevent overlap */}
-      <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-72 space-y-8 scroll-smooth custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-6 space-y-8 scroll-smooth custom-scrollbar">
         <AnimatePresence>
           {messages.map((msg, idx) => (
             <motion.div key={msg.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
                 {msg.role === 'assistant' ? (
-                  <MarkdownRenderer content={msg.content} className="max-w-none" />
+                  <div className="flex items-start gap-3">
+                    <MarkdownRenderer content={msg.content} className="max-w-none" />
+                    {msg.content && (
+                      <button
+                        type="button"
+                        onClick={() => handleSpeakMessage(msg)}
+                        className="mt-0.5 inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition"
+                        title={t('chatSpeak')}
+                      >
+                        <Volume2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   msg.content
                 )}
@@ -227,8 +444,8 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="absolute bottom-6 inset-x-0 px-4 md:px-12 z-30 flex justify-center">
-        <div className="w-full max-w-3xl flex flex-col gap-3">
+      <div className="px-4 md:px-12 pb-6 pt-4 border-t border-white/5 bg-black/40 backdrop-blur-2xl">
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-3">
           <div className="flex gap-2">
             <button onClick={() => {setSourceMode('general'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'general' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatGeneral')}</button>
             <button onClick={() => {setSourceMode('document'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'document' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatCourseContext')}</button>
@@ -241,14 +458,37 @@ export default function Chat() {
             </motion.div>
           )}
 
-          <div className="relative bg-black/60 backdrop-blur-2xl rounded-3xl border border-white/10 p-2 flex flex-col">
+          <div className="relative bg-black/60 rounded-3xl border border-white/10 p-2 flex flex-col">
             {uploadFile && <div className="px-3 py-1 mb-2 bg-indigo-500/10 rounded-xl text-xs text-indigo-300 flex justify-between">{uploadFile.name} <X size={14} className="cursor-pointer" onClick={() => setUploadFile(null)} /></div>}
             <div className="flex items-center gap-2">
               <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
               <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={(e) => {setUploadFile(e.target.files[0]); setSourceMode('upload');}} />
+              <button
+                type="button"
+                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                className={cn(
+                  "ml-1 inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/10 transition",
+                  isRecording ? "bg-rose-500/20 text-rose-300" : "text-slate-300 hover:text-white hover:bg-white/10"
+                )}
+                title={isRecording ? t('chatMicStop') : t('chatMicStart')}
+              >
+                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
               <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder={t('chatAskPlaceholder')} className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
               <button onClick={handleSendMessage} className="bg-white text-black p-2.5 rounded-full hover:scale-105 transition-all"><ArrowUpIcon size={18} /></button>
             </div>
+            {(micError || isTranscribing || ttsError) && (
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+                {isTranscribing && (
+                  <span className="inline-flex items-center gap-2 text-indigo-300">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t('chatTranscribing')}
+                  </span>
+                )}
+                {micError && <span className="text-rose-300">{micError}</span>}
+                {ttsError && <span className="text-rose-300">{ttsError}</span>}
+              </div>
+            )}
           </div>
         </div>
       </div>

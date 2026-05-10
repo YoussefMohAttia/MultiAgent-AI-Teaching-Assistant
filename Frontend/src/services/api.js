@@ -67,6 +67,26 @@ export const getQuizzesByCourse = (courseId) =>
 export const chatWithTutor = (courseId, question, conversationId = 'default') =>
   api.post('/ai/chat', { course_id: courseId, question, conversation_id: conversationId });
 
+export const synthesizeSpeech = (text, options = {}) =>
+  api.post(
+    '/ai/chat/tts',
+    {
+      text,
+      voice: options.voice || null,
+      model: options.model || null,
+      response_format: options.responseFormat || null,
+    },
+    { responseType: 'blob' }
+  );
+
+export const transcribeAudio = (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api.post('/ai/chat/stt', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const evaluateSummary = (studentSummary, source, referenceSummary = null) => {
   const body = {
