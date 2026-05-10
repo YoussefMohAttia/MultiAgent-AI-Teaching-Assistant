@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getStats } from '../lib/activity';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
   Bot, FileText, BrainCircuit, PenTool, Inbox,
@@ -65,6 +66,7 @@ export default function Dashboard() {
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [streak, setStreak] = useState(1);
+  const [stats, setStats] = useState(() => getStats());
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -74,12 +76,24 @@ export default function Dashboard() {
       return;
     }
     setStreak(computeStreak(user.id));
+    setStats(getStats());
     if (isLocalAccount) {
       fetchCourses();
       return;
     }
     autoSync();
   }, [user, isLocalAccount]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        setStats(getStats());
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
 
   async function autoSync() {
@@ -129,6 +143,7 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greeting = getGreeting(hour, copy);
   const dateLocale = copy.dateLocale || 'en-US';
+  const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -189,7 +204,7 @@ export default function Dashboard() {
         <StatCard 
           icon={BrainCircuit} 
           label={copy.aiInteractions} 
-          value="12" 
+          value={aiInteractions} 
           colorClass="bg-emerald-500/20 text-emerald-400" 
         />
       </div>

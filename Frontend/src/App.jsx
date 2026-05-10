@@ -56,6 +56,7 @@ function AppRoutes() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/ai-agents" element={<AIAgents />} />
           <Route path="/pomodoro" element={<Pomodoro />} />
           <Route path="/mini-games" element={<MiniGames />} />
           <Route path="/profile" element={<Profile />} />
@@ -76,14 +77,6 @@ function AppRoutes() {
           <Route path="/essay-grader" element={<EssayGrader />} />
         </Route>
 
-        <Route
-          path="/ai-agents"
-          element={
-            <ProtectedRoute>
-              <AIAgents />
-            </ProtectedRoute>
-          }
-        />
         {/* Catch-all */}
         <Route path="*" element={<SignIn />} />
       </Routes>

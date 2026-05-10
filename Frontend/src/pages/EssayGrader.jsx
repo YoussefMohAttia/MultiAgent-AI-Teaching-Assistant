@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { gradeEssay } from '../services/api';
+import { gradeEssay, logProgressEvent } from '../services/api';
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
 import { incrementStat, recordActivity } from '../lib/activity';
@@ -39,6 +39,7 @@ export default function EssayGrader() {
         title: t('aiEssayTitle'),
         route: '/essay-grader',
       });
+      logProgressEvent({ event_type: 'essay_graded' }).catch(() => {});
     } catch (e) {
       setError(e.response?.data?.detail || t('essayFailed'));
     }

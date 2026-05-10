@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCourses, getDocuments } from '../services/api';
+import { getCourses, getDocuments, logProgressEvent } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Textarea } from '../components/ui/textarea';
@@ -207,6 +207,7 @@ export default function Chat() {
           title: t('chatHeader'),
           route: '/chat',
         });
+        logProgressEvent({ event_type: 'chat_message' }).catch(() => {});
       }
       activeAssistantIdRef.current = null;
       setIsTyping(false);

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { logProgressEvent } from '../services/api';
 
 const PomodoroContext = createContext(null);
 
@@ -99,6 +100,8 @@ export function PomodoroProvider({ children }) {
   const [completedCycles, setCompletedCycles] = useState(initial.completedCycles);
   const [streakBonus, setStreakBonus] = useState(initial.streakBonus);
 
+  const completedRef = useRef(initial.completedCycles);
+
   const intervalRef = useRef(null);
 
   const isBreak = mode === 'break';
@@ -119,6 +122,15 @@ export function PomodoroProvider({ children }) {
       }),
     );
   }, [workMinutes, breakMinutes, mode, secondsLeft, autoStartNext, completedCycles, streakBonus]);
+
+  useEffect(() => {
+    const last = completedRef.current;
+    if (completedCycles > last) {
+      const delta = completedCycles - last;
+      logProgressEvent({ event_type: 'pomodoro_cycle', amount: delta }).catch(() => {});
+    }
+    completedRef.current = completedCycles;
+  }, [completedCycles]);
 
   useEffect(() => {
     if (!isRunning) {

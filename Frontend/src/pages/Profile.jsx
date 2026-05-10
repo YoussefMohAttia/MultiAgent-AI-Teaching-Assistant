@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
-import { getCourses } from '../services/api';
+import { getCourses, getProgress } from '../services/api';
 import { getRecentActivity, getStats } from '../lib/activity';
 import {
   Award,
@@ -82,6 +82,8 @@ export default function Profile() {
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [streak, setStreak] = useState(1);
+  const [progress, setProgress] = useState(null);
+  const [progressLoading, setProgressLoading] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const raw = localStorage.getItem('profile_notifications');
     return raw ? raw === 'true' : true;
@@ -103,6 +105,12 @@ export default function Profile() {
       .catch(() => setCourses([]))
       .finally(() => setCoursesLoading(false));
 
+    setProgressLoading(true);
+    getProgress()
+      .then((res) => setProgress(res.data))
+      .catch(() => setProgress(null))
+      .finally(() => setProgressLoading(false));
+
     setRecentActivity(getRecentActivity());
     setStats(getStats());
   }, [user, navigate]);
@@ -116,26 +124,52 @@ export default function Profile() {
     : 'U';
 
   const focusMinutes = useMemo(() => completedCycles * workMinutes, [completedCycles, workMinutes]);
+  const totals = progress?.totals || {
+    summaries: stats.summaries,
+    quizzes_generated: stats.quizzesGenerated,
+    quizzes_taken: stats.quizzesTaken,
+    chats: stats.chats,
+    essays: stats.essays,
+    evaluations: stats.evaluations,
+    pomodoro_cycles: completedCycles,
+    quiz_correct: 0,
+  };
+  const xp = progress?.xp ?? 0;
+  const level = progress?.level ?? 1;
+  const rank = progress?.rank ?? t('profileRankFallback');
+  const nextLevelXp = progress?.next_level_xp ?? 0;
+  const levelProgress = progress?.level_progress ?? 0;
+  const streakValue = progress?.day_streak ?? streak;
+  const tasks = progress?.tasks || [];
+  const leaderboard = progress?.leaderboard || [];
 
   const quickStats = [
     { id: 'courses', label: t('profileActiveCourses'), value: coursesLoading ? '—' : courses.length, icon: BookOpen },
-    { id: 'streak', label: t('profileStreak'), value: streak, icon: Flame },
+    { id: 'streak', label: t('profileStreak'), value: streakValue, icon: Flame },
     { id: 'focus', label: t('profileFocusHours'), value: (focusMinutes / 60).toFixed(1), icon: Calendar },
     { id: 'cycles', label: t('profileCompletedCycles'), value: completedCycles, icon: Target },
   ];
 
-  const achievements = [
-    { id: 'streak-3', label: t('profileAchievementStreak'), goal: 3, value: streak },
-    { id: 'summaries-3', label: t('profileAchievementSummaries'), goal: 3, value: stats.summaries },
-    { id: 'quizzes-2', label: t('profileAchievementQuizzes'), goal: 2, value: stats.quizzesGenerated },
-    { id: 'focus-3', label: t('profileAchievementFocus'), goal: 3, value: completedCycles },
-  ];
+  const achievements = (progress?.achievements?.length
+    ? progress.achievements.map((item) => ({
+        id: item.key,
+        label: item.title,
+        goal: item.goal,
+        value: item.progress,
+      }))
+    : [
+        { id: 'streak-3', label: t('profileAchievementStreak'), goal: 3, value: streakValue },
+        { id: 'summaries-3', label: t('profileAchievementSummaries'), goal: 3, value: stats.summaries },
+        { id: 'quizzes-2', label: t('profileAchievementQuizzes'), goal: 2, value: stats.quizzesGenerated },
+        { id: 'focus-3', label: t('profileAchievementFocus'), goal: 3, value: completedCycles },
+      ]
+  );
 
-  const totalInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
+  const totalInteractions = totals.summaries + totals.quizzes_generated + totals.quizzes_taken + totals.chats;
 
   const learningAction = (() => {
-    if (stats.summaries === 0) return t('profileNextSummary');
-    if (stats.quizzesGenerated === 0) return t('profileNextQuiz');
+    if (totals.summaries === 0) return t('profileNextSummary');
+    if (totals.quizzes_generated === 0) return t('profileNextQuiz');
     if (completedCycles === 0) return t('profileNextFocus');
     return t('profileNextReview');
   })();
@@ -163,6 +197,22 @@ export default function Profile() {
             <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
               <p className="text-xs text-slate-400">{t('profileTotalInteractions')}</p>
               <p className="text-lg font-semibold text-white">{totalInteractions}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[140px]">
+              <p className="text-xs text-slate-400">{t('profileXp')}</p>
+              <p className="text-lg font-semibold text-white">{xp} XP</p>
+              <p className="text-xs text-slate-500">{t('profileLevel')} {level} · {rank}</p>
+              <div className="mt-2 h-1 w-full rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-indigo-500"
+                  style={{ width: `${Math.round(levelProgress * 100)}%` }}
+                />
+              </div>
+              {nextLevelXp > 0 && (
+                <p className="mt-1 text-[0.65rem] text-slate-500">
+                  {t('profileNextLevel')} {nextLevelXp} XP
+                </p>
+              )}
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
               <p className="text-xs text-slate-400">{t('profileStreakBonus')}</p>
@@ -219,6 +269,44 @@ export default function Profile() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-400" /> {t('profileDailyTasks')}
+              </h2>
+              {progressLoading && <span className="text-xs text-slate-500">{t('profileLoadingTasks')}</span>}
+            </div>
+            {tasks.length === 0 ? (
+              <div className="text-sm text-slate-500">{t('profileTaskEmpty')}</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {tasks.map((task) => {
+                  const progressPct = Math.min(100, Math.round((task.progress / Math.max(task.goal, 1)) * 100));
+                  return (
+                    <div key={task.key} className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-200 font-medium">{task.title}</p>
+                          {task.description && <p className="text-xs text-slate-500">{task.description}</p>}
+                        </div>
+                        <span className={`text-xs font-semibold ${task.completed ? 'text-emerald-400' : 'text-slate-500'}`}>
+                          {task.completed ? t('profileTaskCompleted') : `${task.progress}/${task.goal}`}
+                        </span>
+                      </div>
+                      <div className="mt-3 h-2 w-full rounded-full bg-slate-800">
+                        <div
+                          className={`h-full rounded-full ${task.completed ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">{t('profileTaskReward')} {task.xp_reward} XP</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-indigo-400" /> {t('profileRecentActivity')}
               </h2>
             </div>
@@ -268,6 +356,30 @@ export default function Profile() {
                     >
                       {t('profileOpenCourse')} <ChevronRight className="w-3 h-3" />
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+              <MessageCircle className="w-5 h-5 text-emerald-400" /> {t('profileLeaderboard')}
+            </h2>
+            {leaderboard.length === 0 ? (
+              <p className="text-sm text-slate-500">{t('profileLeaderboardEmpty')}</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {leaderboard.map((entry, index) => (
+                  <div
+                    key={entry.user_id}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${entry.user_id === user?.id ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-slate-800 bg-slate-950/40'}`}
+                  >
+                    <div>
+                      <p className="text-sm text-slate-200 font-medium">#{index + 1} {entry.name}</p>
+                      <p className="text-xs text-slate-500">{t('profileLevel')} {entry.level} · {entry.rank}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-white">{entry.xp} XP</span>
                   </div>
                 ))}
               </div>

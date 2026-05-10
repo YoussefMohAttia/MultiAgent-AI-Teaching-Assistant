@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCourses, getDocuments } from '../services/api'; 
+import { getCourses, getDocuments, logProgressEvent } from '../services/api'; 
 import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, UploadCloud } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -75,6 +75,7 @@ export default function Summarizer() {
         title: t('summarizerTitle'),
         route: '/summarizer',
       });
+      logProgressEvent({ event_type: 'summary_created' }).catch(() => {});
       
     } catch (err) {
       console.error("Summarization failed:", err);

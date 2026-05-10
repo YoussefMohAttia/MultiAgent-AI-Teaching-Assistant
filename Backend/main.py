@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from Core.config import settings
 
-from Routers import login, courses, quizzes , documents,comments,google_classroom
+from Routers import login, courses, quizzes , documents,comments,google_classroom, progress
 from Routers import ai
 from Routers.login import google_auth
 from DB.session import create_all_tables, get_db
@@ -57,6 +57,7 @@ app.include_router(documents.router, prefix="/api/documents", tags=["Documents"]
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 app.include_router(google_classroom.router,prefix="/api/sync",tags=["Google Classroom"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(progress.router, prefix="/api/progress", tags=["Progress"])
 @app.get("/")
 async def root():
     return {"name": "Yousef"}

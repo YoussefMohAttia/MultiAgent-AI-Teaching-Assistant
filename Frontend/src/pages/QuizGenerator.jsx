@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments } from '../services/api';
+import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments, logProgressEvent } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
@@ -106,6 +106,7 @@ export default function QuizGenerator() {
         title: `${t('quizTitle')} - ${t('quizTabGenerate')}`,
         route: '/quiz',
       });
+      logProgressEvent({ event_type: 'quiz_generated' }).catch(() => {});
     } catch (e) {
       setGenError(e.response?.data?.detail || t('quizGenerationFailed'));
     }
@@ -384,6 +385,7 @@ function QuizTaker({ items }) {
         title: `${t('quizTitle')} - ${t('quizTabTake')}`,
         route: '/quiz?tab=take',
       });
+      logProgressEvent({ event_type: 'quiz_completed', correct: score, total: attempted }).catch(() => {});
       setCompletionLogged(true);
     }
   };

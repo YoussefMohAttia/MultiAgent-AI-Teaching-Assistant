@@ -91,4 +91,13 @@ export const gradeEssay = (essayText, question = null) =>
 export const indexDocument = (documentId, courseId) =>
   api.post('/ai/index-document', { document_id: documentId, course_id: courseId });
 
+// ── Progress / Gamification ───────────────────────────────────────────────
+
+export const getProgress = () => api.get('/progress/me');
+
+export const logProgressEvent = (payload) =>
+  api.post('/progress/event', payload);
+
+export const getLeaderboard = () => api.get('/progress/leaderboard');
+
 export default api;

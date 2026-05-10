@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { evaluateSummary, getCourses, getDocuments } from '../services/api';
+import { evaluateSummary, getCourses, getDocuments, logProgressEvent } from '../services/api';
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
 import { incrementStat, recordActivity } from '../lib/activity';
@@ -137,6 +137,7 @@ export default function Evaluator() {
         title: t('aiEvaluatorTitle'),
         route: '/evaluator',
       });
+      logProgressEvent({ event_type: 'evaluation_completed' }).catch(() => {});
     } catch (e) {
       setError(e.response?.data?.detail || t('evaluatorFailed'));
     }
