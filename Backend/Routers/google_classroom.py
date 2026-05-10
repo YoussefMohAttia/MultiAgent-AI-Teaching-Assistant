@@ -15,11 +15,18 @@ from sqlalchemy.future import select
 
 from DB.session import get_db, AsyncSessionLocal
 from DB import crud
-from DB.schemas import Document as DocumentORM
+from DB.schemas import (
+    Document as DocumentORM,
+    Chunk as ChunkORM,
+    Summary as SummaryORM,
+    SummaryChunk as SummaryChunkORM,
+)
 from services.google_classroom_service import GoogleClassroomService
 from services.drive_download_service import ensure_local_file
-from services.pdf_processor import index_pdf_for_course
+from services.pdf_processor import extract_text_from_pdf, index_pdf_for_course
+from services.summarizer_service import summarize_text
 from Core.config import settings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 router = APIRouter()
 google_service = GoogleClassroomService()
@@ -41,6 +48,86 @@ async def _background_index_documents(new_doc_ids: list):
                 print(f"✅ Auto-indexed doc {doc_id} for course {doc.course_id}")
             except Exception as e:
                 print(f"⚠️  Auto-index skipped doc {doc_id}: {e}")
+
+
+async def _background_auto_summarize_materials(new_doc_ids: list):
+    """Background task: auto-summarize new material documents once."""
+    if not new_doc_ids or not settings.AUTO_SUMMARIZE_MATERIALS:
+        return
+    print(f"📋 Auto-summary task started for {len(new_doc_ids)} document(s)")
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+    async with AsyncSessionLocal() as db:
+        for doc_id in new_doc_ids:
+            try:
+                result = await db.execute(select(DocumentORM).where(DocumentORM.id == doc_id))
+                doc = result.scalars().first()
+                if not doc or doc.doc_type != "material":
+                    continue
+
+                existing_summary = (
+                    await db.execute(
+                        select(SummaryORM)
+                        .join(SummaryChunkORM, SummaryORM.id == SummaryChunkORM.summary_id)
+                        .join(ChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
+                        .where(ChunkORM.doc_id == doc_id)
+                        .limit(1)
+                    )
+                ).scalars().first()
+                if existing_summary:
+                    print(f"ℹ️  Auto-summary skipped doc {doc_id}: summary already exists")
+                    continue
+
+                text = ""
+                if doc.google_drive_url:
+                    try:
+                        local_path = await ensure_local_file(doc, db)
+                        text = extract_text_from_pdf(local_path)
+                    except Exception as e:
+                        print(f"⚠️  Auto-summary file read failed for doc {doc_id}: {e}")
+
+                if not text and doc.raw_text:
+                    text = doc.raw_text
+
+                if not text or not text.strip():
+                    print(f"⚠️  Auto-summary skipped doc {doc_id}: no extractable text")
+                    continue
+                print(f"🧠 Auto-summary started doc {doc_id}: {doc.title}")
+                summary_text = summarize_text(text[:15000])
+                db_summary = SummaryORM(text=summary_text, method="llm")
+                db.add(db_summary)
+                await db.flush()
+
+                existing_chunks = (
+                    await db.execute(
+                        select(ChunkORM)
+                        .where(ChunkORM.doc_id == doc_id)
+                        .order_by(ChunkORM.sequence_number)
+                    )
+                ).scalars().all()
+
+                if not existing_chunks:
+                    raw_chunks = splitter.split_text(text)
+                    existing_chunks = []
+                    for i, chunk_text in enumerate(raw_chunks):
+                        chunk = ChunkORM(
+                            doc_id=doc_id,
+                            sequence_number=i,
+                            text=chunk_text,
+                        )
+                        db.add(chunk)
+                        existing_chunks.append(chunk)
+                    await db.flush()
+
+                for chunk in existing_chunks:
+                    db.add(SummaryChunkORM(summary_id=db_summary.id, chunk_id=chunk.id))
+
+                await db.commit()
+                print(f"✅ Auto-summarized doc {doc_id}")
+            except Exception as e:
+                await db.rollback()
+                print(f"⚠️  Auto-summary skipped doc {doc_id}: {e}")
 
 
 # ─────────────────────────────────────────────
@@ -151,6 +238,9 @@ async def full_sync(
     docs_coursework = 0
     docs_skipped = 0
     new_drive_doc_ids = []
+    new_material_doc_ids = []
+    new_material_docs = []
+    auto_summary_doc_ids = []
 
     for db_course_id, classroom_id in synced_courses:
         
@@ -179,6 +269,13 @@ async def full_sync(
                 title=title, doc_type="material", google_drive_url=drive_url,
                 raw_text=item.get("description")
             )
+            new_material_doc_ids.append(new_doc.id)
+            new_material_docs.append({
+                "id": new_doc.id,
+                "title": new_doc.title,
+                "course_id": new_doc.course_id,
+                "doc_type": new_doc.doc_type,
+            })
             if drive_url: new_drive_doc_ids.append(new_doc.id)
             docs_materials += 1
 
@@ -237,6 +334,34 @@ async def full_sync(
         background_tasks.add_task(_background_index_documents, new_drive_doc_ids)
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
+    if settings.AUTO_SUMMARIZE_MATERIALS:
+        course_ids = [course_id for course_id, _ in synced_courses]
+        if course_ids:
+            summary_exists = (
+                select(1)
+                .select_from(ChunkORM)
+                .join(SummaryChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
+                .where(ChunkORM.doc_id == DocumentORM.id)
+                .exists()
+            )
+            missing_summary_ids = (
+                await db.execute(
+                    select(DocumentORM.id).where(
+                        DocumentORM.course_id.in_(course_ids),
+                        DocumentORM.doc_type == "material",
+                        ~summary_exists,
+                    )
+                )
+            ).scalars().all()
+
+            candidate_ids = list({*missing_summary_ids, *new_material_doc_ids})
+                            asyncio.create_task(_background_auto_summarize_materials(candidate_ids))
+                            print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
+            if candidate_ids:
+                auto_summary_doc_ids = candidate_ids
+                background_tasks.add_task(_background_auto_summarize_materials, candidate_ids)
+                print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
+
     # ── Step 5: Return summary ─────────────────────────────────────────────
     total_docs_new = docs_materials + docs_announcements + docs_coursework
 
@@ -254,7 +379,13 @@ async def full_sync(
             "coursework_added": docs_coursework,
             "total_new": total_docs_new,
             "skipped_already_exist": docs_skipped
-        }
+        },
+        "new_materials": new_material_docs,
+        "auto_summary": {
+            "enabled": settings.AUTO_SUMMARIZE_MATERIALS,
+            "scheduled_doc_ids": auto_summary_doc_ids,
+            "total_scheduled": len(auto_summary_doc_ids),
+        },
     }
 
 

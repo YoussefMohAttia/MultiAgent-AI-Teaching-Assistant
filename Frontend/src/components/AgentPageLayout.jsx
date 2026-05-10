@@ -1,5 +1,6 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import ToastHost from './ToastHost';
 import './AgentPageLayout.css';
 
 export default function AgentPageLayout() {
@@ -8,6 +9,7 @@ export default function AgentPageLayout() {
 
   return (
     <div className="agent-layout-root">
+      <ToastHost />
       <header className="agent-layout-header">
         <button
           type="button"

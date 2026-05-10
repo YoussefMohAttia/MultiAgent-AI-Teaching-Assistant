@@ -12,7 +12,8 @@ import io
 from typing import Optional
 import json
 from DB.session import get_db
-from DB.schemas import Document as DocumentORM
+from DB.schemas import Document as DocumentORM, Course as CourseORM
+from DB import crud
 from security.auth_dependency import get_optional_user, CurrentUser
 from services.pdf_processor import extract_text_from_pdf, load_pdf, split_documents
 from services.summarizer_service import summarize_text
@@ -432,6 +433,94 @@ async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUse
             pass
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+def _parse_id_list(raw_ids: str) -> list[int]:
+    if not raw_ids:
+        return []
+    parts = [p.strip() for p in raw_ids.split(",") if p.strip()]
+    ids = []
+    for part in parts:
+        try:
+            ids.append(int(part))
+        except ValueError:
+            continue
+    return ids
+
+
+@router.get("/summaries")
+async def list_summaries(
+    user_id: int,
+    course_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
+    """List latest summaries for documents in a user's courses."""
+    courses = await crud.get_user_courses(db, user_id)
+    if not courses:
+        return {"summaries": []}
+
+    course_ids = {c.id for c in courses}
+    if course_id and course_id not in course_ids:
+        return {"summaries": []}
+
+    target_course_ids = [course_id] if course_id else list(course_ids)
+    stmt = (
+        select(SummaryORM, DocumentORM, CourseORM)
+        .join(SummaryChunkORM, SummaryORM.id == SummaryChunkORM.summary_id)
+        .join(ChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
+        .join(DocumentORM, ChunkORM.doc_id == DocumentORM.id)
+        .join(CourseORM, DocumentORM.course_id == CourseORM.id)
+        .where(DocumentORM.course_id.in_(target_course_ids))
+        .order_by(SummaryORM.created_at.desc())
+    )
+
+    rows = (await db.execute(stmt)).all()
+    summaries = []
+    seen_docs = set()
+    for summary, doc, course in rows:
+        if doc.id in seen_docs:
+            continue
+        seen_docs.add(doc.id)
+        summaries.append(
+            {
+                "summary_id": summary.id,
+                "document_id": doc.id,
+                "document_title": doc.title,
+                "course_id": course.id,
+                "course_title": course.title,
+                "doc_type": doc.doc_type,
+                "created_at": summary.created_at.isoformat() if summary.created_at else None,
+                "summary": summary.text,
+            }
+        )
+
+    return {"summaries": summaries}
+
+
+@router.get("/summary-status")
+async def summary_status(
+    doc_ids: str,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
+    """Return ready/pending status for summaries by document id."""
+    ids = _parse_id_list(doc_ids)
+    if not ids:
+        return {"statuses": {}}
+
+    ready_ids = (
+        await db.execute(
+            select(ChunkORM.doc_id)
+            .join(SummaryChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
+            .where(ChunkORM.doc_id.in_(ids))
+            .distinct()
+        )
+    ).scalars().all()
+
+    ready_set = set(ready_ids)
+    statuses = {str(doc_id): ("ready" if doc_id in ready_set else "pending") for doc_id in ids}
+    return {"statuses": statuses}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     REDIRECT_URI: str = "http://localhost:8000/login/token"
     FRONTEND_URL: str = "http://localhost:5173"
     CORS_ALLOWED_ORIGINS: str = ""
+    GOOGLE_OAUTH_REDIRECT_URI: str = ""
 
     # ── Email / OTP Settings ──────────────────────────────────────
     SMTP_SERVER: str = "smtp.gmail.com"
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     PDF_UPLOAD_DIR: str = "./uploaded_files"
+    AUTO_SUMMARIZE_MATERIALS: bool = True
 
     @property
     def AUTHORITY(self) -> str:
@@ -49,6 +51,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra="ignore"
 
 
 @lru_cache()
