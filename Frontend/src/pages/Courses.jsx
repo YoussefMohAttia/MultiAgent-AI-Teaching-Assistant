@@ -187,7 +187,7 @@ export default function Courses() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-950/30">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50 dark:bg-slate-950/30">
                 {docsLoading ? (
                   <div className="flex flex-col gap-3">
                      {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-800/50 rounded-xl animate-pulse border border-slate-700/50" />)}
@@ -203,14 +203,14 @@ export default function Courses() {
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {docs.map((d) => (
-                      <div key={d.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:bg-slate-800 hover:border-slate-600 transition-all gap-4">
+                      <div key={d.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all gap-4">
                         <div className="flex items-start gap-4 overflow-hidden">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0 border border-indigo-500/20 text-indigo-400">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center flex-shrink-0 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-slate-200 group-hover:text-white truncate" title={d.title}>{d.title}</span>
-                            <span className="text-xs text-slate-500 mt-0.5">PDF Document</span>
+                            <span className="font-semibold text-slate-900 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white truncate" title={d.title}>{d.title}</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">PDF Document</span>
                           </div>
                         </div>
                         
@@ -219,7 +219,7 @@ export default function Courses() {
                           <button
                             onClick={() => handlePreview(d)}
                             disabled={isProcessingFile}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-colors border border-slate-700"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium rounded-lg transition-colors border border-slate-300 dark:border-slate-700"
                           >
                             <Eye className="w-4 h-4" /> Preview
                           </button>

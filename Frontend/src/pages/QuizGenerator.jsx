@@ -124,24 +124,24 @@ export default function QuizGenerator() {
       {/* Header */}
       <div className="mb-6 flex-shrink-0 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
-            <BrainCircuit className="w-8 h-8 text-indigo-400" />
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3 mb-2">
+            <BrainCircuit className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             {t('quizTitle')}
           </h1>
-          <p className="text-slate-400">{t('quizSubtitle')}</p>
+          <p className="text-slate-600 dark:text-slate-400">{t('quizSubtitle')}</p>
         </div>
         
         {/* Main Tabs */}
-        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setTab('generate')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'generate' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'generate' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
           >
             {t('quizTabGenerate')}
           </button>
           <button
             onClick={() => setTab('take')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'take' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${tab === 'take' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
           >
             {t('quizTabTake')}
           </button>
@@ -153,61 +153,61 @@ export default function QuizGenerator() {
         {/* ── Left Column: Config (Only visible on Generate) ── */}
         {tab === 'generate' && (
           <div className="w-full lg:w-1/3 flex flex-col gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-white mb-4">{t('quizSettings')}</h2>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('quizSettings')}</h2>
               
               <div className="flex flex-col gap-5">
                 {genError && (
-                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-lg text-sm flex items-start gap-2">
+                  <div className="bg-red-50 dark:bg-rose-500/10 border border-red-200 dark:border-rose-500/20 text-red-700 dark:text-rose-400 p-3 rounded-lg text-sm flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <p>{genError}</p>
                   </div>
                 )}
 
                 {/* Sub-tabs for Source */}
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button onClick={() => setSourceMode('document')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceDocument')}</button>
-                  <button onClick={() => setSourceMode('upload')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceUpload')}</button>
-                  <button onClick={() => setSourceMode('text')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{t('quizSourceText')}</button>
+                <div className="flex bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <button onClick={() => setSourceMode('document')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-indigo-600 dark:bg-slate-800 text-white' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>{t('quizSourceDocument')}</button>
+                  <button onClick={() => setSourceMode('upload')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'upload' ? 'bg-indigo-600 dark:bg-slate-800 text-white' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>{t('quizSourceUpload')}</button>
+                  <button onClick={() => setSourceMode('text')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-indigo-600 dark:bg-slate-800 text-white' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>{t('quizSourceText')}</button>
                 </div>
 
                 {sourceMode !== 'upload' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">{t('quizCourseLabel')}</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizCourseLabel')}</label>
                     <div className="relative">
                       <select 
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500"
                         value={courseId} onChange={(e) => setCourseId(e.target.value)}
                       >
                         {courses.length === 0 && <option value="">{t('quizLoadingCourses')}</option>}
                         {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                 )}
 
                 {sourceMode === 'document' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">{t('quizSelectDocument')}</label>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizSelectDocument')}</label>
                     <div className="relative">
                       <select 
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500 disabled:opacity-50"
                         value={selectedDocId} onChange={(e) => setSelectedDocId(e.target.value)} disabled={!courseId || docs.length === 0}
                       >
                         <option value="" disabled>{docsLoading ? t('quizLoading') : docs.length === 0 ? t('quizNoDocs') : t('quizChooseDocument')}</option>
                         {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                 )}
 
                 {sourceMode === 'upload' && (
-                  <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group">
-                    <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center group-hover:bg-indigo-500/20"><UploadCloud className="w-5 h-5 text-indigo-400" /></div>
+                  <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group">
+                    <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/10 rounded-full flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/20"><UploadCloud className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /></div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-white">{uploadFile ? uploadFile.name : t('quizUploadBrowse')}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{uploadFile ? uploadFile.name : t('quizUploadBrowse')}</p>
                     </div>
                     <input type="file" ref={fileInputRef} accept="application/pdf" className="hidden" onChange={(e) => setUploadFile(e.target.files[0])} />
                   </div>
@@ -215,27 +215,27 @@ export default function QuizGenerator() {
 
                 {sourceMode === 'text' && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">{t('quizPasteTextLabel')}</label>
-                    <textarea className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 custom-scrollbar" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('quizPasteTextPlaceholder')} />
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizPasteTextLabel')}</label>
+                    <textarea className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 custom-scrollbar" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('quizPasteTextPlaceholder')} />
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">{t('quizQuestionsLabel')}</label>
-                    <select className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3" value={nItems} onChange={(e) => setNItems(+e.target.value)}>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizQuestionsLabel')}</label>
+                    <select className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl px-4 py-3" value={nItems} onChange={(e) => setNItems(+e.target.value)}>
                       {[3, 5, 7, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-400">{t('quizOptionsLabel')}</label>
-                    <select className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3" value={nOptions} onChange={(e) => setNOptions(+e.target.value)}>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizOptionsLabel')}</label>
+                    <select className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl px-4 py-3" value={nOptions} onChange={(e) => setNOptions(+e.target.value)}>
                       {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-800">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
                   <button onClick={handleGenerate} disabled={isGenerateDisabled} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50">
                     <Sparkles className={`w-4 h-4 ${genLoading ? 'animate-pulse text-yellow-300' : ''}`} />
                     {genLoading ? t('quizGenerating') : t('quizBuild')}
@@ -248,12 +248,12 @@ export default function QuizGenerator() {
         )}
 
         {/* ── Right Column / Full Width: Output ── */}
-        <div className={`w-full ${tab === 'generate' ? 'lg:w-2/3' : ''} flex flex-col bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden h-full`}>
+        <div className={`w-full ${tab === 'generate' ? 'lg:w-2/3' : ''} flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden h-full`}>
           
           {tab === 'generate' && (
             <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
               {generatedQuizId && sourceMode !== 'upload' && (
-                <div className="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl flex items-center gap-3">
+                <div className="mb-6 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 p-4 rounded-xl flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5" />
                   <p className="text-sm font-medium">{t('quizSaved')}</p>
                 </div>

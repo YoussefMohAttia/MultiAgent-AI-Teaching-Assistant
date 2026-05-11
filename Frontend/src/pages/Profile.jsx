@@ -161,47 +161,47 @@ export default function Profile() {
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-8 shadow-xl">
-        <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.25), transparent 55%)' }} />
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-950 dark:to-black p-8 shadow-xl">
+        <div className="absolute inset-0 opacity-10 dark:opacity-20" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.25), transparent 55%)' }} />
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-2xl font-bold text-indigo-200">
+            <div className="h-16 w-16 rounded-2xl bg-sky-100 dark:bg-indigo-500/20 border border-sky-200 dark:border-indigo-500/30 flex items-center justify-center text-2xl font-bold text-sky-700 dark:text-indigo-200">
               {initials}
             </div>
             <div>
-              <p className="text-sm text-indigo-200/80 flex items-center gap-2">
+              <p className="text-sm text-sky-700 dark:text-indigo-200 flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" /> {t('profileKicker')}
               </p>
-              <h1 className="text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {user?.name || t('profileTitleFallback')}
               </h1>
-              <p className="text-slate-400 text-sm">{user?.email || t('profileSubtitle')}</p>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">{user?.email || t('profileSubtitle')}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-              <p className="text-xs text-slate-400">{t('profileTotalInteractions')}</p>
-              <p className="text-lg font-semibold text-white">{totalInteractions}</p>
+            <div className="bg-sky-50 dark:bg-white/5 border border-sky-200 dark:border-white/10 rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400">{t('profileTotalInteractions')}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">{totalInteractions}</p>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 min-w-[140px]">
-              <p className="text-xs text-slate-400">{t('profileXp')}</p>
-              <p className="text-lg font-semibold text-white">{xp} XP</p>
-              <p className="text-xs text-slate-500">{t('profileLevel')} {level} · {rank}</p>
-              <div className="mt-2 h-1 w-full rounded-full bg-white/10">
+            <div className="bg-sky-50 dark:bg-white/5 border border-sky-200 dark:border-white/10 rounded-2xl px-4 py-3 min-w-[140px]">
+              <p className="text-xs text-slate-600 dark:text-slate-400">{t('profileXp')}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">{xp} XP</p>
+              <p className="text-xs text-slate-600 dark:text-slate-500">{t('profileLevel')} {level} · {rank}</p>
+              <div className="mt-2 h-1 w-full rounded-full bg-slate-200 dark:bg-white/10">
                 <div
-                  className="h-full rounded-full bg-indigo-500"
+                  className="h-full rounded-full bg-sky-600 dark:bg-indigo-500"
                   style={{ width: `${Math.round(levelProgress * 100)}%` }}
                 />
               </div>
               {nextLevelXp > 0 && (
-                <p className="mt-1 text-[0.65rem] text-slate-500">
+                <p className="mt-1 text-[0.65rem] text-slate-600 dark:text-slate-500">
                   {t('profileNextLevel')} {nextLevelXp} XP
                 </p>
               )}
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-              <p className="text-xs text-slate-400">{t('profileStreakBonus')}</p>
-              <p className="text-lg font-semibold text-white">+{streakBonus}</p>
+            <div className="bg-sky-50 dark:bg-white/5 border border-sky-200 dark:border-white/10 rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400">{t('profileStreakBonus')}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">+{streakBonus}</p>
             </div>
           </div>
         </div>
@@ -209,13 +209,13 @@ export default function Profile() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {quickStats.map(({ id, label, value, icon: Icon }) => (
-          <div key={id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center">
+          <div key={id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-indigo-500/10 border border-sky-200 dark:border-indigo-500/20 text-sky-700 dark:text-indigo-300 flex items-center justify-center">
               <Icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
-              <p className="text-2xl font-semibold text-white">{value}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">{label}</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{value}</p>
             </div>
           </div>
         ))}
@@ -223,27 +223,27 @@ export default function Profile() {
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 flex flex-col gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-400" /> {t('profileAchievements')}
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-500 dark:text-amber-400" /> {t('profileAchievements')}
               </h2>
-              <span className="text-xs text-slate-500">{t('profileAchievementsHint')}</span>
+              <span className="text-xs text-slate-600 dark:text-slate-500">{t('profileAchievementsHint')}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {achievements.map((achievement) => {
                 const earned = achievement.value >= achievement.goal;
                 const progress = Math.min(100, Math.round((achievement.value / achievement.goal) * 100));
                 return (
-                  <div key={achievement.id} className="border border-slate-800 rounded-xl p-4 bg-slate-950/40">
+                  <div key={achievement.id} className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-950/40">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-slate-200 font-medium">{achievement.label}</p>
-                      <span className={`text-xs font-semibold ${earned ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">{achievement.label}</p>
+                      <span className={`text-xs font-semibold ${earned ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-500'}`}>
                         {earned ? t('profileAchieved') : `${achievement.value}/${achievement.goal}`}
                       </span>
                     </div>
-                    <div className="mt-3 h-2 w-full rounded-full bg-slate-800">
-                      <div className={`h-full rounded-full ${earned ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
+                    <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div className={`h-full rounded-full ${earned ? 'bg-emerald-500' : 'bg-indigo-600 dark:bg-indigo-500'}`} style={{ width: `${progress}%` }} />
                     </div>
                   </div>
                 );
@@ -251,37 +251,37 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-400" /> {t('profileDailyTasks')}
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-sky-600 dark:text-indigo-400" /> {t('profileDailyTasks')}
               </h2>
-              {progressLoading && <span className="text-xs text-slate-500">{t('profileLoadingTasks')}</span>}
+              {progressLoading && <span className="text-xs text-slate-600 dark:text-slate-500">{t('profileLoadingTasks')}</span>}
             </div>
             {tasks.length === 0 ? (
-              <div className="text-sm text-slate-500">{t('profileTaskEmpty')}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-500">{t('profileTaskEmpty')}</div>
             ) : (
               <div className="flex flex-col gap-3">
                 {tasks.map((task) => {
                   const progressPct = Math.min(100, Math.round((task.progress / Math.max(task.goal, 1)) * 100));
                   return (
-                    <div key={task.key} className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                    <div key={task.key} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-slate-200 font-medium">{task.title}</p>
-                          {task.description && <p className="text-xs text-slate-500">{task.description}</p>}
+                          <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">{task.title}</p>
+                          {task.description && <p className="text-xs text-slate-600 dark:text-slate-500">{task.description}</p>}
                         </div>
-                        <span className={`text-xs font-semibold ${task.completed ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span className={`text-xs font-semibold ${task.completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-500'}`}>
                           {task.completed ? t('profileTaskCompleted') : `${task.progress}/${task.goal}`}
                         </span>
                       </div>
-                      <div className="mt-3 h-2 w-full rounded-full bg-slate-800">
+                      <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
                         <div
-                          className={`h-full rounded-full ${task.completed ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                          className={`h-full rounded-full ${task.completed ? 'bg-emerald-500' : 'bg-sky-600 dark:bg-indigo-500'}`}
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
-                      <p className="mt-2 text-xs text-slate-500">{t('profileTaskReward')} {task.xp_reward} XP</p>
+                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-500">{t('profileTaskReward')} {task.xp_reward} XP</p>
                     </div>
                   );
                 })}
@@ -292,24 +292,24 @@ export default function Profile() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <BookOpen className="w-5 h-5 text-sky-400" /> {t('profileLearningProfile')}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <BookOpen className="w-5 h-5 text-cyan-600 dark:text-sky-400" /> {t('profileLearningProfile')}
             </h2>
             {coursesLoading ? (
-              <p className="text-sm text-slate-500">{t('profileLoadingCourses')}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-500">{t('profileLoadingCourses')}</p>
             ) : courses.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('profileNoCourses')}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-500">{t('profileNoCourses')}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {courses.slice(0, 3).map((course) => (
-                  <div key={course.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                    <p className="text-sm text-white font-medium line-clamp-1">{course.title}</p>
-                    <p className="text-xs text-slate-500 mt-1">{t('profileNextAction')}: {learningAction}</p>
+                  <div key={course.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4">
+                    <p className="text-sm text-slate-900 dark:text-white font-medium line-clamp-1">{course.title}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-500 mt-1">{t('profileNextAction')}: {learningAction}</p>
                     <button
                       type="button"
                       onClick={() => navigate('/courses')}
-                      className="mt-3 text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      className="mt-3 text-xs font-semibold text-sky-700 dark:text-indigo-400 hover:text-sky-800 dark:hover:text-indigo-300 flex items-center gap-1"
                     >
                       {t('profileOpenCourse')} <ChevronRight className="w-3 h-3" />
                     </button>
@@ -319,64 +319,64 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <MessageCircle className="w-5 h-5 text-emerald-400" /> {t('profileLeaderboard')}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <MessageCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> {t('profileLeaderboard')}
             </h2>
             {leaderboard.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('profileLeaderboardEmpty')}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-500">{t('profileLeaderboardEmpty')}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {leaderboard.map((entry, index) => (
                   <div
                     key={entry.user_id}
-                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${entry.user_id === user?.id ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-slate-800 bg-slate-950/40'}`}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${entry.user_id === user?.id ? 'border-sky-200 dark:border-indigo-500/50 bg-sky-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40'}`}
                   >
                     <div>
-                      <p className="text-sm text-slate-200 font-medium">#{index + 1} {entry.name}</p>
-                      <p className="text-xs text-slate-500">{t('profileLevel')} {entry.level} · {entry.rank}</p>
+                      <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">#{index + 1} {entry.name}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-500">{t('profileLevel')} {entry.level} · {entry.rank}</p>
                     </div>
-                    <span className="text-sm font-semibold text-white">{entry.xp} XP</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{entry.xp} XP</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <Settings className="w-5 h-5 text-slate-300" /> {t('profileSettings')}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <Settings className="w-5 h-5 text-slate-600 dark:text-slate-300" /> {t('profileSettings')}
             </h2>
             <div className="flex flex-col gap-4">
               <button
                 type="button"
                 onClick={toggle}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200"
+                className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 text-sm text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
               >
                 <span className="flex items-center gap-2">
                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   {t('profileTheme')}
                 </span>
-                <span className="text-xs text-slate-400">{theme === 'dark' ? t('profileThemeDark') : t('profileThemeLight')}</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">{theme === 'dark' ? t('profileThemeDark') : t('profileThemeLight')}</span>
               </button>
               <button
                 type="button"
                 onClick={toggleLang}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200"
+                className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 text-sm text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <MessageCircle className="w-4 h-4" />
                   {t('profileLanguage')}
                 </span>
-                <span className="text-xs text-slate-400">{lang === 'en' ? 'English' : 'Arabic'}</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">{lang === 'en' ? 'English' : 'Arabic'}</span>
               </button>
-              <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 text-sm text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer">
                 <span>{t('profileNotifications')}</span>
                 <input
                   type="checkbox"
                   checked={notificationsEnabled}
                   onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                  className="h-4 w-4 accent-indigo-500"
+                  className="h-4 w-4 accent-sky-600 dark:accent-indigo-500"
                 />
               </label>
             </div>

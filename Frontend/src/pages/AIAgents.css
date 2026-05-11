@@ -29,6 +29,26 @@
   position: relative;
 }
 
+[data-theme="light"] .ai-orbit {
+  --card: #ffffff;
+  --card-alt: #f1f5f9;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-md: rgba(15, 23, 42, 0.14);
+  --text: #0f172a;
+  --muted: #475569;
+  --muted2: #64748b;
+  --purple: #5b4cf0;
+  --purple-bg: rgba(91, 76, 240, 0.12);
+  --teal: #0f766e;
+  --teal-bg: rgba(15, 118, 110, 0.12);
+  --orange: #c2410c;
+  --orange-bg: rgba(194, 65, 12, 0.12);
+  --pink: #be185d;
+  --pink-bg: rgba(190, 24, 93, 0.12);
+  --blue: #1d4ed8;
+  --blue-bg: rgba(29, 78, 216, 0.12);
+}
+
 .ai-orbit-header {
   display: flex;
   align-items: center;
@@ -106,6 +126,12 @@
   pointer-events: none;
 }
 
+[data-theme="light"] .ai-orbit-body::before {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+}
+
 .ai-orbit-scene {
   position: relative;
   width: calc(var(--R) * 2 + var(--node) * 2 + 100px);
@@ -169,12 +195,21 @@
   box-shadow: 0 0 12px 4px rgba(160, 140, 255, 0.9);
 }
 
+[data-theme="light"] .ai-orbit-ring-spin::after {
+  background: #1e1b4b;
+  box-shadow: 0 0 12px 3px rgba(99, 102, 241, 0.45);
+}
+
 .ai-orbit-ring-inner {
   position: absolute;
   width: calc(var(--R) * 2 - 52px);
   height: calc(var(--R) * 2 - 52px);
   border-radius: 50%;
   border: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .ai-orbit-ring-inner {
+  border: 1px dashed rgba(15, 23, 42, 0.08);
 }
 
 .ai-orbit-node {
@@ -332,6 +367,10 @@
   overflow: hidden;
 }
 
+[data-theme="light"] .ai-orbit-orb-core {
+  background: radial-gradient(circle at 38% 34%, #c7d2fe 0%, #818cf8 35%, #4f46e5 70%, #1e1b4b 100%);
+}
+
 .ai-orbit-orb-core::after {
   content: '';
   position: absolute;
@@ -362,6 +401,11 @@
   fill: rgba(255, 255, 255, 0.92);
   stroke: rgba(255, 255, 255, 0.4);
   stroke-width: 1.1;
+}
+
+[data-theme="light"] .ai-orbit-orb-core svg {
+  fill: rgba(255, 255, 255, 0.95);
+  stroke: rgba(15, 23, 42, 0.25);
 }
 
 .ai-orbit-hint {
