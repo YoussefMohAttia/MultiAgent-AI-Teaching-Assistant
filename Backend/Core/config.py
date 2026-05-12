@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     PDF_UPLOAD_DIR: str = "./uploaded_files"
+    UPLOAD_CLEANUP_RETENTION_HOURS: int = 24
+    UPLOAD_CLEANUP_INTERVAL_MINUTES: int = 60
     AUTO_SUMMARIZE_MATERIALS: bool = True
 
     @property

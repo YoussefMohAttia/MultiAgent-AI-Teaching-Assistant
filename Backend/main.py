@@ -1,4 +1,6 @@
+import asyncio
 import traceback
+from contextlib import suppress
 
 import jwt as pyjwt
 from fastapi import FastAPI, Depends, HTTPException
@@ -53,6 +55,17 @@ async def startup_event():
     print("Creating database tables from schemas.py ...")
     await create_all_tables()
     print("All tables created successfully!")
+    from services.cleanup_service import cleanup_loop
+    app.state.cleanup_task = asyncio.create_task(cleanup_loop())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    task = getattr(app.state, "cleanup_task", None)
+    if task:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 app.include_router(login.router, prefix="/api/login", tags=["Authentication"])
 app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
