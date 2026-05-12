@@ -409,6 +409,12 @@ export default function Chat() {
       const payload = {
         question: userMsg.content,
         course_id: sourceMode === 'document' ? Number(courseId || 0) : 0,
+        conversation_id: sourceMode === 'document'
+          ? `course:${courseId || '0'}:doc:${selectedDocId || 'all'}:user:${user?.id || 'anon'}`
+          : `general:user:${user?.id || 'anon'}`,
+        ...(sourceMode === 'document' && selectedDocId
+          ? { document_id: Number(selectedDocId) }
+          : {}),
       };
 
       let streamedFinal = '';

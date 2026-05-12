@@ -45,7 +45,7 @@ services:
     volumes:
       - ./Backend:/app
       - "./Ai Team/Main/final_essay_grader/fine_tuned_essaygrader:/models/fine_tuned_essaygrader:ro"
-      - backend-uploads:/app/uploaded_files
+      - ./Backend/uploaded_files:/app/uploaded_files
       - backend-chroma:/app/chroma_db
 
   frontend:

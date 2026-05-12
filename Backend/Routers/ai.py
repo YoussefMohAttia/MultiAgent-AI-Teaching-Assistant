@@ -62,7 +62,11 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
+async def chat_with_tutor(
+    req: ChatRequest,
+    user: CurrentUser | None = _auth,
+    db: AsyncSession = Depends(get_db),
+):
     """Ask the AI tutor a question. Switches between RAG and General mode."""
     try:
         from services.chatbot_service import ask_tutor
@@ -70,11 +74,31 @@ async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
         # ⚡ SENIOR FIX: Handle General Chat (No course_id)
         # If course_id is 0, null, or missing, we pass None to the service.
         effective_course_id = req.course_id if (req.course_id and req.course_id > 0) else None
+        doc_source_path = None
+
+        if req.document_id:
+            result = await db.execute(select(DocumentORM).where(DocumentORM.id == req.document_id))
+            doc = result.scalars().first()
+            if not doc:
+                raise HTTPException(status_code=404, detail="Document not found")
+
+            if not effective_course_id:
+                effective_course_id = doc.course_id
+            elif doc.course_id != effective_course_id:
+                raise HTTPException(status_code=400, detail="Document does not belong to course")
+
+            if doc.s3_path and os.path.exists(doc.s3_path):
+                doc_source_path = doc.s3_path
+            elif doc.google_drive_url:
+                from services.drive_download_service import ensure_local_file
+                doc_source_path = await ensure_local_file(doc, db)
         
         answer, sources = ask_tutor(
             course_id=effective_course_id,
             question=req.question,
             conversation_id=req.conversation_id,
+            source_path=doc_source_path,
+            document_id=req.document_id,
         )
         return ChatResponse(answer=answer, sources=sources)
     except Exception as e:
@@ -83,16 +107,41 @@ async def chat_with_tutor(req: ChatRequest, user: CurrentUser | None = _auth):
 
 
 @router.post("/chat/stream")
-async def chat_with_tutor_stream(req: ChatRequest, user: CurrentUser | None = _auth):
+async def chat_with_tutor_stream(
+    req: ChatRequest,
+    user: CurrentUser | None = _auth,
+    db: AsyncSession = Depends(get_db),
+):
     """Stream tutor response progressively using Server-Sent Events (SSE)."""
     try:
         from services.chatbot_service import ask_tutor_stream
 
         effective_course_id = req.course_id if (req.course_id and req.course_id > 0) else None
+        doc_source_path = None
+
+        if req.document_id:
+            result = await db.execute(select(DocumentORM).where(DocumentORM.id == req.document_id))
+            doc = result.scalars().first()
+            if not doc:
+                raise HTTPException(status_code=404, detail="Document not found")
+
+            if not effective_course_id:
+                effective_course_id = doc.course_id
+            elif doc.course_id != effective_course_id:
+                raise HTTPException(status_code=400, detail="Document does not belong to course")
+
+            if doc.s3_path and os.path.exists(doc.s3_path):
+                doc_source_path = doc.s3_path
+            elif doc.google_drive_url:
+                from services.drive_download_service import ensure_local_file
+                doc_source_path = await ensure_local_file(doc, db)
+
         token_stream, _sources = ask_tutor_stream(
             course_id=effective_course_id,
             question=req.question,
             conversation_id=req.conversation_id,
+            source_path=doc_source_path,
+            document_id=req.document_id,
         )
 
         def event_generator():
@@ -650,7 +699,11 @@ async def index_document(req: IndexDocumentRequest, db: AsyncSession = Depends(g
 
     try:
         from services.pdf_processor import index_pdf_for_course
-        chunks = index_pdf_for_course(doc.s3_path, req.course_id)
+        chunks = index_pdf_for_course(
+            doc.s3_path,
+            req.course_id,
+            document_id=doc.id,
+        )
         return IndexDocumentResponse(
             message="Document indexed successfully",
             chunks_indexed=chunks,

@@ -44,7 +44,11 @@ async def _background_index_documents(new_doc_ids: list):
                 if not doc or not doc.google_drive_url:
                     continue
                 local_path = await ensure_local_file(doc, db)
-                index_pdf_for_course(local_path, doc.course_id)
+                index_pdf_for_course(
+                    local_path,
+                    doc.course_id,
+                    document_id=doc.id,
+                )
                 print(f"✅ Auto-indexed doc {doc_id} for course {doc.course_id}")
             except Exception as e:
                 print(f"⚠️  Auto-index skipped doc {doc_id}: {e}")

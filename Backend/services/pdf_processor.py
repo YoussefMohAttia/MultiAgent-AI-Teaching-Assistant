@@ -9,6 +9,7 @@ all-MiniLM-L6-v2) to avoid heavy torch/sentence-transformers dependency.
 
 import hashlib
 import os
+import time
 from typing import List
 
 import chromadb
@@ -73,7 +74,11 @@ def _get_collection(course_id: int) -> chromadb.Collection:
     )
 
 
-def index_pdf_for_course(pdf_path: str, course_id: int) -> int:
+def index_pdf_for_course(
+    pdf_path: str,
+    course_id: int,
+    document_id: int | None = None,
+) -> int:
     """
     Process a PDF, chunk it, and upsert the chunks into the course's
     ChromaDB collection.  Returns the number of chunks indexed.
@@ -90,11 +95,14 @@ def index_pdf_for_course(pdf_path: str, course_id: int) -> int:
         chunk_id = hashlib.md5(f"{pdf_path}:{i}".encode()).hexdigest()
         ids.append(chunk_id)
         texts.append(chunk.page_content)
-        metadatas.append({
+        metadata = {
             "source": pdf_path,
             "page": chunk.metadata.get("page", 0),
             "chunk_index": i,
-        })
+        }
+        if document_id is not None:
+            metadata["document_id"] = document_id
+        metadatas.append(metadata)
 
     # Upsert in batches of 100
     batch_size = 100
@@ -109,26 +117,85 @@ def index_pdf_for_course(pdf_path: str, course_id: int) -> int:
     return len(chunks)
 
 
-def query_course_documents(course_id: int, query: str, n_results: int = 4) -> List[dict]:
+def query_course_documents(
+    course_id: int,
+    query: str,
+    n_results: int = 4,
+    retries: int = 2,
+    backoff_s: float = 0.25,
+    source_path: str | None = None,
+    document_id: int | None = None,
+) -> List[dict]:
     """
     Query the course's vector store and return relevant document chunks.
 
     Returns a list of dicts with keys: content, metadata, distance.
     """
     collection = _get_collection(course_id)
-    if collection.count() == 0:
-        return []
+    last_error: Exception | None = None
 
-    results = collection.query(
-        query_texts=[query],
-        n_results=min(n_results, collection.count()),
-    )
+    for attempt in range(retries + 1):
+        try:
+            total = collection.count()
+            if total == 0:
+                if source_path and os.path.exists(source_path):
+                    try:
+                        index_pdf_for_course(
+                            source_path,
+                            course_id,
+                            document_id=document_id,
+                        )
+                        total = collection.count()
+                    except Exception as index_error:
+                        print(f"⚠️  Chroma reindex failed for course {course_id}: {index_error}")
+                if total == 0:
+                    return []
 
-    docs = []
-    for i in range(len(results["documents"][0])):
-        docs.append({
-            "content": results["documents"][0][i],
-            "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-            "distance": results["distances"][0][i] if results["distances"] else None,
-        })
-    return docs
+            query_kwargs = {
+                "query_texts": [query],
+                "n_results": min(n_results, total),
+            }
+            if document_id is not None:
+                query_kwargs["where"] = {"document_id": document_id}
+            elif source_path:
+                query_kwargs["where"] = {"source": source_path}
+
+            def build_docs(results: dict) -> List[dict]:
+                docs: List[dict] = []
+                if not results or not results.get("documents"):
+                    return docs
+                for i in range(len(results["documents"][0])):
+                    docs.append({
+                        "content": results["documents"][0][i],
+                        "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
+                        "distance": results["distances"][0][i] if results.get("distances") else None,
+                    })
+                return docs
+
+            results = collection.query(**query_kwargs)
+            docs = build_docs(results)
+
+            if source_path and not docs and os.path.exists(source_path):
+                try:
+                    index_pdf_for_course(
+                        source_path,
+                        course_id,
+                        document_id=document_id,
+                    )
+                    results = collection.query(**query_kwargs)
+                    docs = build_docs(results)
+                except Exception as index_error:
+                    print(f"⚠️  Chroma reindex failed for course {course_id}: {index_error}")
+
+            return docs
+        except Exception as exc:
+            last_error = exc
+            if attempt < retries:
+                time.sleep(backoff_s * (2 ** attempt))
+                continue
+            print(f"⚠️  Chroma query failed for course {course_id}: {exc}")
+            return []
+
+    if last_error:
+        print(f"⚠️  Chroma query failed for course {course_id}: {last_error}")
+    return []

@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     course_id: int
     question: str
     conversation_id: str = "default"
+    document_id: Optional[int] = None
 
 
 class SourceSnippet(BaseModel):

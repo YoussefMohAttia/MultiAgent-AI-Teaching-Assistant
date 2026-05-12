@@ -37,11 +37,15 @@ GENERAL_SYSTEM = (
     "Answer conversationally and directly without assuming a tutoring role."
 )
 
+CHAT_TIMEOUT_S = 60
+
 
 def ask_tutor(
     course_id: int,
     question: str,
     conversation_id: str = "default",
+    source_path: str | None = None,
+    document_id: int | None = None,
 ) -> Tuple[str, List[dict]]:
     """
     Ask the RAG tutor a question scoped to a course's documents.
@@ -50,8 +54,19 @@ def ask_tutor(
     """
     if course_id:
         # 1.  Retrieve relevant chunks from the course's vector store
-        retrieved = query_course_documents(course_id, question, n_results=4)
-        context_text = "\n\n---\n\n".join(d["content"] for d in retrieved) if retrieved else "(No documents indexed for this course yet.)"
+        retrieved = query_course_documents(
+            course_id,
+            question,
+            n_results=4,
+            source_path=source_path,
+            document_id=document_id,
+        )
+        if retrieved:
+            context_text = "\n\n---\n\n".join(d["content"] for d in retrieved)
+        elif source_path:
+            context_text = "(No chunks found for the selected document yet.)"
+        else:
+            context_text = "(No documents indexed for this course yet.)"
     else:
         retrieved = []
         context_text = ""
@@ -86,6 +101,7 @@ def ask_tutor(
         system=system_prompt,
         max_tokens=1500,
         temperature=0.7,
+        timeout_s=CHAT_TIMEOUT_S,
     )
 
     # 5.  Update conversation memory
@@ -110,18 +126,31 @@ def ask_tutor_stream(
     course_id: int | None,
     question: str,
     conversation_id: str = "default",
+    source_path: str | None = None,
+    document_id: int | None = None,
 ) -> Tuple[Iterator[str], List[dict]]:
     """
     Stream a tutor answer token-by-token.
 
     Returns (token_iterator, source_snippets).
     """
-    retrieved = query_course_documents(course_id, question, n_results=4) if course_id else []
-    context_text = (
-        "\n\n---\n\n".join(d["content"] for d in retrieved)
-        if retrieved
-        else "(No documents indexed for this course yet.)"
+    retrieved = (
+        query_course_documents(
+            course_id,
+            question,
+            n_results=4,
+            source_path=source_path,
+            document_id=document_id,
+        )
+        if course_id
+        else []
     )
+    if retrieved:
+        context_text = "\n\n---\n\n".join(d["content"] for d in retrieved)
+    elif source_path:
+        context_text = "(No chunks found for the selected document yet.)"
+    else:
+        context_text = "(No documents indexed for this course yet.)"
 
     history = _conversations.get(conversation_id, [])
     history_text = ""
@@ -150,6 +179,7 @@ def ask_tutor_stream(
         system=system_prompt,
         max_tokens=1500,
         temperature=0.7,
+        timeout_s=CHAT_TIMEOUT_S,
     )
 
     def _wrapped_stream() -> Iterator[str]:
