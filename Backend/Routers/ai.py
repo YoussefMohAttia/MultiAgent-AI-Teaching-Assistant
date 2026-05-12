@@ -580,8 +580,8 @@ async def summary_status(
 async def evaluate(req: EvaluateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
     """Evaluate a student summary against a lecture / document across 10 metrics.
     
-    The evaluator uses Gemma 3 12B for scoring. If no reference_summary is
-    provided, the Summarizer (Gemma 3 27B) auto-generates one as ground truth."""
+    The evaluator uses 12B for scoring. If no reference_summary is
+    provided, the Summarizer ( 27B) auto-generates one as ground truth."""
     lecture = req.lecture_text
     if not lecture and req.document_id:
         lecture = await _get_document_text(req.document_id, db)

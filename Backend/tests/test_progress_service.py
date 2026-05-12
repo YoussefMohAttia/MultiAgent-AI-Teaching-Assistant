@@ -48,6 +48,5 @@ class EventToMetricDeltaTests(unittest.TestCase):
         self.assertEqual(xp_delta, 0)
         self.assertEqual(deltas, [])
 
-
 if __name__ == "__main__":
     unittest.main()
