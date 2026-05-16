@@ -18,6 +18,7 @@ from security.auth_dependency import get_optional_user, CurrentUser
 from services.pdf_processor import extract_text_from_pdf, load_pdf, split_documents
 from services.summarizer_service import summarize_text
 from services.quiz_generator_service import generate_quiz as gen
+from services.quiz_utils import find_quiz_by_doc_and_criteria, build_quiz_items
 from models.ai_models import (
     ChatRequest, ChatResponse,
     QuizGenerateRequest, QuizGenerateResponse, QuizItem,
@@ -32,6 +33,7 @@ from DB.schemas import (
         Chunk as ChunkORM,
         Summary as SummaryORM,
         SummaryChunk as SummaryChunkORM,
+    QuizDocument as QuizDocumentORM,
     )
 
 _auth = Depends(get_optional_user)
@@ -320,14 +322,31 @@ async def chat_upload(
 # ══════════════════════════════════════════════════════════════════════════════
 @router.post("/generate-quiz", response_model=QuizGenerateResponse)
 async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
+    if req.document_id:
+        existing_quiz = await find_quiz_by_doc_and_criteria(
+            db,
+            doc_id=req.document_id,
+            n_items=req.n_items,
+            n_options=req.n_options,
+        )
+        if existing_quiz:
+            items = build_quiz_items(existing_quiz.questions)
+            return QuizGenerateResponse(
+                quiz_id=existing_quiz.id,
+                course_id=existing_quiz.course_id,
+                items=[QuizItem(**i) for i in items],
+            )
+
     text = req.text if req.text else await _get_document_text(req.document_id, db)
     raw_items = gen(passage=text[:15000], objectives=req.objectives, n_items=req.n_items, n_options=req.n_options)
-    from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM
+    from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM, QuizDocument as QuizDocumentORM
     db_quiz = QuizORM(course_id=req.course_id, created_by=req.created_by)
     db.add(db_quiz)
     await db.flush()
     for item in raw_items:
         db.add(QuizQuestionORM(quiz_id=db_quiz.id, question=item["stem"], type="mcq", options=item["options"], correct_answer=item["options"][item["answer_index"]]))
+    if req.document_id:
+        db.add(QuizDocumentORM(quiz_id=db_quiz.id, doc_id=req.document_id))
     await db.commit()
     return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=[QuizItem(**i) for i in raw_items])
 
@@ -563,6 +582,30 @@ async def summary_status(
             select(ChunkORM.doc_id)
             .join(SummaryChunkORM, SummaryChunkORM.chunk_id == ChunkORM.id)
             .where(ChunkORM.doc_id.in_(ids))
+            .distinct()
+        )
+    ).scalars().all()
+
+    ready_set = set(ready_ids)
+    statuses = {str(doc_id): ("ready" if doc_id in ready_set else "pending") for doc_id in ids}
+    return {"statuses": statuses}
+
+
+@router.get("/quiz-status")
+async def quiz_status(
+    doc_ids: str,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
+    """Return ready/pending status for quizzes by document id."""
+    ids = _parse_id_list(doc_ids)
+    if not ids:
+        return {"statuses": {}}
+
+    ready_ids = (
+        await db.execute(
+            select(QuizDocumentORM.doc_id)
+            .where(QuizDocumentORM.doc_id.in_(ids))
             .distinct()
         )
     ).scalars().all()

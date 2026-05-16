@@ -20,16 +20,26 @@ from DB.schemas import (
     Chunk as ChunkORM,
     Summary as SummaryORM,
     SummaryChunk as SummaryChunkORM,
+    Quiz as QuizORM,
+    QuizQuestion as QuizQuestionORM,
+    QuizDocument as QuizDocumentORM,
 )
 from services.google_classroom_service import GoogleClassroomService
 from services.drive_download_service import ensure_local_file
 from services.pdf_processor import extract_text_from_pdf, index_pdf_for_course
 from services.summarizer_service import summarize_text
+from services.quiz_generator_service import generate_quiz
+from services.quiz_utils import find_quiz_by_doc_and_criteria
 from Core.config import settings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 router = APIRouter()
 google_service = GoogleClassroomService()
+
+_auto_quiz_inflight: set[int] = set()
+_auto_quiz_lock = asyncio.Lock()
+_AUTO_QUIZ_N_ITEMS = 5
+_AUTO_QUIZ_N_OPTIONS = 4
 
 
 async def _background_index_documents(new_doc_ids: list):
@@ -132,6 +142,101 @@ async def _background_auto_summarize_materials(new_doc_ids: list):
             except Exception as e:
                 await db.rollback()
                 print(f"⚠️  Auto-summary skipped doc {doc_id}: {e}")
+
+
+async def _background_auto_generate_quizzes(new_doc_ids: list):
+    """Background task: auto-generate quizzes for new material documents once."""
+    if not new_doc_ids or not settings.AUTO_GENERATE_QUIZZES:
+        return
+    print(f"🧪 Auto-quiz task started for {len(new_doc_ids)} document(s)")
+
+    async with AsyncSessionLocal() as db:
+        for doc_id in new_doc_ids:
+            reserved = False
+            async with _auto_quiz_lock:
+                if doc_id in _auto_quiz_inflight:
+                    print(f"ℹ️  Auto-quiz skipped doc {doc_id}: already in progress")
+                    continue
+                _auto_quiz_inflight.add(doc_id)
+                reserved = True
+            try:
+                result = await db.execute(select(DocumentORM).where(DocumentORM.id == doc_id))
+                doc = result.scalars().first()
+                if not doc or doc.doc_type != "material":
+                    continue
+
+                existing_quiz = await find_quiz_by_doc_and_criteria(
+                    db,
+                    doc_id=doc_id,
+                    n_items=_AUTO_QUIZ_N_ITEMS,
+                    n_options=_AUTO_QUIZ_N_OPTIONS,
+                )
+                if existing_quiz:
+                    print(f"ℹ️  Auto-quiz skipped doc {doc_id}: quiz already exists")
+                    continue
+
+                text = ""
+                if doc.google_drive_url:
+                    try:
+                        local_path = await ensure_local_file(doc, db)
+                        text = extract_text_from_pdf(local_path)
+                    except Exception as e:
+                        print(f"⚠️  Auto-quiz file read failed for doc {doc_id}: {e}")
+
+                if not text and doc.raw_text:
+                    text = doc.raw_text
+
+                if not text or not text.strip():
+                    print(f"⚠️  Auto-quiz skipped doc {doc_id}: no extractable text")
+                    continue
+
+                print(f"🧠 Auto-quiz started doc {doc_id}: {doc.title}")
+                raw_items = generate_quiz(
+                    passage=text[:15000],
+                    n_items=_AUTO_QUIZ_N_ITEMS,
+                    n_options=_AUTO_QUIZ_N_OPTIONS,
+                )
+                if not raw_items:
+                    print(f"⚠️  Auto-quiz skipped doc {doc_id}: no valid questions")
+                    continue
+
+                db_quiz = QuizORM(course_id=doc.course_id, created_by=None)
+                db.add(db_quiz)
+                await db.flush()
+
+                question_count = 0
+                for item in raw_items:
+                    options = item.get("options") or []
+                    answer_index = item.get("answer_index")
+                    if answer_index is None or answer_index < 0 or answer_index >= len(options):
+                        continue
+                    correct_answer = options[answer_index]
+                    db.add(
+                        QuizQuestionORM(
+                            quiz_id=db_quiz.id,
+                            question=item.get("stem", ""),
+                            type="mcq",
+                            options=options,
+                            correct_answer=correct_answer,
+                        )
+                    )
+                    question_count += 1
+
+                if question_count == 0:
+                    await db.rollback()
+                    print(f"⚠️  Auto-quiz skipped doc {doc_id}: no valid questions")
+                    continue
+
+                db.add(QuizDocumentORM(quiz_id=db_quiz.id, doc_id=doc.id))
+                await db.commit()
+                print(f"✅ Auto-quiz generated doc {doc_id}")
+            except Exception as e:
+                await db.rollback()
+                print(f"⚠️  Auto-quiz skipped doc {doc_id}: {e}")
+            finally:
+                if reserved:
+                    async with _auto_quiz_lock:
+                        _auto_quiz_inflight.discard(doc_id)
 
 
 # ─────────────────────────────────────────────
@@ -245,6 +350,7 @@ async def full_sync(
     new_material_doc_ids = []
     new_material_docs = []
     auto_summary_doc_ids = []
+    auto_quiz_doc_ids = []
 
     for db_course_id, classroom_id in synced_courses:
         
@@ -364,6 +470,31 @@ async def full_sync(
                 background_tasks.add_task(_background_auto_summarize_materials, candidate_ids)
                 print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
 
+    if settings.AUTO_GENERATE_QUIZZES:
+        course_ids = [course_id for course_id, _ in synced_courses]
+        if course_ids:
+            quiz_exists = (
+                select(1)
+                .select_from(QuizDocumentORM)
+                .where(QuizDocumentORM.doc_id == DocumentORM.id)
+                .exists()
+            )
+            missing_quiz_ids = (
+                await db.execute(
+                    select(DocumentORM.id).where(
+                        DocumentORM.course_id.in_(course_ids),
+                        DocumentORM.doc_type == "material",
+                        ~quiz_exists,
+                    )
+                )
+            ).scalars().all()
+
+            candidate_ids = list({*missing_quiz_ids, *new_material_doc_ids})
+            if candidate_ids:
+                auto_quiz_doc_ids = candidate_ids
+                background_tasks.add_task(_background_auto_generate_quizzes, candidate_ids)
+                print(f"📋 Scheduled auto-quiz for {len(candidate_ids)} material document(s)")
+
     # ── Step 5: Return summary ─────────────────────────────────────────────
     total_docs_new = docs_materials + docs_announcements + docs_coursework
 
@@ -387,6 +518,11 @@ async def full_sync(
             "enabled": settings.AUTO_SUMMARIZE_MATERIALS,
             "scheduled_doc_ids": auto_summary_doc_ids,
             "total_scheduled": len(auto_summary_doc_ids),
+        },
+        "auto_quiz": {
+            "enabled": settings.AUTO_GENERATE_QUIZZES,
+            "scheduled_doc_ids": auto_quiz_doc_ids,
+            "total_scheduled": len(auto_quiz_doc_ids),
         },
     }
 

@@ -45,6 +45,7 @@ class QuizCreate(QuizBase):
     questions: List[QuizQuestionCreate]
 
 class QuizOut(QuizBase):
+    created_by: Optional[int] = None
     id: int
     course_id: int
     created_at: datetime
