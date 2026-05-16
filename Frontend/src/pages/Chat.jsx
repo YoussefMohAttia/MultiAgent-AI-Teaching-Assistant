@@ -728,7 +728,10 @@ export default function Chat() {
                     <span>{formatTimestamp(item.last_message_at, lang)}</span>
                     <span className="uppercase tracking-wide">{item.last_role || ''}</span>
                   </div>
-                  <div className="mt-1 text-sm text-slate-100 truncate">
+                  <div className="mt-1 text-sm font-semibold text-slate-100 truncate">
+                    {item.title || item.last_message_preview || t('chatHistoryPreviewEmpty')}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400 truncate">
                     {item.last_message_preview || t('chatHistoryPreviewEmpty')}
                   </div>
                 </button>

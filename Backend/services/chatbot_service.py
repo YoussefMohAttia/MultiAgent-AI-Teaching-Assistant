@@ -48,6 +48,44 @@ GENERAL_SYSTEM = (
 CHAT_TIMEOUT_S = 60
 
 
+def _make_conversation_title(question: str) -> str:
+    text = " ".join(question.split()).strip()
+    if not text:
+        return "New chat"
+    if len(text) <= 60:
+        return text
+    return f"{text[:57].rstrip()}..."
+
+
+def _generate_conversation_title(question: str, answer: str) -> str:
+    prompt = (
+        "Create a 4-6 word title for this chat. "
+        "Return only the title, no quotes or punctuation.\n\n"
+        f"User question: {question}\n"
+        f"Assistant answer: {answer}"
+    )
+    try:
+        raw_title = chat_completion(
+            prompt,
+            system="You generate concise chat titles.",
+            max_tokens=16,
+            temperature=0.2,
+            timeout_s=CHAT_TIMEOUT_S,
+        )
+    except Exception:
+        return _make_conversation_title(question)
+
+    title = " ".join(str(raw_title).split()).strip().strip("\"").strip("'")
+    if not title:
+        return _make_conversation_title(question)
+
+    words = title.split()
+    if len(words) > 6:
+        title = " ".join(words[:6])
+
+    return title
+
+
 def _normalize_conversation_id(conversation_id: str | None) -> str:
     if not conversation_id:
         return "default"
@@ -137,9 +175,13 @@ async def _persist_db_turn(
             conversation_key=conversation_id,
             scope_key=scope_key,
             last_message_at=now,
+            title=_generate_conversation_title(question, answer),
         )
         db.add(conversation)
         await db.flush()
+
+    if not conversation.title:
+        conversation.title = _generate_conversation_title(question, answer)
 
     conversation.last_message_at = now
     db.add_all(
