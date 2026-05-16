@@ -22,6 +22,21 @@ export default function Courses() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewTitle, setPreviewTitle] = useState('');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const resolvePreviewUrl = (url) => {
+    if (!url) return null;
+    if (url.includes('drive.google.com')) {
+      const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+      if (fileMatch && fileMatch[1]) {
+        return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+      }
+      const idMatch = url.match(/[?&]id=([^&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+      }
+    }
+    return url;
+  };
+
 
   useEffect(() => {
     setCoursesLoading(true);
@@ -51,6 +66,10 @@ export default function Courses() {
   const handleDownload = async (doc) => {
     try {
       setIsProcessingFile(true);
+      if (doc.download_url && doc.download_url.startsWith('http')) {
+        window.open(doc.download_url, '_blank', 'noopener');
+        return;
+      }
       const res = await getDocumentBlob(doc.id);
       
       const blobUrl = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
@@ -77,6 +96,14 @@ export default function Courses() {
   const handlePreview = async (doc) => {
     try {
       setIsProcessingFile(true);
+      if (doc.download_url && doc.download_url.startsWith('http')) {
+        const resolvedUrl = resolvePreviewUrl(doc.download_url);
+        if (resolvedUrl) {
+          setPreviewUrl(resolvedUrl);
+          setPreviewTitle(doc.title);
+          return;
+        }
+      }
       const res = await getDocumentBlob(doc.id);
       
       const blobUrl = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
@@ -202,37 +229,67 @@ export default function Courses() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {docs.map((d) => (
-                      <div key={d.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all gap-4">
-                        <div className="flex items-start gap-4 overflow-hidden">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center flex-shrink-0 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
-                            <FileText className="w-5 h-5" />
+                    {docs.map((d) => {
+                      const isAnnouncement = d.doc_type === 'announcement';
+                      const isPost = d.doc_type === 'post';
+                      const hasFile = Boolean(d.download_url);
+                      const canFileActions = hasFile && !isAnnouncement && !isPost;
+                      const typeLabel = isAnnouncement
+                        ? t('docTypeAnnouncement')
+                        : isPost
+                          ? t('docTypePost')
+                          : d.doc_type === 'coursework'
+                            ? t('docTypeCoursework')
+                            : d.doc_type === 'manual_upload'
+                              ? t('docTypeUpload')
+                              : d.doc_type === 'material'
+                                ? t('docTypeMaterial')
+                                : t('docTypeDocument');
+                      const bodyText = (d.raw_text || '').trim();
+
+                      return (
+                        <div key={d.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all gap-4">
+                          <div className="flex items-start gap-4 overflow-hidden">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${canFileActions ? 'bg-indigo-100 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                              {canFileActions ? <FileText className="w-5 h-5" /> : <Inbox className="w-5 h-5" />}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">{typeLabel}</span>
+                              {canFileActions ? (
+                                <>
+                                  <span className="font-semibold text-slate-900 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white truncate" title={d.title}>{d.title}</span>
+                                  <span className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">PDF Document</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-wrap break-words">
+                                  {bodyText || t('docNoContent')}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-slate-900 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white truncate" title={d.title}>{d.title}</span>
-                            <span className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">PDF Document</span>
-                          </div>
+
+                          {/* Interactive Buttons */}
+                          {canFileActions ? (
+                            <div className="flex gap-2 w-full sm:w-auto">
+                              <button
+                                onClick={() => handlePreview(d)}
+                                disabled={isProcessingFile}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium rounded-lg transition-colors border border-slate-300 dark:border-slate-700"
+                              >
+                                <Eye className="w-4 h-4" /> Preview
+                              </button>
+                              <button
+                                onClick={() => handleDownload(d)}
+                                disabled={isProcessingFile}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <Download className="w-4 h-4" /> Download
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
-                        
-                        {/* Interactive Buttons */}
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <button
-                            onClick={() => handlePreview(d)}
-                            disabled={isProcessingFile}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium rounded-lg transition-colors border border-slate-300 dark:border-slate-700"
-                          >
-                            <Eye className="w-4 h-4" /> Preview
-                          </button>
-                          <button
-                            onClick={() => handleDownload(d)}
-                            disabled={isProcessingFile}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            <Download className="w-4 h-4" /> Download
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
