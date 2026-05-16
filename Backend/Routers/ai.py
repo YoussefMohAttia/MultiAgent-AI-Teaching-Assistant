@@ -2,7 +2,9 @@
 AI Router — exposes the AI capabilities as REST endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from datetime import datetime, timedelta, timezone
+import jwt as pyjwt
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,7 +14,14 @@ import io
 from typing import Optional
 import json
 from DB.session import get_db
-from DB.schemas import Document as DocumentORM, Course as CourseORM
+from Core.config import settings
+from DB.schemas import (
+    Document as DocumentORM,
+    Course as CourseORM,
+    User as UserORM,
+    ChatConversation as ChatConversationORM,
+    ChatMessage as ChatMessageORM,
+)
 from DB import crud
 from security.auth_dependency import get_optional_user, CurrentUser
 from services.pdf_processor import extract_text_from_pdf, load_pdf, split_documents
@@ -21,6 +30,8 @@ from services.quiz_generator_service import generate_quiz as gen
 from services.quiz_utils import find_quiz_by_doc_and_criteria, build_quiz_items
 from models.ai_models import (
     ChatRequest, ChatResponse,
+    ChatConversationListResponse, ChatConversationSummary,
+    ChatConversationMessagesResponse, ChatMessageOut,
     QuizGenerateRequest, QuizGenerateResponse, QuizItem,
     SummarizeRequest, SummarizeResponse,
     EvaluateRequest, EvaluateResponse, MetricScore,
@@ -56,6 +67,44 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
         return doc.raw_text
     raise HTTPException(status_code=422, detail="No extractable text found.")
 
+
+def _scope_key_for_course(course_id: Optional[int]) -> str:
+    return f"course:{course_id}" if course_id else "general"
+
+
+def _to_utc_aware(value: Optional[datetime]) -> Optional[datetime]:
+    if not value:
+        return None
+    if value.tzinfo:
+        return value.astimezone(timezone.utc)
+    return value.replace(tzinfo=timezone.utc)
+
+
+async def _resolve_db_user(
+    request: Request,
+    db: AsyncSession,
+    user: CurrentUser | None,
+) -> Optional[UserORM]:
+    if user:
+        db_user = await crud.get_user_by_google_id(db, user.sub)
+        if db_user:
+            return db_user
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = pyjwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    except pyjwt.PyJWTError:
+        return None
+
+    google_id = payload.get("sub")
+    if not google_id:
+        return None
+    return await crud.get_user_by_google_id(db, google_id)
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  1. CHATBOT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -66,6 +115,7 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_tutor(
     req: ChatRequest,
+    request: Request,
     user: CurrentUser | None = _auth,
     db: AsyncSession = Depends(get_db),
 ):
@@ -95,14 +145,25 @@ async def chat_with_tutor(
                 from services.drive_download_service import ensure_local_file
                 doc_source_path = await ensure_local_file(doc, db)
         
-        answer, sources = ask_tutor(
+        user_id = None
+        if user:
+            db_user = await crud.get_user_by_google_id(db, user.sub)
+            if db_user:
+                user_id = db_user.id
+
+        db_user = await _resolve_db_user(request, db, user)
+        user_id = db_user.id if db_user else None
+
+        answer, sources = await ask_tutor(
             course_id=effective_course_id,
             question=req.question,
             conversation_id=req.conversation_id,
             source_path=doc_source_path,
             document_id=req.document_id,
+            db=db,
+            user_id=user_id,
         )
-        return ChatResponse(answer=answer, sources=sources)
+        return ChatResponse(answer=answer, sources=sources, conversation_id=req.conversation_id)
     except Exception as e:
         print(f"❌ Chat Error: {str(e)}")
         raise HTTPException(status_code=500, detail="The chatbot encountered an error processing your request.")
@@ -111,12 +172,13 @@ async def chat_with_tutor(
 @router.post("/chat/stream")
 async def chat_with_tutor_stream(
     req: ChatRequest,
+    request: Request,
     user: CurrentUser | None = _auth,
     db: AsyncSession = Depends(get_db),
 ):
     """Stream tutor response progressively using Server-Sent Events (SSE)."""
     try:
-        from services.chatbot_service import ask_tutor_stream
+        from services.chatbot_service import ask_tutor_stream, persist_chat_turn
 
         effective_course_id = req.course_id if (req.course_id and req.course_id > 0) else None
         doc_source_path = None
@@ -138,15 +200,20 @@ async def chat_with_tutor_stream(
                 from services.drive_download_service import ensure_local_file
                 doc_source_path = await ensure_local_file(doc, db)
 
-        token_stream, _sources = ask_tutor_stream(
+        db_user = await _resolve_db_user(request, db, user)
+        user_id = db_user.id if db_user else None
+
+        token_stream, _sources = await ask_tutor_stream(
             course_id=effective_course_id,
             question=req.question,
             conversation_id=req.conversation_id,
             source_path=doc_source_path,
             document_id=req.document_id,
+            db=db,
+            user_id=user_id,
         )
 
-        def event_generator():
+        async def event_generator():
             full_text_parts = []
             try:
                 for token in token_stream:
@@ -154,6 +221,14 @@ async def chat_with_tutor_stream(
                     yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
                 final_answer = "".join(full_text_parts)
+                await persist_chat_turn(
+                    req.conversation_id,
+                    effective_course_id,
+                    req.question,
+                    final_answer,
+                    db=db,
+                    user_id=user_id,
+                )
                 yield f"data: {json.dumps({'type': 'done', 'answer': final_answer})}\n\n"
             except Exception as stream_error:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(stream_error)})}\n\n"
@@ -166,6 +241,129 @@ async def chat_with_tutor_stream(
     except Exception as e:
         print(f"❌ Chat Stream Error: {str(e)}")
         raise HTTPException(status_code=500, detail="The chatbot stream failed to start.")
+
+
+@router.get("/chat/conversations", response_model=ChatConversationListResponse)
+async def list_chat_conversations(
+    request: Request,
+    course_id: Optional[int] = None,
+    user: CurrentUser | None = _auth,
+    db: AsyncSession = Depends(get_db),
+):
+    db_user = await _resolve_db_user(request, db, user)
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    scope_key = _scope_key_for_course(course_id)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+
+    last_message_subq = (
+        select(ChatMessageORM.content)
+        .where(ChatMessageORM.conversation_id == ChatConversationORM.id)
+        .order_by(ChatMessageORM.created_at.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+    last_role_subq = (
+        select(ChatMessageORM.role)
+        .where(ChatMessageORM.conversation_id == ChatConversationORM.id)
+        .order_by(ChatMessageORM.created_at.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(
+            ChatConversationORM,
+            last_message_subq.label("last_message_preview"),
+            last_role_subq.label("last_role"),
+        )
+        .where(
+            ChatConversationORM.user_id == db_user.id,
+            ChatConversationORM.scope_key == scope_key,
+            ChatConversationORM.last_message_at >= cutoff,
+        )
+        .order_by(ChatConversationORM.last_message_at.desc())
+    )
+
+    result = await db.execute(stmt)
+    conversations = []
+    for conversation, last_message_preview, last_role in result.all():
+        conversations.append(
+            ChatConversationSummary(
+                conversation_id=conversation.conversation_key,
+                course_id=conversation.course_id,
+                title=conversation.title,
+                last_message_at=conversation.last_message_at,
+                last_message_preview=last_message_preview,
+                last_role=last_role,
+            )
+        )
+
+    return ChatConversationListResponse(conversations=conversations)
+
+
+@router.get("/chat/conversations/{conversation_id}", response_model=ChatConversationMessagesResponse)
+async def get_chat_conversation_messages(
+    conversation_id: str,
+    request: Request,
+    course_id: Optional[int] = None,
+    user: CurrentUser | None = _auth,
+    db: AsyncSession = Depends(get_db),
+):
+    db_user = await _resolve_db_user(request, db, user)
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    scope_key = _scope_key_for_course(course_id)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+
+    stmt = select(ChatConversationORM).where(
+        ChatConversationORM.user_id == db_user.id,
+        ChatConversationORM.conversation_key == conversation_id,
+        ChatConversationORM.scope_key == scope_key,
+    )
+    result = await db.execute(stmt)
+    conversation = result.scalars().first()
+
+    if not conversation:
+        return ChatConversationMessagesResponse(
+            conversation_id=conversation_id,
+            course_id=course_id,
+            messages=[],
+        )
+
+    last_message_at = _to_utc_aware(conversation.last_message_at)
+    if last_message_at and last_message_at < cutoff:
+        await db.delete(conversation)
+        await db.commit()
+        return ChatConversationMessagesResponse(
+            conversation_id=conversation_id,
+            course_id=course_id,
+            messages=[],
+        )
+
+    msg_stmt = (
+        select(ChatMessageORM)
+        .where(ChatMessageORM.conversation_id == conversation.id)
+        .order_by(ChatMessageORM.created_at.asc())
+    )
+    msg_result = await db.execute(msg_stmt)
+    messages = [
+        ChatMessageOut(
+            id=msg.id,
+            role=msg.role,
+            content=msg.content,
+            created_at=msg.created_at,
+        )
+        for msg in msg_result.scalars().all()
+    ]
+
+    return ChatConversationMessagesResponse(
+        conversation_id=conversation_id,
+        course_id=conversation.course_id,
+        messages=messages,
+    )
 
 
 @router.post("/chat/tts")

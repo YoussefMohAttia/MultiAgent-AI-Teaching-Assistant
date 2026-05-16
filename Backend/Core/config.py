@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     UPLOAD_CLEANUP_INTERVAL_MINUTES: int = 60
     AUTO_SUMMARIZE_MATERIALS: bool = True
     AUTO_GENERATE_QUIZZES: bool = True
+    CHAT_HISTORY_TTL_HOURS: int = 24
 
     @property
     def AUTHORITY(self) -> str:
