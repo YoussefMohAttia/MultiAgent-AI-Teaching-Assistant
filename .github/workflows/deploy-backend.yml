@@ -38,5 +38,5 @@ jobs:
       run: |
         az containerapp update \
           --name ta-backend-v3 \
-          --resource-group Squee \
+          --resource-group ta-rg \
           --image tastagingacr.azurecr.io/backend:${{ github.sha }}
