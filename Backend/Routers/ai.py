@@ -2,7 +2,7 @@
 AI Router — exposes the AI capabilities as REST endpoints.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt as pyjwt
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
@@ -68,6 +68,14 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
 
 def _scope_key_for_course(course_id: Optional[int]) -> str:
     return f"course:{course_id}" if course_id else "general"
+
+
+def _to_utc_aware(value: Optional[datetime]) -> Optional[datetime]:
+    if not value:
+        return None
+    if value.tzinfo:
+        return value.astimezone(timezone.utc)
+    return value.replace(tzinfo=timezone.utc)
 
 
 async def _resolve_db_user(
@@ -245,7 +253,7 @@ async def list_chat_conversations(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     scope_key = _scope_key_for_course(course_id)
-    cutoff = datetime.utcnow() - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
 
     last_message_subq = (
         select(ChatMessageORM.content)
@@ -306,7 +314,7 @@ async def get_chat_conversation_messages(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     scope_key = _scope_key_for_course(course_id)
-    cutoff = datetime.utcnow() - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
 
     stmt = select(ChatConversationORM).where(
         ChatConversationORM.user_id == db_user.id,
@@ -323,7 +331,8 @@ async def get_chat_conversation_messages(
             messages=[],
         )
 
-    if conversation.last_message_at and conversation.last_message_at < cutoff:
+    last_message_at = _to_utc_aware(conversation.last_message_at)
+    if last_message_at and last_message_at < cutoff:
         await db.delete(conversation)
         await db.commit()
         return ChatConversationMessagesResponse(

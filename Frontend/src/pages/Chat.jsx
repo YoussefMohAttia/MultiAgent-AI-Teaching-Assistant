@@ -106,6 +106,7 @@ export default function Chat() {
   const streamRafRef = useRef(null);
   const activeAssistantIdRef = useRef(null);
   const didAutoSelectRef = useRef(false);
+  const didRestoreConversationRef = useRef(false);
   const [courses, setCourses] = useState([]);
   const [docs, setDocs] = useState([]);
   const [sourceMode, setSourceMode] = useState(initialSourceMode);
@@ -203,6 +204,27 @@ export default function Chat() {
 
   useEffect(() => { refreshHistory(); }, [refreshHistory]);
 
+  const loadConversationMessages = useCallback(async (conversationIdToLoad, scopeCourseId) => {
+    if (!conversationIdToLoad) return;
+    try {
+      const response = await getChatConversationMessages(
+        conversationIdToLoad,
+        scopeCourseId || null
+      );
+      const loaded = (response.data?.messages || []).map((msg) => ({
+        id: `m-${msg.id}`,
+        role: msg.role,
+        content: msg.content,
+      }));
+      setMessages(loaded.length
+        ? loaded
+        : [{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]
+      );
+    } catch {
+      setMessages([{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]);
+    }
+  }, [t]);
+
 
   const handleNewConversation = useCallback(() => {
     didAutoSelectRef.current = true;
@@ -221,24 +243,8 @@ export default function Chat() {
     setConversationId(conversation.conversation_id);
     setActivePane('chat');
 
-    try {
-      const response = await getChatConversationMessages(
-        conversation.conversation_id,
-        targetCourseId || null
-      );
-      const loaded = (response.data?.messages || []).map((msg) => ({
-        id: `m-${msg.id}`,
-        role: msg.role,
-        content: msg.content,
-      }));
-      setMessages(loaded.length
-        ? loaded
-        : [{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]
-      );
-    } catch {
-      setMessages([{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]);
-    }
-  }, [t]);
+    await loadConversationMessages(conversation.conversation_id, targetCourseId || null);
+  }, [loadConversationMessages]);
 
   useEffect(() => {
     if (!user?.token || didAutoSelectRef.current) return;
@@ -252,6 +258,19 @@ export default function Chat() {
       handleSelectConversation(historyItems[0]);
     }
   }, [handleSelectConversation, historyItems, messages, user?.token]);
+
+  useEffect(() => {
+    if (!user?.token || didRestoreConversationRef.current) return;
+    const isSeedOnly = messages.length === 1 && messages[0]?.id === 'seed-assistant';
+    if (!isSeedOnly) {
+      didRestoreConversationRef.current = true;
+      return;
+    }
+    if (!conversationId) return;
+    const scopeCourseId = sourceMode === 'document' ? Number(courseId || 0) : null;
+    didRestoreConversationRef.current = true;
+    loadConversationMessages(conversationId, scopeCourseId || null);
+  }, [conversationId, courseId, loadConversationMessages, messages, sourceMode, user?.token]);
 
   const flushStreamBuffer = useCallback(() => {
     const chunk = streamBufferRef.current;
@@ -641,7 +660,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-6rem)] w-full max-w-5xl mx-auto rounded-3xl bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
+    <div className="relative flex flex-col h-[calc(100vh-var(--header-h))] w-full max-w-none -m-4 md:-m-8 rounded-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
       <div className="lg:hidden flex items-center justify-center gap-2 px-4 pt-4">
         <button
           type="button"
