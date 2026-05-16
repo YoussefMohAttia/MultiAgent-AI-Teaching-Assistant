@@ -2,6 +2,7 @@
 Pydantic models (request / response bodies) for the AI endpoints.
 """
 
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
@@ -23,6 +24,33 @@ class SourceSnippet(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: List[SourceSnippet] = []
+    conversation_id: Optional[str] = None
+
+
+class ChatConversationSummary(BaseModel):
+    conversation_id: str
+    course_id: Optional[int] = None
+    title: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    last_message_preview: Optional[str] = None
+    last_role: Optional[str] = None
+
+
+class ChatConversationListResponse(BaseModel):
+    conversations: List[ChatConversationSummary]
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: Optional[datetime] = None
+
+
+class ChatConversationMessagesResponse(BaseModel):
+    conversation_id: str
+    course_id: Optional[int] = None
+    messages: List[ChatMessageOut]
 
 
 class TTSRequest(BaseModel):

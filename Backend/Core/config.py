@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     UPLOAD_CLEANUP_RETENTION_HOURS: int = 24
     UPLOAD_CLEANUP_INTERVAL_MINUTES: int = 60
     AUTO_SUMMARIZE_MATERIALS: bool = True
+    CHAT_HISTORY_TTL_HOURS: int = 24
 
     @property
     def AUTHORITY(self) -> str:

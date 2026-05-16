@@ -40,6 +40,7 @@ class User(Base):
     quizzes_created = relationship("Quiz", back_populates="creator")
     progress = relationship("UserProgress", back_populates="user", uselist=False, cascade="all, delete-orphan")
     tasks = relationship("UserTask", back_populates="user", cascade="all, delete-orphan")
+    chat_conversations = relationship("ChatConversation", back_populates="user", cascade="all, delete-orphan")
 
 # ⚡ Restored exactly as you had it
 class OTPVerification(Base):
@@ -70,6 +71,7 @@ class Course(Base):
     
     documents = relationship("Document", back_populates="course", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
+    chat_conversations = relationship("ChatConversation", back_populates="course", cascade="all, delete-orphan")
     # ⚡ Removed posts relationship
     
     class Config:
@@ -112,6 +114,41 @@ class Document(Base):
     
     class Config:
         from_attributes = True
+
+# ---------------------------
+# Chat Conversations / Messages
+# ---------------------------
+
+class ChatConversation(Base):
+    __tablename__ = "chat_conversations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "conversation_key", "scope_key", name="ux_chat_conversation_user_scope"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), index=True, nullable=True)
+    conversation_key = Column(String(100), index=True, nullable=False)
+    scope_key = Column(String(64), index=True, nullable=False)
+    title = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_message_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    user = relationship("User", back_populates="chat_conversations")
+    course = relationship("Course", back_populates="chat_conversations")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey("chat_conversations.id"), index=True, nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    conversation = relationship("ChatConversation", back_populates="messages")
 
 # ⚡ UPDATED: Comment Table Refactored
 class Comment(Base):
