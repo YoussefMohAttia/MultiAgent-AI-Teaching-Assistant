@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     UPLOAD_CLEANUP_RETENTION_HOURS: int = 24
     UPLOAD_CLEANUP_INTERVAL_MINUTES: int = 60
     AUTO_SUMMARIZE_MATERIALS: bool = True
+    AUTO_GENERATE_QUIZZES: bool = True
 
     @property
     def AUTHORITY(self) -> str:

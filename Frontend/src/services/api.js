@@ -67,6 +67,11 @@ export const getSummaryStatus = (docIds) =>
     params: { doc_ids: (docIds || []).join(',') },
   });
 
+export const getQuizStatus = (docIds) =>
+  api.get('/ai/quiz-status', {
+    params: { doc_ids: (docIds || []).join(',') },
+  });
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {

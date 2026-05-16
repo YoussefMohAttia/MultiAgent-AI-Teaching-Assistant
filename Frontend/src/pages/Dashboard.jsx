@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSummaryStatus } from '../services/api';
+import { getSummaryStatus, getQuizStatus } from '../services/api';
 import { useToasts } from '../contexts/ToastContext';
 import { getStats } from '../lib/activity';
 import { 
@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(1);
   const [stats, setStats] = useState(() => getStats());
   const summaryPollRef = useRef(null);
+  const quizPollRef = useRef(null);
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -103,6 +104,10 @@ export default function Dashboard() {
     if (summaryPollRef.current) {
       clearTimeout(summaryPollRef.current);
       summaryPollRef.current = null;
+    }
+    if (quizPollRef.current) {
+      clearTimeout(quizPollRef.current);
+      quizPollRef.current = null;
     }
   }, []);
 
@@ -143,6 +148,43 @@ export default function Dashboard() {
     poll(0);
   }
 
+  function scheduleQuizPolling(items) {
+    if (quizPollRef.current) {
+      clearTimeout(quizPollRef.current);
+      quizPollRef.current = null;
+    }
+
+    const pending = items.slice();
+    const maxAttempts = 12;
+
+    const poll = async (attempt) => {
+      if (!pending.length || attempt >= maxAttempts) return;
+      try {
+        const res = await getQuizStatus(pending.map((doc) => doc.id));
+        const statuses = res.data?.statuses || {};
+        for (let i = pending.length - 1; i >= 0; i -= 1) {
+          const doc = pending[i];
+          if (statuses[String(doc.id)] === 'ready') {
+            pushToast({
+              title: t('syncQuizReadyTitle'),
+              message: doc.title,
+              tone: 'success',
+            });
+            pending.splice(i, 1);
+          }
+        }
+      } catch {
+        return;
+      }
+
+      if (pending.length) {
+        quizPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
+      }
+    };
+
+    poll(0);
+  }
+
 
   async function autoSync() {
     const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
@@ -163,6 +205,7 @@ export default function Dashboard() {
       const payload = res?.data || {};
       const newMaterials = payload.new_materials || [];
       const scheduledSummaryIds = payload.auto_summary?.scheduled_doc_ids || [];
+      const scheduledQuizIds = payload.auto_quiz?.scheduled_doc_ids || [];
 
       if (newMaterials.length) {
         newMaterials.forEach((doc) => {
@@ -183,6 +226,23 @@ export default function Dashboard() {
         pushToast({
           title: t('syncSummaryQueuedTitle'),
           message: t('syncSummaryQueuedGeneric'),
+          tone: 'warning',
+        });
+      }
+
+      const quizCandidates = newMaterials.filter((doc) =>
+        scheduledQuizIds.includes(doc.id)
+      );
+
+      if (quizCandidates.length) {
+        quizCandidates.forEach((doc) => {
+          pushToast({ title: t('syncQuizQueuedTitle'), message: doc.title, tone: 'warning' });
+        });
+        scheduleQuizPolling(quizCandidates);
+      } else if (scheduledQuizIds.length) {
+        pushToast({
+          title: t('syncQuizQueuedTitle'),
+          message: t('syncQuizQueuedGeneric'),
           tone: 'warning',
         });
       }

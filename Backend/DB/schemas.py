@@ -109,6 +109,7 @@ class Document(Base):
     
     # ⚡ NEW: Comments are now linked directly to the Document pipeline
     comments = relationship("Comment", back_populates="document", cascade="all, delete-orphan")
+    quiz_links = relationship("QuizDocument", back_populates="document", cascade="all, delete-orphan")
     
     class Config:
         from_attributes = True
@@ -212,6 +213,7 @@ class Quiz(Base):
     creator = relationship("User", back_populates="quizzes_created")
     questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
     attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")
+    document_links = relationship("QuizDocument", back_populates="quiz", cascade="all, delete-orphan")
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
@@ -224,6 +226,15 @@ class QuizQuestion(Base):
     
     # Relationships
     quiz = relationship("Quiz", back_populates="questions")
+
+class QuizDocument(Base):
+    __tablename__ = "quiz_documents"
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), primary_key=True)
+    doc_id = Column(Integer, ForeignKey("documents.id"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    quiz = relationship("Quiz", back_populates="document_links")
+    document = relationship("Document", back_populates="quiz_links")
 
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
