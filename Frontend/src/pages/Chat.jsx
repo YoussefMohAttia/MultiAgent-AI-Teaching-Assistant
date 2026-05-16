@@ -42,16 +42,32 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
       <button
         type="button" disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={cn("w-full flex items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 text-xs rounded-xl px-4 py-3 text-slate-200 outline-none transition-all", disabled && "opacity-40 cursor-not-allowed", isOpen && "border-indigo-500/50 ring-1 ring-indigo-500/50")}
+        className={cn(
+          "w-full flex items-center justify-between bg-white/70 dark:bg-black/40 backdrop-blur-md border border-slate-200 dark:border-white/10 text-xs rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 outline-none transition-all",
+          disabled && "opacity-40 cursor-not-allowed",
+          isOpen && "border-indigo-500/50 ring-1 ring-indigo-500/50"
+        )}
       >
         <span className="truncate">{selected ? selected.title : placeholder}</span>
-        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen && "rotate-180 text-indigo-400")} />
+        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen && "rotate-180 text-indigo-500", !isOpen && "text-slate-500")} />
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute top-full left-0 w-full mt-2 bg-[#0f111a] border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-1 custom-scrollbar">
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-1 custom-scrollbar"
+          >
             {options.map(opt => (
-              <button key={opt.id} onClick={() => { onChange(opt.id); setIsOpen(false); }} className={cn("w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-indigo-500/20", String(value) === String(opt.id) && "text-indigo-400 bg-indigo-500/10")}>
+              <button
+                key={opt.id}
+                onClick={() => { onChange(opt.id); setIsOpen(false); }}
+                className={cn(
+                  "w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20",
+                  String(value) === String(opt.id) && "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
+                )}
+              >
                 {opt.title}
               </button>
             ))}
@@ -95,7 +111,25 @@ export default function Chat() {
   const speechTimeoutRef = useRef(null);
 
   useEffect(() => { getCourses().then(r => setCourses(r.data.courses || [])); }, []);
-  useEffect(() => { if (courseId && sourceMode === 'document') getDocuments(courseId).then(r => setDocs(r.data.documents || [])); }, [courseId, sourceMode]);
+  useEffect(() => {
+    if (sourceMode !== 'document') {
+      setDocs([]);
+      setSelectedDocId('');
+      return;
+    }
+    setSelectedDocId('');
+    if (courseId) {
+      getDocuments(courseId)
+        .then((r) => {
+          const list = r.data.documents || [];
+          setDocs(list);
+          if (list.length) setSelectedDocId(String(list[0].id));
+        })
+        .catch(() => setDocs([]));
+    } else {
+      setDocs([]);
+    }
+  }, [courseId, sourceMode]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
   useEffect(() => {
     setMessages((prev) => {
@@ -512,11 +546,31 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-4 md:px-12 pb-6 pt-4 border-t border-white/5 bg-black/40 backdrop-blur-2xl">
+      <div className="px-4 md:px-12 pb-6 pt-4 border-t border-slate-200 dark:border-white/5 bg-white/70 dark:bg-black/40 backdrop-blur-2xl">
         <div className="w-full max-w-3xl mx-auto flex flex-col gap-3">
           <div className="flex gap-2">
-            <button onClick={() => {setSourceMode('general'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'general' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatGeneral')}</button>
-            <button onClick={() => {setSourceMode('document'); setUploadFile(null);}} className={cn("px-4 py-1.5 rounded-full text-xs border transition-all", sourceMode === 'document' ? "bg-indigo-600 text-white" : "bg-black/40 text-slate-400")}>{t('chatCourseContext')}</button>
+            <button
+              onClick={() => {setSourceMode('general'); setUploadFile(null);}}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-xs border transition-all",
+                sourceMode === 'general'
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+              )}
+            >
+              {t('chatGeneral')}
+            </button>
+            <button
+              onClick={() => {setSourceMode('document'); setUploadFile(null);}}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-xs border transition-all",
+                sourceMode === 'document'
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+              )}
+            >
+              {t('chatCourseContext')}
+            </button>
           </div>
 
           {sourceMode === 'document' && (
@@ -526,7 +580,7 @@ export default function Chat() {
             </motion.div>
           )}
 
-          <div className="relative bg-black/60 rounded-3xl border border-white/10 p-2 flex flex-col">
+          <div className="relative bg-white/80 dark:bg-black/60 rounded-3xl border border-slate-200 dark:border-white/10 p-2 flex flex-col">
             {uploadFile && <div className="px-3 py-1 mb-2 bg-indigo-500/10 rounded-xl text-xs text-indigo-300 flex justify-between">{uploadFile.name} <X size={14} className="cursor-pointer" onClick={() => setUploadFile(null)} /></div>}
             <div className="flex items-center gap-2">
               <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
