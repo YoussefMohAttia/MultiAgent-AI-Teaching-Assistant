@@ -89,6 +89,16 @@ export const getQuizzesByCourse = (courseId) =>
 export const chatWithTutor = (courseId, question, conversationId = 'default') =>
   api.post('/ai/chat', { course_id: courseId, question, conversation_id: conversationId });
 
+export const getChatConversations = (courseId = null) =>
+  api.get('/ai/chat/conversations', {
+    params: courseId ? { course_id: courseId } : {},
+  });
+
+export const getChatConversationMessages = (conversationId, courseId = null) =>
+  api.get(`/ai/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    params: courseId ? { course_id: courseId } : {},
+  });
+
 export const synthesizeSpeech = (text, options = {}) =>
   api.post(
     '/ai/chat/tts',

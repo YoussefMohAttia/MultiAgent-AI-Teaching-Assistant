@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCourses, getDocuments, synthesizeSpeech, transcribeAudio } from '../services/api';
+import {
+  getCourses,
+  getDocuments,
+  getChatConversations,
+  getChatConversationMessages,
+  synthesizeSpeech,
+  transcribeAudio,
+} from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Textarea } from '../components/ui/textarea';
@@ -81,20 +88,34 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
 export default function Chat() {
   const { user } = useAuth();
   const { t, lang } = useLanguage();
+  const initialSourceMode = (() => {
+    const stored = readStoredValue('chat_source_mode', 'general');
+    return stored === 'document' || stored === 'general' ? stored : 'general';
+  })();
   const [messages, setMessages] = useState([
     { id: 'seed-assistant', role: 'assistant', content: t('chatSeed') },
   ]);
+  const [conversationId, setConversationId] = useState(() => {
+    const stored = readStoredValue('chat_conversation_id', '');
+    return stored || createConversationId();
+  });
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const streamBufferRef = useRef('');
   const streamRafRef = useRef(null);
   const activeAssistantIdRef = useRef(null);
+  const didAutoSelectRef = useRef(false);
+  const didRestoreConversationRef = useRef(false);
   const [courses, setCourses] = useState([]);
   const [docs, setDocs] = useState([]);
-  const [sourceMode, setSourceMode] = useState('general');
-  const [courseId, setCourseId] = useState('');
+  const [sourceMode, setSourceMode] = useState(initialSourceMode);
+  const [courseId, setCourseId] = useState(() => readStoredValue('chat_course_id', ''));
   const [selectedDocId, setSelectedDocId] = useState('');
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [activePane, setActivePane] = useState('chat');
   const [uploadFile, setUploadFile] = useState(null);
   const fileInputRef = useRef(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({ minHeight: 52, maxHeight: 200 });
@@ -140,6 +161,116 @@ export default function Chat() {
       return [{ ...first, content: t('chatSeed') }];
     });
   }, [lang, t]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('chat_source_mode', sourceMode);
+  }, [sourceMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('chat_course_id', courseId || '');
+  }, [courseId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('chat_conversation_id', conversationId || '');
+  }, [conversationId]);
+
+  const refreshHistory = useCallback(async () => {
+    setHistoryError('');
+    if (!user?.token) {
+      setHistoryItems([]);
+      return;
+    }
+
+    const scopeCourseId = sourceMode === 'document' ? Number(courseId || 0) : null;
+    if (sourceMode === 'document' && !scopeCourseId) {
+      setHistoryItems([]);
+      return;
+    }
+
+    setHistoryLoading(true);
+    try {
+      const response = await getChatConversations(scopeCourseId || null);
+      setHistoryItems(response.data?.conversations || []);
+    } catch {
+      setHistoryError(t('chatHistoryLoadError'));
+      setHistoryItems([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [courseId, sourceMode, t, user?.token]);
+
+  useEffect(() => { refreshHistory(); }, [refreshHistory]);
+
+  const loadConversationMessages = useCallback(async (conversationIdToLoad, scopeCourseId) => {
+    if (!conversationIdToLoad) return;
+    try {
+      const response = await getChatConversationMessages(
+        conversationIdToLoad,
+        scopeCourseId || null
+      );
+      const loaded = (response.data?.messages || []).map((msg) => ({
+        id: `m-${msg.id}`,
+        role: msg.role,
+        content: msg.content,
+      }));
+      setMessages(loaded.length
+        ? loaded
+        : [{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]
+      );
+    } catch {
+      setMessages([{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]);
+    }
+  }, [t]);
+
+
+  const handleNewConversation = useCallback(() => {
+    didAutoSelectRef.current = true;
+    setConversationId(createConversationId());
+    setMessages([{ id: 'seed-assistant', role: 'assistant', content: t('chatSeed') }]);
+    setActivePane('chat');
+  }, [t]);
+
+  const handleSelectConversation = useCallback(async (conversation) => {
+    if (!conversation?.conversation_id) return;
+    didAutoSelectRef.current = true;
+    const targetCourseId = conversation.course_id ? Number(conversation.course_id) : null;
+    setSourceMode(targetCourseId ? 'document' : 'general');
+    setCourseId(targetCourseId ? String(targetCourseId) : '');
+    setSelectedDocId('');
+    setConversationId(conversation.conversation_id);
+    setActivePane('chat');
+
+    await loadConversationMessages(conversation.conversation_id, targetCourseId || null);
+  }, [loadConversationMessages]);
+
+  useEffect(() => {
+    if (!user?.token || didAutoSelectRef.current) return;
+    const isSeedOnly = messages.length === 1 && messages[0]?.id === 'seed-assistant';
+    if (!isSeedOnly) {
+      didAutoSelectRef.current = true;
+      return;
+    }
+    if (historyItems.length) {
+      didAutoSelectRef.current = true;
+      handleSelectConversation(historyItems[0]);
+    }
+  }, [handleSelectConversation, historyItems, messages, user?.token]);
+
+  useEffect(() => {
+    if (!user?.token || didRestoreConversationRef.current) return;
+    const isSeedOnly = messages.length === 1 && messages[0]?.id === 'seed-assistant';
+    if (!isSeedOnly) {
+      didRestoreConversationRef.current = true;
+      return;
+    }
+    if (!conversationId) return;
+    const scopeCourseId = sourceMode === 'document' ? Number(courseId || 0) : null;
+    didRestoreConversationRef.current = true;
+    loadConversationMessages(conversationId, scopeCourseId || null);
+  }, [conversationId, courseId, loadConversationMessages, messages, sourceMode, user?.token]);
 
   const flushStreamBuffer = useCallback(() => {
     const chunk = streamBufferRef.current;
@@ -403,6 +534,10 @@ export default function Chat() {
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
     if (sourceMode === 'upload' && !uploadFile) return;
+    const activeConversationId = conversationId || createConversationId();
+    if (!conversationId) {
+      setConversationId(activeConversationId);
+    }
     const userMsg = { id: `u-${Date.now()}`, role: 'user', content: input.trim() };
     const assistantId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     activeAssistantIdRef.current = assistantId;
@@ -443,9 +578,7 @@ export default function Chat() {
       const payload = {
         question: userMsg.content,
         course_id: sourceMode === 'document' ? Number(courseId || 0) : 0,
-        conversation_id: sourceMode === 'document'
-          ? `course:${courseId || '0'}:doc:${selectedDocId || 'all'}:user:${user?.id || 'anon'}`
-          : `general:user:${user?.id || 'anon'}`,
+        conversation_id: activeConversationId,
         ...(sourceMode === 'document' && selectedDocId
           ? { document_id: Number(selectedDocId) }
           : {}),
@@ -506,111 +639,208 @@ export default function Chat() {
     } finally {
       activeAssistantIdRef.current = null;
       setIsTyping(false);
+      refreshHistory();
     }
   };
 
-  return (
-    <div className="relative flex flex-col h-[calc(100vh-6rem)] w-full max-w-5xl mx-auto rounded-3xl bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
-      
-      <header className="relative z-20 flex flex-col items-center justify-center pt-8 pb-4">
-        <div className="p-2 bg-white/5 rounded-2xl border border-white/10 mb-3"><Sparkles className="w-5 h-5 text-indigo-400" /></div>
-        <h1 className="text-xl font-medium text-white tracking-tight">{t('chatHeader')}</h1>
-      </header>
+  const activeCourse = courses.find((course) => String(course.id) === String(courseId));
+  const historyScopeLabel = sourceMode === 'document'
+    ? activeCourse?.title || t('chatHistoryCourseLabel')
+    : t('chatHistoryGeneralLabel');
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-6 space-y-8 scroll-smooth custom-scrollbar">
-        <AnimatePresence>
-          {messages.map((msg, idx) => (
-            <motion.div key={msg.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
-                {msg.role === 'assistant' ? (
-                  <div className="flex items-start gap-3">
-                    <MarkdownRenderer content={cleanAssistantText(msg.content)} className="max-w-none" />
-                    {msg.content && (
-                      <button
-                        type="button"
-                        onClick={() => handleSpeakMessage(msg)}
-                        className="mt-0.5 inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition"
-                        title={t('chatSpeak')}
-                      >
-                        <Volume2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  msg.content
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+  let historyPlaceholder = t('chatHistoryEmpty');
+  if (!user?.token) {
+    historyPlaceholder = t('chatHistoryAuth');
+  } else if (sourceMode === 'document' && !courseId) {
+    historyPlaceholder = t('chatHistorySelectCourse');
+  } else if (historyLoading) {
+    historyPlaceholder = t('chatHistoryLoading');
+  } else if (historyError) {
+    historyPlaceholder = historyError;
+  }
+
+  return (
+    <div className="relative flex flex-col h-[calc(100vh-var(--header-h))] w-full max-w-none -m-4 md:-m-8 rounded-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
+      <div className="lg:hidden flex items-center justify-center gap-2 px-4 pt-4">
+        <button
+          type="button"
+          onClick={() => setActivePane('chat')}
+          className={cn(
+            "px-4 py-1.5 rounded-full text-xs border transition-all",
+            activePane === 'chat'
+              ? "bg-indigo-600 text-white"
+              : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+          )}
+        >
+          {t('chatTabChat')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActivePane('history')}
+          className={cn(
+            "px-4 py-1.5 rounded-full text-xs border transition-all",
+            activePane === 'history'
+              ? "bg-indigo-600 text-white"
+              : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+          )}
+        >
+          {t('chatHistoryTab')}
+        </button>
       </div>
 
-      <div className="px-4 md:px-12 pb-6 pt-4 border-t border-slate-200 dark:border-white/5 bg-white/70 dark:bg-black/40 backdrop-blur-2xl">
-        <div className="w-full max-w-3xl mx-auto flex flex-col gap-3">
-          <div className="flex gap-2">
-            <button
-              onClick={() => {setSourceMode('general'); setUploadFile(null);}}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-xs border transition-all",
-                sourceMode === 'general'
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
-              )}
-            >
-              {t('chatGeneral')}
-            </button>
-            <button
-              onClick={() => {setSourceMode('document'); setUploadFile(null);}}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-xs border transition-all",
-                sourceMode === 'document'
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
-              )}
-            >
-              {t('chatCourseContext')}
-            </button>
-          </div>
-
-          {sourceMode === 'document' && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col sm:flex-row gap-2">
-              <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder={t('chatSelectCourse')} />
-              <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder={t('chatSelectDocument')} disabled={!courseId} />
-            </motion.div>
+      <div className="flex h-full">
+        <aside
+          className={cn(
+            "w-full lg:w-72 flex-col border-r border-white/10 bg-white/5 backdrop-blur-xl",
+            activePane === 'history' ? 'flex' : 'hidden',
+            'lg:flex'
           )}
-
-          <div className="relative bg-white/80 dark:bg-black/60 rounded-3xl border border-slate-200 dark:border-white/10 p-2 flex flex-col">
-            {uploadFile && <div className="px-3 py-1 mb-2 bg-indigo-500/10 rounded-xl text-xs text-indigo-300 flex justify-between">{uploadFile.name} <X size={14} className="cursor-pointer" onClick={() => setUploadFile(null)} /></div>}
-            <div className="flex items-center gap-2">
-              <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
-              <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={(e) => {setUploadFile(e.target.files[0]); setSourceMode('upload');}} />
+        >
+          <div className="px-4 py-4 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">{t('chatHistoryTitle')}</h2>
               <button
                 type="button"
-                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                className={cn(
-                  "ml-1 inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/10 transition",
-                  isRecording ? "bg-rose-500/20 text-rose-300" : "text-slate-300 hover:text-white hover:bg-white/10"
-                )}
-                title={isRecording ? t('chatMicStop') : t('chatMicStart')}
+                onClick={handleNewConversation}
+                className="text-[11px] uppercase tracking-wide text-indigo-300 hover:text-indigo-200"
               >
-                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {t('chatHistoryNew')}
               </button>
-              <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder={t('chatAskPlaceholder')} className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
-              <button onClick={handleSendMessage} className="bg-white text-black p-2.5 rounded-full hover:scale-105 transition-all"><ArrowUpIcon size={18} /></button>
             </div>
-            {(micError || isTranscribing || ttsError) && (
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-300">
-                {isTranscribing && (
-                  <span className="inline-flex items-center gap-2 text-indigo-300">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {t('chatTranscribing')}
-                  </span>
-                )}
-                {micError && <span className="text-rose-300">{micError}</span>}
-                {ttsError && <span className="text-rose-300">{ttsError}</span>}
-              </div>
+            <div className="mt-1 text-xs text-slate-400">{historyScopeLabel}</div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+            {historyItems.length ? (
+              historyItems.map((item) => (
+                <button
+                  key={`${item.conversation_id}-${item.last_message_at || ''}`}
+                  type="button"
+                  onClick={() => handleSelectConversation(item)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-2xl border transition-all",
+                    conversationId === item.conversation_id
+                      ? "border-indigo-500/40 bg-indigo-500/10 text-white"
+                      : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+                    <span>{formatTimestamp(item.last_message_at, lang)}</span>
+                    <span className="uppercase tracking-wide">{item.last_role || ''}</span>
+                  </div>
+                  <div className="mt-1 text-sm text-slate-100 truncate">
+                    {item.last_message_preview || t('chatHistoryPreviewEmpty')}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-6 text-xs text-slate-400">{historyPlaceholder}</div>
             )}
+          </div>
+        </aside>
+
+        <div className={cn("flex-1 flex flex-col", activePane === 'chat' ? 'flex' : 'hidden', 'lg:flex')}>
+          <header className="relative z-20 flex flex-col items-center justify-center pt-8 pb-4">
+            <div className="p-2 bg-white/5 rounded-2xl border border-white/10 mb-3"><Sparkles className="w-5 h-5 text-indigo-400" /></div>
+            <h1 className="text-xl font-medium text-white tracking-tight">{t('chatHeader')}</h1>
+          </header>
+
+          <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-6 space-y-8 scroll-smooth custom-scrollbar">
+            <AnimatePresence>
+              {messages.map((msg, idx) => (
+                <motion.div key={msg.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={cn("px-5 py-4 text-sm rounded-3xl", msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-white/5 text-slate-200 border border-white/10 rounded-tl-sm")}>
+                    {msg.role === 'assistant' ? (
+                      <div className="flex items-start gap-3">
+                        <MarkdownRenderer content={cleanAssistantText(msg.content)} className="max-w-none" />
+                        {msg.content && (
+                          <button
+                            type="button"
+                            onClick={() => handleSpeakMessage(msg)}
+                            className="mt-0.5 inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition"
+                            title={t('chatSpeak')}
+                          >
+                            <Volume2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="px-4 md:px-12 pb-6 pt-4 border-t border-slate-200 dark:border-white/5 bg-white/70 dark:bg-black/40 backdrop-blur-2xl">
+            <div className="w-full max-w-3xl mx-auto flex flex-col gap-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {setSourceMode('general'); setUploadFile(null);}}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs border transition-all",
+                    sourceMode === 'general'
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+                  )}
+                >
+                  {t('chatGeneral')}
+                </button>
+                <button
+                  onClick={() => {setSourceMode('document'); setUploadFile(null);}}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs border transition-all",
+                    sourceMode === 'document'
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10"
+                  )}
+                >
+                  {t('chatCourseContext')}
+                </button>
+              </div>
+
+              {sourceMode === 'document' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col sm:flex-row gap-2">
+                  <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder={t('chatSelectCourse')} />
+                  <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder={t('chatSelectDocument')} disabled={!courseId} />
+                </motion.div>
+              )}
+
+              <div className="relative bg-white/80 dark:bg-black/60 rounded-3xl border border-slate-200 dark:border-white/10 p-2 flex flex-col">
+                {uploadFile && <div className="px-3 py-1 mb-2 bg-indigo-500/10 rounded-xl text-xs text-indigo-300 flex justify-between">{uploadFile.name} <X size={14} className="cursor-pointer" onClick={() => setUploadFile(null)} /></div>}
+                <div className="flex items-center gap-2">
+                  <Paperclip size={20} className="text-slate-400 hover:text-white cursor-pointer ml-2" onClick={() => fileInputRef.current.click()} />
+                  <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={(e) => {setUploadFile(e.target.files[0]); setSourceMode('upload');}} />
+                  <button
+                    type="button"
+                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                    className={cn(
+                      "ml-1 inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/10 transition",
+                      isRecording ? "bg-rose-500/20 text-rose-300" : "text-slate-300 hover:text-white hover:bg-white/10"
+                    )}
+                    title={isRecording ? t('chatMicStop') : t('chatMicStart')}
+                  >
+                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </button>
+                  <Textarea ref={textareaRef} value={input} onChange={e => { setInput(e.target.value); adjustHeight(); }} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()} placeholder={t('chatAskPlaceholder')} className="bg-transparent border-none focus:ring-0 text-white flex-1 min-h-[48px]" />
+                  <button onClick={handleSendMessage} className="bg-white text-black p-2.5 rounded-full hover:scale-105 transition-all"><ArrowUpIcon size={18} /></button>
+                </div>
+                {(micError || isTranscribing || ttsError) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+                    {isTranscribing && (
+                      <span className="inline-flex items-center gap-2 text-indigo-300">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {t('chatTranscribing')}
+                      </span>
+                    )}
+                    {micError && <span className="text-rose-300">{micError}</span>}
+                    {ttsError && <span className="text-rose-300">{ttsError}</span>}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -637,4 +867,29 @@ function cleanAssistantText(text) {
   // Remove lines that start with "Thinking:" or similar
   cleaned = cleaned.split('\n').filter(line => !line.match(/^(thinking|thought|reasoning|analysis):/i)).join('\n');
   return cleaned.trim();
+}
+
+function createConversationId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function readStoredValue(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+  const value = localStorage.getItem(key);
+  return value !== null ? value : fallback;
+}
+
+function formatTimestamp(value, lang = 'en') {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }

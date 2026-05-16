@@ -12,8 +12,14 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterator, List, Tuple
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from Core.config import settings
+from DB.schemas import ChatConversation, ChatMessage
 from services.openrouter_client import chat_completion, chat_completion_stream
 from services.pdf_processor import query_course_documents
 
@@ -21,6 +27,8 @@ from services.pdf_processor import query_course_documents
 # In-memory conversation store  (swap for Redis / DB in production)
 # ---------------------------------------------------------------------------
 _conversations: Dict[str, List[dict]] = {}   # conversation_id -> list of messages
+
+MAX_HISTORY_MESSAGES = 6
 
 TUTOR_SYSTEM = (
     "You are a helpful and patient tutor. Use the following context "
@@ -40,12 +48,157 @@ GENERAL_SYSTEM = (
 CHAT_TIMEOUT_S = 60
 
 
-def ask_tutor(
-    course_id: int,
+def _normalize_conversation_id(conversation_id: str | None) -> str:
+    if not conversation_id:
+        return "default"
+    normalized = conversation_id.strip()
+    return normalized or "default"
+
+
+def _scope_key(course_id: int | None) -> str:
+    return f"course:{course_id}" if course_id else "general"
+
+
+def _to_utc_naive(timestamp: datetime | None) -> datetime | None:
+    if not timestamp:
+        return None
+    if timestamp.tzinfo:
+        return timestamp.astimezone(timezone.utc).replace(tzinfo=None)
+    return timestamp
+
+
+async def _load_db_history(
+    db: AsyncSession,
+    user_id: int,
+    conversation_id: str,
+    course_id: int | None,
+) -> List[ChatMessage]:
+    scope_key = _scope_key(course_id)
+    stmt = select(ChatConversation).where(
+        ChatConversation.user_id == user_id,
+        ChatConversation.conversation_key == conversation_id,
+        ChatConversation.scope_key == scope_key,
+    )
+    result = await db.execute(stmt)
+    conversation = result.scalars().first()
+
+    if not conversation:
+        return []
+
+    cutoff = datetime.utcnow() - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+    last_message_at = _to_utc_naive(conversation.last_message_at)
+    if last_message_at and last_message_at < cutoff:
+        await db.delete(conversation)
+        await db.commit()
+        return []
+
+    msg_stmt = (
+        select(ChatMessage)
+        .where(ChatMessage.conversation_id == conversation.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(MAX_HISTORY_MESSAGES)
+    )
+    msg_result = await db.execute(msg_stmt)
+    messages = list(reversed(msg_result.scalars().all()))
+    return messages
+
+
+async def _persist_db_turn(
+    db: AsyncSession,
+    user_id: int,
+    conversation_id: str,
+    course_id: int | None,
+    question: str,
+    answer: str,
+) -> None:
+    scope_key = _scope_key(course_id)
+    now = datetime.utcnow()
+
+    stmt = select(ChatConversation).where(
+        ChatConversation.user_id == user_id,
+        ChatConversation.conversation_key == conversation_id,
+        ChatConversation.scope_key == scope_key,
+    )
+    result = await db.execute(stmt)
+    conversation = result.scalars().first()
+
+    if conversation:
+        cutoff = datetime.utcnow() - timedelta(hours=settings.CHAT_HISTORY_TTL_HOURS)
+        last_message_at = _to_utc_naive(conversation.last_message_at)
+        if last_message_at and last_message_at < cutoff:
+            await db.delete(conversation)
+            await db.flush()
+            conversation = None
+
+    if not conversation:
+        conversation = ChatConversation(
+            user_id=user_id,
+            course_id=course_id,
+            conversation_key=conversation_id,
+            scope_key=scope_key,
+            last_message_at=now,
+        )
+        db.add(conversation)
+        await db.flush()
+
+    conversation.last_message_at = now
+    db.add_all(
+        [
+            ChatMessage(conversation_id=conversation.id, role="user", content=question),
+            ChatMessage(conversation_id=conversation.id, role="assistant", content=answer),
+        ]
+    )
+    await db.commit()
+
+
+async def _build_history_text(
+    conversation_id: str,
+    course_id: int | None,
+    db: AsyncSession | None,
+    user_id: int | None,
+) -> str:
+    history_text = ""
+    if db and user_id:
+        messages = await _load_db_history(db, user_id, conversation_id, course_id)
+        for msg in messages:
+            role = "Student" if msg.role == "user" else "Tutor"
+            history_text += f"{role}: {msg.content}\n"
+        return history_text
+
+    history = _conversations.get(conversation_id, [])
+    for msg in history[-MAX_HISTORY_MESSAGES:]:
+        role = "Student" if msg["role"] == "user" else "Tutor"
+        history_text += f"{role}: {msg['content']}\n"
+    return history_text
+
+
+async def persist_chat_turn(
+    conversation_id: str,
+    course_id: int | None,
+    question: str,
+    answer: str,
+    db: AsyncSession | None = None,
+    user_id: int | None = None,
+) -> None:
+    conversation_id = _normalize_conversation_id(conversation_id)
+    if db and user_id:
+        await _persist_db_turn(db, user_id, conversation_id, course_id, question, answer)
+        return
+
+    if conversation_id not in _conversations:
+        _conversations[conversation_id] = []
+    _conversations[conversation_id].append({"role": "user", "content": question})
+    _conversations[conversation_id].append({"role": "assistant", "content": answer})
+
+
+async def ask_tutor(
+    course_id: int | None,
     question: str,
     conversation_id: str = "default",
     source_path: str | None = None,
     document_id: int | None = None,
+    db: AsyncSession | None = None,
+    user_id: int | None = None,
 ) -> Tuple[str, List[dict]]:
     """
     Ask the RAG tutor a question scoped to a course's documents.
@@ -71,12 +224,9 @@ def ask_tutor(
         retrieved = []
         context_text = ""
 
-    # 2.  Build conversation history snippet (last 6 turns)
-    history = _conversations.get(conversation_id, [])
-    history_text = ""
-    for msg in history[-6:]:
-        role = "Student" if msg["role"] == "user" else "Tutor"
-        history_text += f"{role}: {msg['content']}\n"
+    # 2.  Build conversation history snippet (last 6 messages)
+    conversation_id = _normalize_conversation_id(conversation_id)
+    history_text = await _build_history_text(conversation_id, course_id, db, user_id)
 
     # 3.  Build the full prompt
     if course_id:
@@ -105,10 +255,14 @@ def ask_tutor(
     )
 
     # 5.  Update conversation memory
-    if conversation_id not in _conversations:
-        _conversations[conversation_id] = []
-    _conversations[conversation_id].append({"role": "user", "content": question})
-    _conversations[conversation_id].append({"role": "assistant", "content": answer})
+    await persist_chat_turn(
+        conversation_id,
+        course_id,
+        question,
+        answer,
+        db=db,
+        user_id=user_id,
+    )
 
     # 6.  Format sources
     sources = [
@@ -122,12 +276,14 @@ def ask_tutor(
     return answer, sources
 
 
-def ask_tutor_stream(
+async def ask_tutor_stream(
     course_id: int | None,
     question: str,
     conversation_id: str = "default",
     source_path: str | None = None,
     document_id: int | None = None,
+    db: AsyncSession | None = None,
+    user_id: int | None = None,
 ) -> Tuple[Iterator[str], List[dict]]:
     """
     Stream a tutor answer token-by-token.
@@ -152,11 +308,8 @@ def ask_tutor_stream(
     else:
         context_text = "(No documents indexed for this course yet.)"
 
-    history = _conversations.get(conversation_id, [])
-    history_text = ""
-    for msg in history[-6:]:
-        role = "Student" if msg["role"] == "user" else "Tutor"
-        history_text += f"{role}: {msg['content']}\n"
+    conversation_id = _normalize_conversation_id(conversation_id)
+    history_text = await _build_history_text(conversation_id, course_id, db, user_id)
 
     if course_id:
         prompt = (
@@ -182,18 +335,6 @@ def ask_tutor_stream(
         timeout_s=CHAT_TIMEOUT_S,
     )
 
-    def _wrapped_stream() -> Iterator[str]:
-        full_answer_parts: List[str] = []
-        for token in token_stream:
-            full_answer_parts.append(token)
-            yield token
-
-        final_answer = "".join(full_answer_parts).strip()
-        if conversation_id not in _conversations:
-            _conversations[conversation_id] = []
-        _conversations[conversation_id].append({"role": "user", "content": question})
-        _conversations[conversation_id].append({"role": "assistant", "content": final_answer})
-
     sources = [
         {
             "page": d["metadata"].get("page"),
@@ -202,7 +343,7 @@ def ask_tutor_stream(
         for d in retrieved
     ]
 
-    return _wrapped_stream(), sources
+    return token_stream, sources
 
 
 def reset_conversation(conversation_id: str) -> None:
