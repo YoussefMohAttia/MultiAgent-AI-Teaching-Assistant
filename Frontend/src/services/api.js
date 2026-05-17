@@ -46,6 +46,18 @@ export const summarizeUploadedFile = (file) => {
   });
 };
 
+export const evaluateUploadedSummary = (file, source, referenceSummary = null, keyPoints = null) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  if (source.text) fd.append('lecture_text', source.text);
+  if (source.documentId) fd.append('document_id', String(source.documentId));
+  if (referenceSummary) fd.append('reference_summary', referenceSummary);
+  if (keyPoints) fd.append('key_points', JSON.stringify(keyPoints));
+  return api.post('/ai/evaluate-upload', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export const getSummaries = (userId, courseId = null) =>
   api.get('/ai/summaries', {
     params: {
@@ -127,6 +139,15 @@ export const gradeEssay = (essayText, question = null) =>
     essay_text: essayText,
     question,
   });
+
+export const gradeEssayUpload = (file, question = null) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  if (question) fd.append('question', question);
+  return api.post('/ai/grade-essay-upload', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 
 export const indexDocument = (documentId, courseId) =>
   api.post('/ai/index-document', { document_id: documentId, course_id: courseId });

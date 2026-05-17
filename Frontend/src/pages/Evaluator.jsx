@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { evaluateSummary, getCourses, getDocuments, logProgressEvent } from '../services/api';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { evaluateSummary, evaluateUploadedSummary, getCourses, getDocuments, logProgressEvent } from '../services/api';
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
 import { incrementStat } from '../lib/activity';
+import { UploadCloud } from 'lucide-react';
+import CustomSelect from '../components/CustomSelect';
 
 function buildMetricInfo(t) {
   return {
@@ -79,6 +81,9 @@ export default function Evaluator() {
 
   // Student summary (always typed manually)
   const [studentSummary, setStudentSummary] = useState('');
+  const [summaryInputMode, setSummaryInputMode] = useState('text'); // 'text' | 'upload'
+  const [studentSummaryFile, setStudentSummaryFile] = useState(null);
+  const studentSummaryFileInputRef = useRef(null);
 
   // Result
   const [result, setResult] = useState(null);
@@ -115,7 +120,8 @@ export default function Evaluator() {
   }, [sourceMode, courseId]);
 
   const lectureReady = sourceMode === 'text' ? lectureText.trim() : selectedDocId;
-  const isDisabled = loading || !lectureReady || !studentSummary.trim();
+  const studentSummaryReady = summaryInputMode === 'upload' ? studentSummaryFile : studentSummary.trim();
+  const isDisabled = loading || !lectureReady || !studentSummaryReady;
 
   const handleEvaluate = async () => {
     if (isDisabled) return;
@@ -128,7 +134,9 @@ export default function Evaluator() {
       : { text: lectureText };
     const t0 = Date.now();
     try {
-      const res = await evaluateSummary(studentSummary, source);
+      const res = summaryInputMode === 'upload'
+        ? await evaluateUploadedSummary(studentSummaryFile, source)
+        : await evaluateSummary(studentSummary, source);
       setResult(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
       incrementStat('evaluations');
@@ -145,16 +153,12 @@ export default function Evaluator() {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label>{t('evaluatorCourseLabel')}</label>
-          <select
-            className="form-select"
+          <CustomSelect
             value={courseId}
-            onChange={(e) => { setCourseId(e.target.value); setResult(null); setDocs([]); setSelectedDocId(''); }}
-          >
-            {courses.length === 0 && <option value="">{t('evaluatorLoadingCourses')}</option>}
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>{c.title}</option>
-            ))}
-          </select>
+            onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
+            options={courses.map(c => ({ id: c.id, title: c.title }))}
+            placeholder={t('evaluatorLoadingCourses')}
+          />
         </div>
       </div>
 
@@ -215,18 +219,13 @@ export default function Evaluator() {
                   {t('evaluatorNoUsableDocs')}
                 </p>
               ) : (
-                <select
-                  className="form-select"
+                <CustomSelect
                   value={selectedDocId}
-                  onChange={(e) => setSelectedDocId(e.target.value)}
-                >
-                  {docs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.download_url ? '📄' : d.google_drive_url ? '☁️' : '📝'}{' '}
-                      {d.title}{d.doc_type ? ` (${d.doc_type})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedDocId(String(val))}
+                  options={docs.map(d => ({ id: d.id, title: `${d.download_url ? '📄' : d.google_drive_url ? '☁️' : '📝'} ${d.title}${d.doc_type ? ` (${d.doc_type})` : ''}` }))}
+                  placeholder={t('evaluatorSelectDocument')}
+                  disabled={!courseId}
+                />
               )}
             </div>
           )}
@@ -238,17 +237,77 @@ export default function Evaluator() {
             <span className="icon">📝</span>
             <h3 style={{ fontSize: '0.95rem' }}>{t('evaluatorStudentSummaryTitle')}</h3>
           </div>
-          <div className="form-group">
-            <textarea
-              className="form-textarea"
-              rows={14}
-              placeholder={t('evaluatorStudentSummaryPlaceholder')}
-              value={studentSummary}
-              onChange={(e) => setStudentSummary(e.target.value)}
-            />
-            <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              {studentSummary.length.toLocaleString()} {t('evaluatorChars')}
+          <div className="form-group" style={{ marginBottom: 16 }}>
+            <label>{t('evaluatorSummaryInputType')}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${summaryInputMode === 'text' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSummaryInputMode('text')}
+              >
+                ✏️ {t('evaluatorSummaryInputText')}
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${summaryInputMode === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSummaryInputMode('upload')}
+              >
+                📄 {t('evaluatorSummaryInputUpload')}
+              </button>
             </div>
+          </div>
+          <div className="form-group">
+            {summaryInputMode === 'text' ? (
+              <>
+                <textarea
+                  className="form-textarea"
+                  rows={14}
+                  placeholder={t('evaluatorStudentSummaryPlaceholder')}
+                  value={studentSummary}
+                  onChange={(e) => setStudentSummary(e.target.value)}
+                />
+                <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  {studentSummary.length.toLocaleString()} {t('evaluatorChars')}
+                </div>
+              </>
+            ) : (
+              <div
+                onClick={() => studentSummaryFileInputRef.current?.click()}
+                style={{
+                  border: '2px dashed var(--border)',
+                  borderRadius: 16,
+                  padding: 24,
+                  minHeight: 300,
+                  background: 'var(--bg-hover)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                <div className="icon" style={{ width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UploadCloud size={22} />
+                </div>
+                <p style={{ margin: 0, fontWeight: 600, textAlign: 'center' }}>
+                  {studentSummaryFile ? studentSummaryFile.name : t('evaluatorSummaryUploadBrowse')}
+                </p>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  {t('evaluatorSummaryUploadHint')}
+                </p>
+                <input
+                  ref={studentSummaryFileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    setStudentSummaryFile(e.target.files?.[0] || null);
+                    setError('');
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -288,7 +347,11 @@ export default function Evaluator() {
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorStudentWords')}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{studentSummary.trim().split(/\s+/).filter(Boolean).length}</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+                {summaryInputMode === 'upload'
+                  ? (studentSummaryFile ? t('evaluatorStudentWordsUpload') : '-')
+                  : studentSummary.trim().split(/\s+/).filter(Boolean).length}
+              </div>
             </div>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorReferenceWords')}</div>
