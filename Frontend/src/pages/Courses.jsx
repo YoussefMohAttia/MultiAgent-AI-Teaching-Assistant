@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { getCourses, getDocuments, getDocumentBlob } from '../services/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
@@ -38,12 +38,17 @@ export default function Courses() {
   };
 
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     setCoursesLoading(true);
     getCourses()
       .then((r) => setCourses(r.data.courses || []))
       .catch(() => setError(t('coursesLoadError')))
       .finally(() => setCoursesLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

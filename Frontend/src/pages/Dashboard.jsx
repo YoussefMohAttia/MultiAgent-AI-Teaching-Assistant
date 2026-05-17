@@ -4,8 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSummaryStatus, getQuizStatus } from '../services/api';
 import { useToasts } from '../contexts/ToastContext';
+import { getSummaryStatus, getQuizStatus } from '../services/api';
 import { getStats } from '../lib/activity';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
@@ -75,18 +75,32 @@ export default function Dashboard() {
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     if (!user) {
       navigate('/');
       return;
     }
+    
+    // Only run this logic once per component mount
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    
     setStreak(computeStreak(user.id));
     setStats(getStats());
-    if (isLocalAccount) {
-      fetchCourses();
-      return;
+    
+    // ALWAYS fetch courses exactly once on load to populate UI immediately
+    fetchCourses();
+
+    // If it is a Google account, check if we should trigger a background sync
+    if (!isLocalAccount) {
+      const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
+      if (Date.now() - lastSync >= SYNC_COOLDOWN_MS) {
+        runSync();
+      }
     }
-    autoSync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLocalAccount]);
 
   useEffect(() => {
@@ -137,7 +151,7 @@ export default function Dashboard() {
           }
         }
       } catch {
-        return;
+        // Skip errors
       }
 
       if (pending.length) {
@@ -145,7 +159,8 @@ export default function Dashboard() {
       }
     };
 
-    poll(0);
+    // Delay first poll slightly to let UI settle
+    summaryPollRef.current = setTimeout(() => poll(0), 5000);
   }
 
   function scheduleQuizPolling(items) {
@@ -174,7 +189,7 @@ export default function Dashboard() {
           }
         }
       } catch {
-        return;
+        // Skip errors
       }
 
       if (pending.length) {
@@ -182,18 +197,10 @@ export default function Dashboard() {
       }
     };
 
-    poll(0);
+    // Delay first poll slightly to let UI settle
+    quizPollRef.current = setTimeout(() => poll(0), 5000);
   }
 
-
-  async function autoSync() {
-    const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
-    if (Date.now() - lastSync < SYNC_COOLDOWN_MS) {
-      await fetchCourses();
-      return;
-    }
-    await runSync();
-  }
 
   async function runSync() {
     setSyncing(true);
@@ -246,6 +253,7 @@ export default function Dashboard() {
           tone: 'warning',
         });
       }
+
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {
@@ -253,8 +261,6 @@ export default function Dashboard() {
       localStorage.setItem('last_sync_ts', String(Date.now()));
       setSyncing(false);
     }
-    // Fetch whatever courses we currently have in the DB
-    await fetchCourses();
   }
 
   async function fetchCourses() {

@@ -56,7 +56,9 @@ async def startup_event():
     await create_all_tables()
     print("All tables created successfully!")
     from services.cleanup_service import cleanup_loop
+    from services.agent_queue_service import agent_worker_loop
     app.state.cleanup_task = asyncio.create_task(cleanup_loop())
+    app.state.agent_workers = [asyncio.create_task(agent_worker_loop(i)) for i in range(2)]
 
 
 @app.on_event("shutdown")
@@ -66,6 +68,12 @@ async def shutdown_event():
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+            
+    workers = getattr(app.state, "agent_workers", [])
+    for w in workers:
+        w.cancel()
+        with suppress(asyncio.CancelledError):
+            await w
 
 app.include_router(login.router, prefix="/api/login", tags=["Authentication"])
 app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])

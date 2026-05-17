@@ -468,6 +468,9 @@ async def full_sync(
         background_tasks.add_task(_background_index_documents, new_drive_doc_ids, user_id)
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
+    from services.agent_queue_service import enqueue_agent_task
+
+    auto_summary_doc_ids = []
     if settings.AUTO_SUMMARIZE_MATERIALS:
         course_ids = [course_id for course_id, _ in synced_courses]
         if course_ids:
@@ -489,11 +492,12 @@ async def full_sync(
             ).scalars().all()
 
             candidate_ids = list({*missing_summary_ids, *new_material_doc_ids})
-            if candidate_ids:
-                auto_summary_doc_ids = candidate_ids
-                background_tasks.add_task(_background_auto_summarize_materials, candidate_ids, user_id)
-                print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
+            for c_id in candidate_ids:
+                enqueue_agent_task("summary", c_id, user_id, priority=10)
+            auto_summary_doc_ids = candidate_ids
+            print(f"📋 Queued auto-summary for {len(candidate_ids)} material document(s)")
 
+    auto_quiz_doc_ids = []
     if settings.AUTO_GENERATE_QUIZZES:
         course_ids = [course_id for course_id, _ in synced_courses]
         if course_ids:
@@ -514,10 +518,10 @@ async def full_sync(
             ).scalars().all()
 
             candidate_ids = list({*missing_quiz_ids, *new_material_doc_ids})
-            if candidate_ids:
-                auto_quiz_doc_ids = candidate_ids
-                background_tasks.add_task(_background_auto_generate_quizzes, candidate_ids, user_id)
-                print(f"📋 Scheduled auto-quiz for {len(candidate_ids)} material document(s)")
+            for c_id in candidate_ids:
+                enqueue_agent_task("quiz", c_id, user_id, priority=10)
+            auto_quiz_doc_ids = candidate_ids
+            print(f"📋 Queued auto-quiz for {len(candidate_ids)} material document(s)")
 
     # ── Step 5: Return summary ─────────────────────────────────────────────
     total_docs_new = docs_materials + docs_announcements + docs_coursework
