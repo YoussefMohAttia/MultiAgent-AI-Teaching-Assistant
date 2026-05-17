@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from Core.config import settings
-from DB.schemas import ChatConversation, ChatMessage
+from DB.schemas import ChatConversation, ChatMessage, Document
 from services.openrouter_client import chat_completion, chat_completion_stream
 from services.pdf_processor import query_course_documents
 
@@ -214,6 +214,25 @@ async def _build_history_text(
     return history_text
 
 
+async def _maybe_load_document_text(
+    db: AsyncSession,
+    document_id: int,
+) -> str | None:
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalars().first()
+    if not doc:
+        return None
+    if doc.raw_text and doc.raw_text.strip():
+        return doc.raw_text
+    if doc.google_drive_url or doc.s3_path:
+        try:
+            from services.drive_download_service import ensure_document_text
+            return await ensure_document_text(doc, db)
+        except Exception:
+            return None
+    return None
+
+
 async def persist_chat_turn(
     conversation_id: str,
     course_id: int | None,
@@ -248,6 +267,9 @@ async def ask_tutor(
     Returns (answer_text, source_snippets).
     """
     if course_id:
+        document_text = None
+        if document_id and db:
+            document_text = await _maybe_load_document_text(db, document_id)
         # 1.  Retrieve relevant chunks from the course's vector store
         retrieved = query_course_documents(
             course_id,
@@ -255,6 +277,7 @@ async def ask_tutor(
             n_results=4,
             source_path=source_path,
             document_id=document_id,
+            document_text=document_text,
         )
         if retrieved:
             context_text = "\n\n---\n\n".join(d["content"] for d in retrieved)
@@ -332,6 +355,10 @@ async def ask_tutor_stream(
 
     Returns (token_iterator, source_snippets).
     """
+    document_text = None
+    if course_id and document_id and db:
+        document_text = await _maybe_load_document_text(db, document_id)
+
     retrieved = (
         query_course_documents(
             course_id,
@@ -339,6 +366,7 @@ async def ask_tutor_stream(
             n_results=4,
             source_path=source_path,
             document_id=document_id,
+            document_text=document_text,
         )
         if course_id
         else []

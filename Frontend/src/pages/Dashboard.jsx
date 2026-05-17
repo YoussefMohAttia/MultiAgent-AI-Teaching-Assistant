@@ -388,7 +388,7 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-white mb-1">{copy.noCoursesTitle}</h3>
             <p className="text-sm text-slate-400 max-w-sm">
               {isLocalAccount
-                ? 'This account was created locally, so Google Classroom sync is disabled. Create a course manually and upload documents to use the study tools.'
+                ? 'This account was created locally, so Google Classroom sync is disabled. Create a course manually and use the AI tools with text or PDF uploads.'
                 : copy.noCoursesBody}
             </p>
           </div>

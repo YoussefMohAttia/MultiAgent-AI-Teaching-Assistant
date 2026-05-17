@@ -99,8 +99,7 @@ export default function Courses() {
       if (doc.download_url && doc.download_url.startsWith('http')) {
         const resolvedUrl = resolvePreviewUrl(doc.download_url);
         if (resolvedUrl) {
-          setPreviewUrl(resolvedUrl);
-          setPreviewTitle(doc.title);
+          window.open(resolvedUrl, '_blank', 'noopener');
           return;
         }
       }

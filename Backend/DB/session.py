@@ -36,5 +36,6 @@ async def create_all_tables():
         if settings.DATABASE_URL.startswith("postgresql"):
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50)"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_jobs_enabled BOOLEAN DEFAULT TRUE"))
             await conn.execute(text("UPDATE users SET auth_provider = 'google' WHERE auth_provider IS NULL OR auth_provider = ''"))
             await conn.execute(text("ALTER TABLE users ALTER COLUMN auth_provider SET DEFAULT 'google'"))

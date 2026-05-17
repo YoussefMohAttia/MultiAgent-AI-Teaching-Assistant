@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     DateTime,
     Date,
+    Boolean,
     ForeignKey,
     JSON,
     UniqueConstraint,
@@ -30,6 +31,7 @@ class User(Base):
     google_access_token = Column(Text, nullable=True)
     google_refresh_token = Column(Text, nullable=True)
     google_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    auto_jobs_enabled = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     courses = relationship("Course", secondary="user_courses", back_populates="users")

@@ -4,7 +4,7 @@ Google Drive auto-download service.
 from __future__ import annotations
 import os
 import re
-from datetime import datetime
+import tempfile
 from typing import Optional
 
 import httpx
@@ -13,6 +13,7 @@ from sqlalchemy.future import select
 
 from Core.config import settings
 from DB import crud
+from services.pdf_processor import extract_text_from_pdf
 
 _FILE_ID_RE = re.compile(r"/d/([a-zA-Z0-9_-]{10,})")
 _ID_PARAM_RE = re.compile(r"[?&]id=([a-zA-Z0-9_-]{10,})")
@@ -46,23 +47,41 @@ async def _download_bytes(file_id: str, is_gdoc: bool, access_token: str) -> byt
 
         return resp.content
 
-async def ensure_local_file(doc, db: AsyncSession) -> str:
-    """Ensure a Document has a local file and return its path."""
+def _extract_text_from_bytes(file_bytes: bytes) -> str:
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(file_bytes)
+            temp_path = tmp.name
+        return extract_text_from_pdf(temp_path)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+async def ensure_document_text(doc, db: AsyncSession) -> str:
+    """Ensure a Document has extracted text stored and return it."""
+    if doc.raw_text and doc.raw_text.strip():
+        return doc.raw_text
+
     if doc.s3_path and os.path.exists(doc.s3_path):
-        return doc.s3_path
+        text = extract_text_from_pdf(doc.s3_path)
+        if text and text.strip():
+            doc.raw_text = text
+            await db.commit()
+            await db.refresh(doc)
+            return text
 
     if not doc.google_drive_url:
-        raise ValueError("Document has no Google Drive URL and no local file.")
+        raise ValueError("Document has no Drive URL or local file.")
 
     file_id = extract_drive_file_id(doc.google_drive_url)
     if not file_id:
         raise ValueError(f"Cannot extract Drive file ID from URL: {doc.google_drive_url}")
 
-    # 🔥 THE FIX: Find any user enrolled in this course to borrow their access token
     from DB.schemas import UserCourse
     result = await db.execute(select(UserCourse).where(UserCourse.course_id == doc.course_id))
     user_course = result.scalars().first()
-    
     if not user_course:
         raise ValueError("No users are enrolled in this course. Cannot authorize download.")
 
@@ -79,20 +98,11 @@ async def ensure_local_file(doc, db: AsyncSession) -> str:
         raise PermissionError("Could not obtain a valid Google access token. Please sign in again.")
 
     file_bytes = await _download_bytes(file_id, is_gdoc, access_token)
+    text = _extract_text_from_bytes(file_bytes)
+    if not text or not text.strip():
+        raise ValueError("No extractable text found in Drive document.")
 
-    upload_dir = settings.PDF_UPLOAD_DIR
-    os.makedirs(upload_dir, exist_ok=True)
-    safe_name = re.sub(r"[^\w\-.]", "_", doc.title or "document")
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"drive_{doc.id}_{timestamp}_{safe_name}.pdf"
-    local_path = os.path.join(upload_dir, filename)
-
-    with open(local_path, "wb") as f:
-        f.write(file_bytes)
-
-    doc.s3_path = local_path
+    doc.raw_text = text
     await db.commit()
     await db.refresh(doc)
-
-    print(f"✅ Auto-downloaded Drive file for doc {doc.id} → {local_path}")
-    return local_path
+    return text

@@ -56,15 +56,14 @@ async def _get_document_text(document_id: int, db: AsyncSession) -> str:
     doc = result.scalars().first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if doc.s3_path or doc.google_drive_url:
-        try:
-            from services.drive_download_service import ensure_local_file
-            local_path = await ensure_local_file(doc, db)
-            return extract_text_from_pdf(local_path)
-        except Exception as e:
-            print(f"⚠️ Drive download failed: {e}")
     if doc.raw_text and doc.raw_text.strip():
         return doc.raw_text
+    if doc.s3_path or doc.google_drive_url:
+        try:
+            from services.drive_download_service import ensure_document_text
+            return await ensure_document_text(doc, db)
+        except Exception as e:
+            print(f"⚠️ Drive text extraction failed: {e}")
     raise HTTPException(status_code=422, detail="No extractable text found.")
 
 
@@ -139,11 +138,7 @@ async def chat_with_tutor(
             elif doc.course_id != effective_course_id:
                 raise HTTPException(status_code=400, detail="Document does not belong to course")
 
-            if doc.s3_path and os.path.exists(doc.s3_path):
-                doc_source_path = doc.s3_path
-            elif doc.google_drive_url:
-                from services.drive_download_service import ensure_local_file
-                doc_source_path = await ensure_local_file(doc, db)
+            doc_source_path = None
         
         user_id = None
         if user:
@@ -194,11 +189,7 @@ async def chat_with_tutor_stream(
             elif doc.course_id != effective_course_id:
                 raise HTTPException(status_code=400, detail="Document does not belong to course")
 
-            if doc.s3_path and os.path.exists(doc.s3_path):
-                doc_source_path = doc.s3_path
-            elif doc.google_drive_url:
-                from services.drive_download_service import ensure_local_file
-                doc_source_path = await ensure_local_file(doc, db)
+            doc_source_path = None
 
         db_user = await _resolve_db_user(request, db, user)
         user_id = db_user.id if db_user else None
@@ -934,14 +925,17 @@ async def index_document(req: IndexDocumentRequest, db: AsyncSession = Depends(g
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    import os
-    if not doc.s3_path or not os.path.exists(doc.s3_path):
-        raise HTTPException(status_code=404, detail="Document file not found on server")
-
     try:
-        from services.pdf_processor import index_pdf_for_course
-        chunks = index_pdf_for_course(
-            doc.s3_path,
+        text = doc.raw_text
+        if not text or not text.strip():
+            from services.drive_download_service import ensure_document_text
+            text = await ensure_document_text(doc, db)
+        if not text or not text.strip():
+            raise HTTPException(status_code=422, detail="No extractable text found.")
+
+        from services.pdf_processor import index_text_for_course
+        chunks = index_text_for_course(
+            text,
             req.course_id,
             document_id=doc.id,
         )

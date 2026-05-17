@@ -25,8 +25,8 @@ from DB.schemas import (
     QuizDocument as QuizDocumentORM,
 )
 from services.google_classroom_service import GoogleClassroomService
-from services.drive_download_service import ensure_local_file
-from services.pdf_processor import extract_text_from_pdf, index_pdf_for_course
+from services.drive_download_service import ensure_document_text
+from services.pdf_processor import index_text_for_course
 from services.summarizer_service import summarize_text
 from services.quiz_generator_service import generate_quiz
 from services.quiz_utils import find_quiz_by_doc_and_criteria
@@ -42,20 +42,38 @@ _AUTO_QUIZ_N_ITEMS = 5
 _AUTO_QUIZ_N_OPTIONS = 4
 
 
-async def _background_index_documents(new_doc_ids: list):
+async def _auto_jobs_enabled(db: AsyncSession, user_id: int | None) -> bool:
+    if not user_id:
+        return True
+    user = await crud.get_user_by_id(db, user_id)
+    if not user:
+        return False
+    flag = getattr(user, "auto_jobs_enabled", True)
+    return True if flag is None else bool(flag)
+
+
+async def _background_index_documents(new_doc_ids: list, user_id: int | None):
     """Background task: download Drive files and index them into ChromaDB."""
     if not new_doc_ids:
         return
     async with AsyncSessionLocal() as db:
+        if not await _auto_jobs_enabled(db, user_id):
+            return
         for doc_id in new_doc_ids:
+            if not await _auto_jobs_enabled(db, user_id):
+                print("ℹ️  Auto-index stopped: user logged out")
+                break
             try:
                 result = await db.execute(select(DocumentORM).where(DocumentORM.id == doc_id))
                 doc = result.scalars().first()
                 if not doc or not doc.google_drive_url:
                     continue
-                local_path = await ensure_local_file(doc, db)
-                index_pdf_for_course(
-                    local_path,
+                text = await ensure_document_text(doc, db)
+                if not text or not text.strip():
+                    continue
+                await asyncio.to_thread(
+                    index_text_for_course,
+                    text,
                     doc.course_id,
                     document_id=doc.id,
                 )
@@ -64,7 +82,7 @@ async def _background_index_documents(new_doc_ids: list):
                 print(f"⚠️  Auto-index skipped doc {doc_id}: {e}")
 
 
-async def _background_auto_summarize_materials(new_doc_ids: list):
+async def _background_auto_summarize_materials(new_doc_ids: list, user_id: int | None):
     """Background task: auto-summarize new material documents once."""
     if not new_doc_ids or not settings.AUTO_SUMMARIZE_MATERIALS:
         return
@@ -74,6 +92,9 @@ async def _background_auto_summarize_materials(new_doc_ids: list):
 
     async with AsyncSessionLocal() as db:
         for doc_id in new_doc_ids:
+            if not await _auto_jobs_enabled(db, user_id):
+                print("ℹ️  Auto-summary stopped: user logged out")
+                break
             try:
                 result = await db.execute(select(DocumentORM).where(DocumentORM.id == doc_id))
                 doc = result.scalars().first()
@@ -94,21 +115,22 @@ async def _background_auto_summarize_materials(new_doc_ids: list):
                     continue
 
                 text = ""
-                if doc.google_drive_url:
-                    try:
-                        local_path = await ensure_local_file(doc, db)
-                        text = extract_text_from_pdf(local_path)
-                    except Exception as e:
-                        print(f"⚠️  Auto-summary file read failed for doc {doc_id}: {e}")
-
-                if not text and doc.raw_text:
+                if doc.raw_text:
                     text = doc.raw_text
+                elif doc.google_drive_url or doc.s3_path:
+                    try:
+                        text = await ensure_document_text(doc, db)
+                    except Exception as e:
+                        print(f"⚠️  Auto-summary text extraction failed for doc {doc_id}: {e}")
 
                 if not text or not text.strip():
                     print(f"⚠️  Auto-summary skipped doc {doc_id}: no extractable text")
                     continue
                 print(f"🧠 Auto-summary started doc {doc_id}: {doc.title}")
-                summary_text = summarize_text(text[:15000])
+                summary_text = await asyncio.to_thread(
+                    summarize_text,
+                    text[:15000],
+                )
                 db_summary = SummaryORM(text=summary_text, method="llm")
                 db.add(db_summary)
                 await db.flush()
@@ -144,7 +166,7 @@ async def _background_auto_summarize_materials(new_doc_ids: list):
                 print(f"⚠️  Auto-summary skipped doc {doc_id}: {e}")
 
 
-async def _background_auto_generate_quizzes(new_doc_ids: list):
+async def _background_auto_generate_quizzes(new_doc_ids: list, user_id: int | None):
     """Background task: auto-generate quizzes for new material documents once."""
     if not new_doc_ids or not settings.AUTO_GENERATE_QUIZZES:
         return
@@ -152,6 +174,9 @@ async def _background_auto_generate_quizzes(new_doc_ids: list):
 
     async with AsyncSessionLocal() as db:
         for doc_id in new_doc_ids:
+            if not await _auto_jobs_enabled(db, user_id):
+                print("ℹ️  Auto-quiz stopped: user logged out")
+                break
             reserved = False
             async with _auto_quiz_lock:
                 if doc_id in _auto_quiz_inflight:
@@ -176,22 +201,21 @@ async def _background_auto_generate_quizzes(new_doc_ids: list):
                     continue
 
                 text = ""
-                if doc.google_drive_url:
-                    try:
-                        local_path = await ensure_local_file(doc, db)
-                        text = extract_text_from_pdf(local_path)
-                    except Exception as e:
-                        print(f"⚠️  Auto-quiz file read failed for doc {doc_id}: {e}")
-
-                if not text and doc.raw_text:
+                if doc.raw_text:
                     text = doc.raw_text
+                elif doc.google_drive_url or doc.s3_path:
+                    try:
+                        text = await ensure_document_text(doc, db)
+                    except Exception as e:
+                        print(f"⚠️  Auto-quiz text extraction failed for doc {doc_id}: {e}")
 
                 if not text or not text.strip():
                     print(f"⚠️  Auto-quiz skipped doc {doc_id}: no extractable text")
                     continue
 
                 print(f"🧠 Auto-quiz started doc {doc_id}: {doc.title}")
-                raw_items = generate_quiz(
+                raw_items = await asyncio.to_thread(
+                    generate_quiz,
                     passage=text[:15000],
                     n_items=_AUTO_QUIZ_N_ITEMS,
                     n_options=_AUTO_QUIZ_N_OPTIONS,
@@ -441,7 +465,7 @@ async def full_sync(
 
     # ── Step 4: Schedule background indexing for new Drive documents ──────
     if new_drive_doc_ids:
-        background_tasks.add_task(_background_index_documents, new_drive_doc_ids)
+        background_tasks.add_task(_background_index_documents, new_drive_doc_ids, user_id)
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
     if settings.AUTO_SUMMARIZE_MATERIALS:
@@ -467,7 +491,7 @@ async def full_sync(
             candidate_ids = list({*missing_summary_ids, *new_material_doc_ids})
             if candidate_ids:
                 auto_summary_doc_ids = candidate_ids
-                background_tasks.add_task(_background_auto_summarize_materials, candidate_ids)
+                background_tasks.add_task(_background_auto_summarize_materials, candidate_ids, user_id)
                 print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
 
     if settings.AUTO_GENERATE_QUIZZES:
@@ -492,7 +516,7 @@ async def full_sync(
             candidate_ids = list({*missing_quiz_ids, *new_material_doc_ids})
             if candidate_ids:
                 auto_quiz_doc_ids = candidate_ids
-                background_tasks.add_task(_background_auto_generate_quizzes, candidate_ids)
+                background_tasks.add_task(_background_auto_generate_quizzes, candidate_ids, user_id)
                 print(f"📋 Scheduled auto-quiz for {len(candidate_ids)} material document(s)")
 
     # ── Step 5: Return summary ─────────────────────────────────────────────

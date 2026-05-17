@@ -1,47 +1,12 @@
 import os
-import shutil
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from DB.session import get_db
-from DB.schemas import Document, Course
-from datetime import datetime
-
-UPLOAD_DIR = "uploaded_files"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+from DB.schemas import Document
 
 router = APIRouter()
-
-@router.post("/upload")
-async def upload_document(course_id: int, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
-    course_result = await db.execute(select(Course).where(Course.id == course_id))
-    if not course_result.scalars().first():
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
-    safe_filename = f"doc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    new_doc = Document(
-        course_id=course_id, title=file.filename, s3_path=file_path,
-        doc_type="manual_upload", classroom_material_id=None,
-        google_drive_url=None, raw_text=None
-    )
-    db.add(new_doc)
-    await db.commit()
-    await db.refresh(new_doc)
-
-    return {
-        "message": "PDF uploaded successfully!", "document_id": new_doc.id,
-        "filename": new_doc.title, "course_id": new_doc.course_id,
-        "download_url": f"/api/documents/download/{new_doc.id}"
-    }
 
 @router.get("/download/{doc_id}")
 async def download_document(doc_id: int, db: AsyncSession = Depends(get_db)):

@@ -117,6 +117,53 @@ def index_pdf_for_course(
     return len(chunks)
 
 
+def index_text_for_course(
+    text: str,
+    course_id: int,
+    document_id: int | None = None,
+) -> int:
+    """
+    Chunk plain text and upsert it into the course's ChromaDB collection.
+    Returns the number of chunks indexed.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        separators=["\n\n", "\n", " ", ""],
+    )
+    chunks = splitter.split_text(text)
+    collection = _get_collection(course_id)
+
+    ids = []
+    texts = []
+    metadatas = []
+    for i, chunk_text in enumerate(chunks):
+        chunk_key = f"{course_id}:{document_id}:{i}"
+        chunk_id = hashlib.md5(chunk_key.encode()).hexdigest()
+        ids.append(chunk_id)
+        texts.append(chunk_text)
+        metadata = {
+            "source": f"document:{document_id}" if document_id is not None else "text",
+            "page": None,
+            "chunk_index": i,
+        }
+        if document_id is not None:
+            metadata["document_id"] = document_id
+        metadatas.append(metadata)
+
+    batch_size = 100
+    for start in range(0, len(ids), batch_size):
+        end = start + batch_size
+        collection.upsert(
+            ids=ids[start:end],
+            documents=texts[start:end],
+            metadatas=metadatas[start:end],
+        )
+
+    return len(chunks)
+
+
 def query_course_documents(
     course_id: int,
     query: str,
@@ -125,6 +172,7 @@ def query_course_documents(
     backoff_s: float = 0.25,
     source_path: str | None = None,
     document_id: int | None = None,
+    document_text: str | None = None,
 ) -> List[dict]:
     """
     Query the course's vector store and return relevant document chunks.
@@ -138,7 +186,17 @@ def query_course_documents(
         try:
             total = collection.count()
             if total == 0:
-                if source_path and os.path.exists(source_path):
+                if document_text:
+                    try:
+                        index_text_for_course(
+                            document_text,
+                            course_id,
+                            document_id=document_id,
+                        )
+                        total = collection.count()
+                    except Exception as index_error:
+                        print(f"⚠️  Chroma text index failed for course {course_id}: {index_error}")
+                if total == 0 and source_path and os.path.exists(source_path):
                     try:
                         index_pdf_for_course(
                             source_path,
@@ -174,6 +232,18 @@ def query_course_documents(
 
             results = collection.query(**query_kwargs)
             docs = build_docs(results)
+
+            if document_text and not docs:
+                try:
+                    index_text_for_course(
+                        document_text,
+                        course_id,
+                        document_id=document_id,
+                    )
+                    results = collection.query(**query_kwargs)
+                    docs = build_docs(results)
+                except Exception as index_error:
+                    print(f"⚠️  Chroma text index failed for course {course_id}: {index_error}")
 
             if source_path and not docs and os.path.exists(source_path):
                 try:

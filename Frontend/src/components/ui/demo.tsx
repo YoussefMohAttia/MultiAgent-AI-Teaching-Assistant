@@ -248,7 +248,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                     ?
                   </button>
                   <div className="pointer-events-none absolute left-1/2 top-12 z-20 w-72 -translate-x-1/2 rounded-2xl border border-white/10 bg-black/90 px-4 py-3 text-left text-xs leading-relaxed text-neutral-200 opacity-0 shadow-2xl transition group-hover:opacity-100 group-focus-within:opacity-100">
-                    Local accounts are stored in the database, but they do not get Google Classroom sync or classroom benefits. They can still use uploaded documents and the study tools.
+                    Local accounts are stored in the database, but they do not get Google Classroom sync or classroom benefits. They can still use manual PDF uploads inside the study tools.
                   </div>
                 </div>
               </div>
@@ -340,7 +340,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                     ?
                   </button>
                   <div className="pointer-events-none absolute left-1/2 top-12 z-20 w-72 -translate-x-1/2 rounded-2xl border border-white/10 bg-black/90 px-4 py-3 text-left text-xs leading-relaxed text-neutral-200 opacity-0 shadow-2xl transition group-hover:opacity-100 group-focus-within:opacity-100">
-                    Local accounts are stored in the database, but they do not get Google Classroom sync or classroom benefits. They can still use uploaded documents and the study tools.
+                    Local accounts are stored in the database, but they do not get Google Classroom sync or classroom benefits. They can still use manual PDF uploads inside the study tools.
                   </div>
                 </div>
               </div>
