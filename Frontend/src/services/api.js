@@ -26,14 +26,6 @@ export const loginLocalAccount = (payload) => api.post('/login/password', payloa
 
 // ── Documents ────────────────────────────────────────────────────────────────
 export const getDocuments = (courseId) => api.get(`/documents/${courseId}`);
-export const uploadDocument = (courseId, file) => {
-  const fd = new FormData();
-  fd.append('file', file);
-  return api.post(`/documents/upload?course_id=${courseId}`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};
-
 export const getDocumentBlob = (id) => 
   api.get(`/documents/download/${id}`, { responseType: 'blob' });
 
