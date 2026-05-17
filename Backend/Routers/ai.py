@@ -105,6 +105,26 @@ async def _resolve_db_user(
         return None
     return await crud.get_user_by_google_id(db, google_id)
 
+
+async def _extract_text_from_uploaded_pdf(file: UploadFile) -> tuple[str, str]:
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    temp_path = None
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(payload)
+        temp_path = tmp.name
+
+    text = extract_text_from_pdf(temp_path)
+    if not text or not text.strip():
+        raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+
+    return text, temp_path
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  1. CHATBOT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -664,27 +684,9 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
 @router.post("/summarize-upload", response_model=SummarizeResponse)
 async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUser | None = _auth):
     """Summarize a one-time uploaded PDF without saving it to DB or course documents."""
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-
-    
-
-   
-    
-
     temp_path = None
     try:
-        payload = await file.read()
-        if not payload:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(payload)
-            temp_path = tmp.name
-
-        text = extract_text_from_pdf(temp_path)
-        if not text or not text.strip():
-            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+        text, temp_path = await _extract_text_from_uploaded_pdf(file)
 
         summary_text = summarize_text(text)
         return SummarizeResponse(summary_id=None, summary=summary_text)
@@ -699,6 +701,111 @@ async def summarize_uploaded_file(file: UploadFile = File(...), user: CurrentUse
             pass
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+@router.post("/evaluate-upload", response_model=EvaluateResponse)
+async def evaluate_uploaded_summary(
+    file: UploadFile = File(...),
+    lecture_text: str | None = Form(None),
+    document_id: int | None = Form(None),
+    reference_summary: str | None = Form(None),
+    key_points: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
+    """Evaluate a student summary uploaded as a one-time PDF."""
+    temp_path = None
+    try:
+        student_summary, temp_path = await _extract_text_from_uploaded_pdf(file)
+
+        lecture = lecture_text
+        if not lecture and document_id:
+            lecture = await _get_document_text(document_id, db)
+        if not lecture:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either 'lecture_text' or 'document_id'.",
+            )
+
+        import asyncio
+        from services.evaluator_service import evaluate_summary
+
+        key_points_value = None
+        if key_points:
+            try:
+                parsed_key_points = json.loads(key_points)
+                if isinstance(parsed_key_points, list):
+                    key_points_value = parsed_key_points
+            except Exception:
+                key_points_value = None
+
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                evaluate_summary,
+                student_summary=student_summary,
+                lecture_text=lecture,
+                reference_summary=reference_summary,
+                key_points=key_points_value,
+            ),
+            timeout=300,
+        )
+    except TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Evaluation request timed out at the API layer (300s), not token limit. Please retry or reduce lecture length.",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    raw_scores = result["scores"]
+    overall_score = result["overall"]
+
+    metrics = {
+        name: MetricScore(score=v["score"], feedback=v["detail"])
+        for name, v in raw_scores.items()
+    }
+
+    from DB.schemas import Evaluation as EvaluationORM, EvaluationMetric as EvaluationMetricORM
+
+    db_eval = EvaluationORM(
+        document_id=document_id,
+        student_summary=student_summary,
+        lecture_text=lecture,
+        overall_score=overall_score,
+        method="hybrid",
+    )
+    db.add(db_eval)
+    await db.flush()
+
+    for metric_name, metric in metrics.items():
+        db_metric = EvaluationMetricORM(
+            evaluation_id=db_eval.id,
+            metric_name=metric_name,
+            score=metric.score,
+            feedback=metric.feedback,
+        )
+        db.add(db_metric)
+
+    await db.commit()
+    await db.refresh(db_eval)
+
+    return EvaluateResponse(
+        evaluation_id=db_eval.id,
+        overall_score=overall_score,
+        overall_feedback=result.get("overall_feedback"),
+        metrics=metrics,
+        reference_summary=result.get("reference_summary"),
+        key_points=result.get("key_points"),
+    )
 
 
 def _parse_id_list(raw_ids: str) -> list[int]:
@@ -918,6 +1025,39 @@ async def grade_essay(req: EssayGradeRequest, user: CurrentUser | None = _auth):
         return EssayGradeResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/grade-essay-upload", response_model=EssayGradeResponse)
+async def grade_essay_uploaded_file(
+    file: UploadFile = File(...),
+    question: str | None = Form(None),
+    user: CurrentUser | None = _auth,
+):
+    """Predict IELTS overall band for an essay uploaded as a PDF."""
+    temp_path = None
+    try:
+        essay_text, temp_path = await _extract_text_from_uploaded_pdf(file)
+
+        import asyncio
+        from services.essay_grader_service import grade_essay as grade_single
+
+        result = await asyncio.to_thread(
+            grade_single,
+            essay_text=essay_text,
+            question=question,
+        )
+        return EssayGradeResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

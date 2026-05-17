@@ -88,6 +88,24 @@
   font-family: inherit;
   transition: border-color 0.2s;
 }
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-textarea,
+[data-theme="dark"] .form-select {
+  color-scheme: dark;
+}
+
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-textarea,
+[data-theme="light"] .form-select {
+  color-scheme: light;
+}
+
+.form-select option {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
