@@ -164,6 +164,7 @@ class GoogleAuthorization:
                 user = await crud.create_new_user(db, google_id, email, name)
             user.google_access_token = token.access_token
             user.google_refresh_token = token.refresh_token
+            user.auto_jobs_enabled = True
             if token.expires_in is not None:
                 if isinstance(token.expires_in, timedelta):
                     user.google_token_expires_at = datetime.utcnow() + token.expires_in
@@ -205,6 +206,26 @@ class GoogleAuthorization:
     ) -> RedirectResponse:
         # check if callback_url is set, if not try to get it from referer header
         callback_url = callback_url or referer or str(self.return_to_path)
+        try:
+            auth_token = await self.handler.get_token_from_session(request=request)
+            claims = None
+            if auth_token and auth_token.id_token_claims:
+                claims = auth_token.id_token_claims.__dict__
+            elif auth_token and auth_token.id_token:
+                parsed = await self.handler.parse_id_token(token=auth_token)
+                if parsed:
+                    claims = parsed.__dict__
+            google_id = claims.get("subject") or claims.get("sub") if claims else None
+            if google_id:
+                from DB.session import get_db
+                async for db in get_db():
+                    user = await crud.get_user_by_google_id(db, google_id)
+                    if user:
+                        user.auto_jobs_enabled = False
+                        await db.commit()
+                    break
+        except Exception:
+            pass
         return self.handler.logout(request=request, callback_url=callback_url)
 
     async def _register_local_account(
