@@ -721,14 +721,14 @@ export default function Chat() {
                     "w-full text-left p-3 rounded-2xl border transition-all",
                     conversationId === item.conversation_id
                       ? "border-indigo-500/40 bg-indigo-500/10 text-white"
-                      : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                      : "border-white/10 bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-white/10"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
                     <span>{formatTimestamp(item.last_message_at, lang)}</span>
                     <span className="uppercase tracking-wide">{item.last_role || ''}</span>
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-100 truncate">
+                  <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                     {item.title || item.last_message_preview || t('chatHistoryPreviewEmpty')}
                   </div>
                   <div className="mt-1 text-xs text-slate-400 truncate">
