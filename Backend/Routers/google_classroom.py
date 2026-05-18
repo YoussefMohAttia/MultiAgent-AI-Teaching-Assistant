@@ -343,7 +343,7 @@ async def full_sync(
 
     courses_new = 0
     courses_updated = 0
-    synced_courses = []   # list of (db_course_id, classroom_id) for document syncing
+    synced_courses = []   # list of {course_id, classroom_id, course_title} for document syncing
 
     for course_data in courses_data:
         classroom_id = course_data.get("id")
@@ -355,7 +355,7 @@ async def full_sync(
             # 🔥 THE FIX: Always ensure the user is linked, even if course existed!
             await crud.link_user_to_course(db, user_id, existing.id) 
             courses_updated += 1
-            synced_courses.append((existing.id, classroom_id))
+            synced_courses.append({"course_id": existing.id, "classroom_id": classroom_id, "course_title": title})
         else:
             # 🔥 THE FIX: Remove user_id from create parameter
             new_course = await crud.create_course(
@@ -363,7 +363,7 @@ async def full_sync(
             )
             await crud.link_user_to_course(db, user_id, new_course.id)
             courses_new += 1
-            synced_courses.append((new_course.id, classroom_id))
+            synced_courses.append({"course_id": new_course.id, "classroom_id": classroom_id, "course_title": title})
 
     # ── Step 3: Parallel Fetch & Delta Sync for documents ─────
     docs_materials = 0
@@ -376,7 +376,10 @@ async def full_sync(
     auto_summary_doc_ids = []
     auto_quiz_doc_ids = []
 
-    for db_course_id, classroom_id in synced_courses:
+    for course_sync in synced_courses:
+        db_course_id = course_sync["course_id"]
+        classroom_id = course_sync["classroom_id"]
+        course_title = course_sync["course_title"]
         
         
         materials_list, announcements_list, coursework_list = await asyncio.gather(
@@ -408,6 +411,7 @@ async def full_sync(
                 "id": new_doc.id,
                 "title": new_doc.title,
                 "course_id": new_doc.course_id,
+                "course_title": course_title,
                 "doc_type": new_doc.doc_type,
             })
             if drive_url: new_drive_doc_ids.append(new_doc.id)
@@ -469,7 +473,7 @@ async def full_sync(
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
     if settings.AUTO_SUMMARIZE_MATERIALS:
-        course_ids = [course_id for course_id, _ in synced_courses]
+        course_ids = [course_sync["course_id"] for course_sync in synced_courses]
         if course_ids:
             summary_exists = (
                 select(1)
@@ -495,7 +499,7 @@ async def full_sync(
                 print(f"📋 Scheduled auto-summary for {len(candidate_ids)} material document(s)")
 
     if settings.AUTO_GENERATE_QUIZZES:
-        course_ids = [course_id for course_id, _ in synced_courses]
+        course_ids = [course_sync["course_id"] for course_sync in synced_courses]
         if course_ids:
             quiz_exists = (
                 select(1)

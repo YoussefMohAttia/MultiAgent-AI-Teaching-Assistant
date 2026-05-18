@@ -57,6 +57,15 @@ function getGreeting(hour, copy) {
   return copy.greetingEvening;
 }
 
+function makeStudyToast(doc, contentKey, tone, t) {
+  return {
+    title: doc.course_title || doc.courseTitle || '',
+    subtitle: doc.title || '',
+    message: t(contentKey),
+    tone,
+  };
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
@@ -129,9 +138,7 @@ export default function Dashboard() {
           const doc = pending[i];
           if (statuses[String(doc.id)] === 'ready') {
             pushToast({
-              title: t('syncSummaryReadyTitle'),
-              message: doc.title,
-              tone: 'success',
+              ...makeStudyToast(doc, 'syncSummaryReadyContent', 'success', t),
             });
             pending.splice(i, 1);
           }
@@ -166,9 +173,7 @@ export default function Dashboard() {
           const doc = pending[i];
           if (statuses[String(doc.id)] === 'ready') {
             pushToast({
-              title: t('syncQuizReadyTitle'),
-              message: doc.title,
-              tone: 'success',
+              ...makeStudyToast(doc, 'syncQuizReadyContent', 'success', t),
             });
             pending.splice(i, 1);
           }
@@ -219,7 +224,9 @@ export default function Dashboard() {
 
       if (summaryCandidates.length) {
         summaryCandidates.forEach((doc) => {
-          pushToast({ title: t('syncSummaryQueuedTitle'), message: doc.title, tone: 'warning' });
+          pushToast({
+            ...makeStudyToast(doc, 'syncSummaryQueuedContent', 'warning', t),
+          });
         });
         scheduleSummaryPolling(summaryCandidates);
       } else if (scheduledSummaryIds.length) {
@@ -236,7 +243,9 @@ export default function Dashboard() {
 
       if (quizCandidates.length) {
         quizCandidates.forEach((doc) => {
-          pushToast({ title: t('syncQuizQueuedTitle'), message: doc.title, tone: 'warning' });
+          pushToast({
+            ...makeStudyToast(doc, 'syncQuizQueuedContent', 'warning', t),
+          });
         });
         scheduleQuizPolling(quizCandidates);
       } else if (scheduledQuizIds.length) {

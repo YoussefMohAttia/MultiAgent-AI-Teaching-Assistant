@@ -15,6 +15,7 @@ export function ToastProvider({ children }) {
     const payload = {
       id,
       title: toast.title || '',
+      subtitle: toast.subtitle || '',
       message: toast.message || '',
       tone: toast.tone || 'info',
     };
