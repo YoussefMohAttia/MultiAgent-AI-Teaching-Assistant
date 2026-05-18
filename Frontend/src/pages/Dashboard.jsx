@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(() => getStats());
   const summaryPollRef = useRef(null);
   const quizPollRef = useRef(null);
+  const syncRunRef = useRef(false);
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -201,6 +202,8 @@ export default function Dashboard() {
   }
 
   async function runSync() {
+    if (syncRunRef.current) return;
+    syncRunRef.current = true;
     setSyncing(true);
     try {
       const res = await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
@@ -258,9 +261,9 @@ export default function Dashboard() {
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {
-      
       localStorage.setItem('last_sync_ts', String(Date.now()));
       setSyncing(false);
+      syncRunRef.current = false;
     }
     // Fetch whatever courses we currently have in the DB
     await fetchCourses();
