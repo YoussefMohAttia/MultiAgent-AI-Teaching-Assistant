@@ -312,21 +312,21 @@ export default function QuizGenerator() {
                     {quizzesLoading ? (
                        <p className="text-slate-400 text-sm">{t('quizLoadingQuizzes')}</p>
                     ) : quizzes.length === 0 ? (
-                      <div className="col-span-full py-12 text-center border border-dashed border-slate-700 rounded-xl bg-slate-900/50">
-                        <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400">{t('quizNoQuizzes')}</p>
+                      <div className="col-span-full py-12 text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                        <BookOpen className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-500 dark:text-slate-400">{t('quizNoQuizzes')}</p>
                       </div>
                     ) : (
                       quizzes.map((quiz) => {
                         const quizTitle = getQuizDisplayTitle(quiz, t);
                         return (
-                        <div key={quiz.id} onClick={() => handleSelectQuiz(quiz)} className="bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-slate-800/80 p-5 rounded-xl cursor-pointer transition-all flex flex-col justify-between min-h-[120px] group">
+                        <div key={quiz.id} onClick={() => handleSelectQuiz(quiz)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800/80 p-5 rounded-xl cursor-pointer transition-all flex flex-col justify-between min-h-[120px] group">
                            <div>
                               <div className="flex justify-between items-start mb-2">
                                 <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-md max-w-[14rem] truncate" title={quizTitle}>{quizTitle}</span>
                                 <span className="text-xs text-slate-500">{new Date(quiz.created_at).toLocaleDateString()}</span>
                               </div>
-                              <p className="text-sm text-slate-300 font-medium">{quiz.questions?.length || 0} {t('quizQuestionsLabel')}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{quiz.questions?.length || 0} {t('quizQuestionsLabel')}</p>
                            </div>
                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                              <span className="text-xs font-bold text-indigo-400 flex items-center gap-1">{t('quizTakeQuiz')} <span className="text-lg leading-none">&rarr;</span></span>
@@ -340,12 +340,12 @@ export default function QuizGenerator() {
               ) : (
                 <div className="flex flex-col h-full overflow-hidden">
                   <div className="flex items-center gap-4 mb-6 flex-shrink-0">
-                    <button onClick={() => { setActiveQuiz(null); setTakeItems([]); }} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors">
+                    <button onClick={() => { setActiveQuiz(null); setTakeItems([]); }} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors">
                       &larr; {t('quizBackToQuizzes')}
                     </button>
                     <div>
-                      <h2 className="text-lg font-bold text-white">{getQuizDisplayTitle(activeQuiz, t)}</h2>
-                      <p className="text-xs text-slate-400">{takeItems.length} {t('quizQuestionsLabel')}</p>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">{getQuizDisplayTitle(activeQuiz, t)}</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{takeItems.length} {t('quizQuestionsLabel')}</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -408,15 +408,15 @@ function QuizTaker({ items }) {
     <div className="flex flex-col gap-8">
       
       {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
         <div className="flex gap-2">
           <button onClick={revealAllAnswers} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors">{t('quizRevealAnswers')}</button>
-          <button onClick={resetAll} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors">{t('quizReset')}</button>
+          <button onClick={resetAll} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors">{t('quizReset')}</button>
         </div>
         
         {showScoreBar && (
-          <div className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
-            <span className="text-sm font-medium text-slate-300">{t('quizScoreLabel')}: <span className="text-white font-bold">{score}/{attempted}</span> <span className="text-slate-500">({Math.round((score / Math.max(items.length, 1)) * 100)}%)</span></span>
+          <div className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('quizScoreLabel')}: <span className="text-slate-900 dark:text-white font-bold">{score}/{attempted}</span> <span className="text-slate-500">({Math.round((score / Math.max(items.length, 1)) * 100)}%)</span></span>
           </div>
         )}
       </div>
@@ -431,13 +431,13 @@ function QuizTaker({ items }) {
           const isWrongAnswered = !isRevealedOnly && isAnswered && chosen !== q.answer_index;
 
           return (
-            <div key={qi} className={`p-6 rounded-xl border transition-all ${isCorrectAnswered ? 'bg-emerald-950/20 border-emerald-900/50' : isWrongAnswered || isRevealedOnly ? 'bg-rose-950/20 border-rose-900/50' : 'bg-slate-800 border-slate-700'}`}>
+            <div key={qi} className={`p-6 rounded-xl border transition-all ${isCorrectAnswered ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50' : isWrongAnswered || isRevealedOnly ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
               
               <div className="flex gap-4 mb-5">
-                <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg font-bold text-sm ${isCorrectAnswered ? 'bg-emerald-500 text-white' : isWrongAnswered || isRevealedOnly ? 'bg-rose-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg font-bold text-sm ${isCorrectAnswered ? 'bg-emerald-500 text-white' : isWrongAnswered || isRevealedOnly ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}`}>
                   {qi + 1}
                 </div>
-                <p className="text-white font-medium pt-1 leading-relaxed">{q.stem}</p>
+                <p className="text-slate-900 dark:text-white font-medium pt-1 leading-relaxed">{q.stem}</p>
               </div>
 
               <div className="flex flex-col gap-2 pl-12">
@@ -448,7 +448,7 @@ function QuizTaker({ items }) {
                   const showAsCorrect = (isCorrectOption && locked[qi]) || (isCorrectOption && revealedAll);
                   const showAsWrong = isSelectedOption && !isCorrectOption && (locked[qi] || revealedAll);
 
-                  let btnStyle = "bg-slate-900/50 border-slate-700 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10";
+                  let btnStyle = "bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10";
                   let icon = null;
 
                   if (showAsCorrect) {

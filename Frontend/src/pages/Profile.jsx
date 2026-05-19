@@ -13,7 +13,6 @@ import {
   Award,
   BookOpen,
   Calendar,
-  ChevronRight,
   Flame,
   GraduationCap,
   MessageCircle,
@@ -447,33 +446,6 @@ export default function Profile() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-              <BookOpen className="w-5 h-5 text-cyan-600 dark:text-sky-400" /> {t('profileLearningProfile')}
-            </h2>
-            {coursesLoading ? (
-              <p className="text-sm text-slate-600 dark:text-slate-500">{t('profileLoadingCourses')}</p>
-            ) : courses.length === 0 ? (
-              <p className="text-sm text-slate-600 dark:text-slate-500">{t('profileNoCourses')}</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {courses.slice(0, 3).map((course) => (
-                  <div key={course.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4">
-                    <p className="text-sm text-slate-900 dark:text-white font-medium line-clamp-1">{course.title}</p>
-                    <p className="text-xs text-slate-600 dark:text-slate-500 mt-1">{t('profileNextAction')}: {learningAction}</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/courses?courseId=${course.id}`)}
-                      className="mt-3 text-xs font-semibold text-sky-700 dark:text-indigo-400 hover:text-sky-800 dark:hover:text-indigo-300 flex items-center gap-1"
-                    >
-                      {t('profileOpenCourse')} <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
               <MessageCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> {t('profileLeaderboard')}
