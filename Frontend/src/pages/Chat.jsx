@@ -85,6 +85,11 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
   );
 }
 
+const formatDocLabel = (doc) => {
+  if (!doc) return '';
+  return doc.doc_type ? `${doc.title} (${doc.doc_type})` : doc.title;
+};
+
 export default function Chat() {
   const { user } = useAuth();
   const { t, lang } = useLanguage();
@@ -142,9 +147,11 @@ export default function Chat() {
     if (courseId) {
       getDocuments(courseId)
         .then((r) => {
-          const list = r.data.documents || [];
-          setDocs(list);
-          if (list.length) setSelectedDocId(String(list[0].id));
+          const usable = (r.data.documents || []).filter(
+            (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
+          );
+          setDocs(usable);
+          if (usable.length) setSelectedDocId(String(usable[0].id));
         })
         .catch(() => setDocs([]));
     } else {
@@ -644,6 +651,7 @@ export default function Chat() {
   };
 
   const activeCourse = courses.find((course) => String(course.id) === String(courseId));
+  const docOptions = docs.map((doc) => ({ id: doc.id, title: formatDocLabel(doc) }));
   const historyScopeLabel = sourceMode === 'document'
     ? activeCourse?.title || t('chatHistoryCourseLabel')
     : t('chatHistoryGeneralLabel');
@@ -807,7 +815,7 @@ export default function Chat() {
               {sourceMode === 'document' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col sm:flex-row gap-2">
                   <CustomSelect value={courseId} onChange={setCourseId} options={courses} placeholder={t('chatSelectCourse')} />
-                  <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docs} placeholder={t('chatSelectDocument')} disabled={!courseId} />
+                  <CustomSelect value={selectedDocId} onChange={setSelectedDocId} options={docOptions} placeholder={t('chatSelectDocument')} disabled={!courseId} />
                 </motion.div>
               )}
 

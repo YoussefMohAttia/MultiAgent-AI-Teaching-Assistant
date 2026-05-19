@@ -349,7 +349,7 @@ export default function Profile() {
                     <p className="text-xs text-slate-600 dark:text-slate-500 mt-1">{t('profileNextAction')}: {learningAction}</p>
                     <button
                       type="button"
-                      onClick={() => navigate('/courses')}
+                      onClick={() => navigate(`/courses?courseId=${course.id}`)}
                       className="mt-3 text-xs font-semibold text-sky-700 dark:text-indigo-400 hover:text-sky-800 dark:hover:text-indigo-300 flex items-center gap-1"
                     >
                       {t('profileOpenCourse')} <ChevronRight className="w-3 h-3" />

@@ -92,7 +92,7 @@ export default function Evaluator() {
       getDocuments(Number(courseId))
         .then((r) => {
           const usable = (r.data.documents || []).filter(
-            (d) => d.download_url || d.google_drive_url || d.raw_text
+            (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
           );
           setDocs(usable);
           if (usable.length) setSelectedDocId(String(usable[0].id));

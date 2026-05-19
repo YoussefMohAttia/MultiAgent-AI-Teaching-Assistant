@@ -7,6 +7,11 @@ import axios from 'axios';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { incrementStat } from '../lib/activity';
 
+const formatDocLabel = (doc) => {
+  if (!doc) return '';
+  return doc.doc_type ? `${doc.title} (${doc.doc_type})` : doc.title;
+};
+
 export default function Summarizer() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -38,7 +43,14 @@ export default function Summarizer() {
 
   useEffect(() => {
     if (selectedCourseId && sourceMode === 'document' && activeTab === 'generate') {
-      getDocuments(selectedCourseId).then(r => setDocs(r.data.documents || [])).catch(() => {});
+      getDocuments(selectedCourseId)
+        .then((r) => {
+          const usable = (r.data.documents || []).filter(
+            (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
+          );
+          setDocs(usable);
+        })
+        .catch(() => {});
     } else {
       setDocs([]);
     }
@@ -201,7 +213,7 @@ export default function Summarizer() {
                         disabled={!selectedCourseId || docs.length === 0}
                       >
                         <option value="" disabled>{!selectedCourseId ? t('summarizerSelectCourseFirst') : docs.length === 0 ? t('summarizerNoDocs') : t('summarizerChooseDocument')}</option>
-                        {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                        {docs.map(d => <option key={d.id} value={d.id}>{formatDocLabel(d)}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSummaryStatus, getQuizStatus, runFullSync } from '../services/api';
+import { getSummaryStatus, getQuizStatus, getProgress, runFullSync } from '../services/api';
 import { useToasts } from '../contexts/ToastContext';
 import { getStats } from '../lib/activity';
 import CourseAutomationSelector from '../components/CourseAutomationSelector';
@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [streak, setStreak] = useState(1);
+  const [progress, setProgress] = useState(null);
   const [stats, setStats] = useState(() => getStats());
   const summaryPollRef = useRef(null);
   const quizPollRef = useRef(null);
@@ -97,6 +98,9 @@ export default function Dashboard() {
     }
     setStreak(computeStreak(user.id));
     setStats(getStats());
+    getProgress()
+      .then((res) => setProgress(res.data))
+      .catch(() => setProgress(null));
     if (isLocalAccount) {
       fetchCourses();
       return;
@@ -337,6 +341,7 @@ export default function Dashboard() {
   const greeting = getGreeting(hour, copy);
   const dateLocale = copy.dateLocale || 'en-US';
   const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
+  const dayStreak = progress?.day_streak ?? streak;
   const automationCanSave = automationSelection.length > 0;
 
   return (
@@ -392,7 +397,7 @@ export default function Dashboard() {
         <StatCard 
           icon={Flame} 
           label={copy.dayStreak} 
-          value={streak} 
+          value={dayStreak} 
           colorClass="bg-orange-500/20 text-orange-400" 
         />
         <StatCard 

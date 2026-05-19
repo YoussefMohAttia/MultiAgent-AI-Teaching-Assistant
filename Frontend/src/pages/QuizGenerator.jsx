@@ -7,6 +7,11 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
 import { incrementStat } from '../lib/activity';
 
+const formatDocLabel = (doc) => {
+  if (!doc) return '';
+  return doc.doc_type ? `${doc.title} (${doc.doc_type})` : doc.title;
+};
+
 export default function QuizGenerator() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -63,7 +68,9 @@ export default function QuizGenerator() {
       setDocsLoading(true); setSelectedDocId('');
       getDocuments(Number(courseId))
         .then((r) => {
-          const usable = (r.data.documents || []).filter(d => d.download_url || d.google_drive_url || d.raw_text);
+          const usable = (r.data.documents || []).filter(
+            (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
+          );
           setDocs(usable);
           if (usable.length) setSelectedDocId(String(usable[0].id));
         })
@@ -198,7 +205,7 @@ export default function QuizGenerator() {
                         value={selectedDocId} onChange={(e) => setSelectedDocId(e.target.value)} disabled={!courseId || docs.length === 0}
                       >
                         <option value="" disabled>{docsLoading ? t('quizLoading') : docs.length === 0 ? t('quizNoDocs') : t('quizChooseDocument')}</option>
-                        {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                        {docs.map(d => <option key={d.id} value={d.id}>{formatDocLabel(d)}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>

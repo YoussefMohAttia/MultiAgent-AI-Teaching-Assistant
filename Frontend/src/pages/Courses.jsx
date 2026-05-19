@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getCourses, getDocuments, getDocumentBlob } from '../services/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
@@ -8,10 +9,13 @@ import {
 
 export default function Courses() {
   const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const courseIdParam = searchParams.get('courseId');
   const [courses, setCourses] = useState([]);
   const [selected, setSelected] = useState(null);
   const [docs, setDocs] = useState([]);
   const [error, setError] = useState('');
+  const appliedCourseParamRef = useRef('');
   
   // UX States
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -60,6 +64,15 @@ export default function Courses() {
       .catch(() => setError(t('coursesLoadError')))
       .finally(() => setCoursesLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!courseIdParam) return;
+    if (appliedCourseParamRef.current === courseIdParam) return;
+    const match = courses.find((course) => String(course.id) === String(courseIdParam));
+    if (!match) return;
+    appliedCourseParamRef.current = courseIdParam;
+    setSelected(match);
+  }, [courses, courseIdParam]);
 
   useEffect(() => {
     if (selected) {
