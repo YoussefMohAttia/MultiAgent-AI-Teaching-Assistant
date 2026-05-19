@@ -1,0 +1,225 @@
+/* ═══════════════════════════════════════════════════
+   Interactive 3D Study Scene
+   CSS 3D transforms + parallax + floating animations
+   ═══════════════════════════════════════════════════ */
+
+/* ── Container ── */
+.i3d-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Ambient Glow Orbs (background atmosphere) ── */
+.i3d-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(70px);
+  will-change: transform;
+  transition: transform 0.15s ease-out;
+}
+
+.i3d-glow-1 {
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(99,102,241,0.35) 0%, rgba(99,102,241,0) 70%);
+  top: 5%;
+  right: 0%;
+  animation: glow-drift-1 10s ease-in-out infinite;
+}
+
+.i3d-glow-2 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(236,72,153,0.25) 0%, rgba(236,72,153,0) 70%);
+  bottom: 10%;
+  left: 5%;
+  animation: glow-drift-2 12s ease-in-out infinite 2s;
+}
+
+.i3d-glow-3 {
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(14,165,233,0.2) 0%, rgba(14,165,233,0) 70%);
+  top: 40%;
+  left: 30%;
+  animation: glow-drift-1 14s ease-in-out infinite 4s;
+}
+
+/* ── 3D Perspective Scene ── */
+.i3d-scene {
+  position: relative;
+  width: 320px;
+  height: 380px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@media (min-width: 768px) {
+  .i3d-scene {
+    width: 380px;
+    height: 440px;
+  }
+}
+
+/* ── Parallax Layers ── */
+.i3d-layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ── Student Character ── */
+.i3d-student {
+  position: absolute;
+  width: 220px;
+  height: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 8px 25px rgba(99,102,241,0.35));
+  animation: student-bob 5s ease-in-out infinite;
+}
+
+@media (min-width: 768px) {
+  .i3d-student {
+    width: 260px;
+  }
+}
+
+/* ── Floating Book Stack ── */
+.i3d-books {
+  position: absolute;
+  bottom: 8%;
+  left: -8%;
+  animation: float-1 6s ease-in-out infinite;
+}
+
+/* ── Floating Pencil ── */
+.i3d-pencil {
+  position: absolute;
+  top: 18%;
+  left: -12%;
+  animation: float-rotate 7s ease-in-out infinite;
+}
+
+/* ── Floating Light Bulb ── */
+.i3d-lightbulb {
+  position: absolute;
+  top: 2%;
+  right: 8%;
+  animation: float-glow 4.5s ease-in-out infinite;
+}
+
+/* ── Floating Backpack ── */
+.i3d-backpack {
+  position: absolute;
+  bottom: 5%;
+  right: -5%;
+  animation: float-2 5.5s ease-in-out infinite 1s;
+}
+
+/* ── Floating Notebook ── */
+.i3d-notebook {
+  position: absolute;
+  top: 35%;
+  right: -15%;
+  animation: float-3 6.5s ease-in-out infinite 0.5s;
+}
+
+/* ── Math Symbols ── */
+.i3d-symbol {
+  position: absolute;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-weight: 700;
+  color: rgba(165,180,252,0.25);
+  pointer-events: none;
+  text-shadow: 0 0 20px rgba(99,102,241,0.15);
+}
+
+.i3d-sym-0 { top: 3%;  left: 8%;  font-size: 26px; animation: float-sym 8s ease-in-out infinite; }
+.i3d-sym-1 { top: 15%; right: 3%; font-size: 22px; animation: float-sym 6.5s ease-in-out infinite 1s; }
+.i3d-sym-2 { bottom: 28%; left: 2%; font-size: 20px; animation: float-sym 7s ease-in-out infinite 2s; }
+.i3d-sym-3 { bottom: 8%; right: 20%; font-size: 24px; animation: float-sym 9s ease-in-out infinite 0.5s; }
+.i3d-sym-4 { top: 50%; left: -3%; font-size: 18px; animation: float-sym 5.5s ease-in-out infinite 3s; }
+.i3d-sym-5 { top: 70%; right: 0%;  font-size: 20px; animation: float-sym 7.5s ease-in-out infinite 1.5s; }
+
+/* ── Sparkle Particles ── */
+.i3d-sparkle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.i3d-sparkle-0 { width: 4px; height: 4px; background: #a5b4fc; top: 8%;  left: 18%;  box-shadow: 0 0 8px 3px rgba(165,180,252,0.5); animation: sparkle 3s ease-in-out infinite; }
+.i3d-sparkle-1 { width: 3px; height: 3px; background: #c4b5fd; top: 25%; right: 12%;  box-shadow: 0 0 6px 2px rgba(196,181,253,0.5); animation: sparkle 2.5s ease-in-out infinite 0.4s; }
+.i3d-sparkle-2 { width: 5px; height: 5px; background: #93c5fd; bottom: 22%; left: 12%; box-shadow: 0 0 10px 3px rgba(147,197,253,0.4); animation: sparkle 3.5s ease-in-out infinite 0.8s; }
+.i3d-sparkle-3 { width: 3px; height: 3px; background: #f9a8d4; top: 55%; left: 4%;   box-shadow: 0 0 6px 2px rgba(249,168,212,0.5); animation: sparkle 2.8s ease-in-out infinite 0.2s; }
+.i3d-sparkle-4 { width: 4px; height: 4px; background: #a5b4fc; top: 12%; right: 28%;  box-shadow: 0 0 8px 3px rgba(165,180,252,0.5); animation: sparkle 3.2s ease-in-out infinite 1s; }
+.i3d-sparkle-5 { width: 3px; height: 3px; background: #fde68a; bottom: 38%; right: 8%; box-shadow: 0 0 6px 2px rgba(253,230,138,0.5); animation: sparkle 2.6s ease-in-out infinite 1.4s; }
+.i3d-sparkle-6 { width: 4px; height: 4px; background: #6ee7b7; top: 72%; left: 25%;  box-shadow: 0 0 8px 3px rgba(110,231,183,0.4); animation: sparkle 3.8s ease-in-out infinite 0.6s; }
+.i3d-sparkle-7 { width: 3px; height: 3px; background: #c4b5fd; bottom: 12%; right: 30%; box-shadow: 0 0 6px 2px rgba(196,181,253,0.5); animation: sparkle 2.4s ease-in-out infinite 1.2s; }
+
+/* ═══════════════════════════════════════════════════
+   Keyframe Animations
+   ═══════════════════════════════════════════════════ */
+
+@keyframes student-bob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+  50%      { transform: translate(-50%, -50%) translateY(-8px); }
+}
+
+@keyframes float-1 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%      { transform: translateY(-14px) rotate(3deg); }
+}
+
+@keyframes float-2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%      { transform: translateY(-18px) rotate(-4deg); }
+}
+
+@keyframes float-3 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%      { transform: translateY(-12px) rotate(5deg); }
+}
+
+@keyframes float-rotate {
+  0%, 100% { transform: translateY(0px) rotate(-12deg); }
+  50%      { transform: translateY(-16px) rotate(8deg); }
+}
+
+@keyframes float-glow {
+  0%, 100% { transform: translateY(0px) scale(1);   opacity: 0.85; }
+  50%      { transform: translateY(-10px) scale(1.05); opacity: 1; }
+}
+
+@keyframes float-sym {
+  0%, 100% { transform: translateY(0px); opacity: 0.25; }
+  50%      { transform: translateY(-10px); opacity: 0.45; }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.5); }
+  50%      { opacity: 1;    transform: scale(1.3); }
+}
+
+@keyframes glow-drift-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33%      { transform: translate(15px, -20px) scale(1.1); }
+  66%      { transform: translate(-10px, 10px) scale(0.95); }
+}
+
+@keyframes glow-drift-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  40%      { transform: translate(-20px, -15px) scale(1.08); }
+  70%      { transform: translate(10px, 5px) scale(0.9); }
+}
