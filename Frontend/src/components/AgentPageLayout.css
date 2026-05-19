@@ -1,7 +1,10 @@
 .agent-layout-root {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-page);
   color: var(--text-primary);
+  overflow: hidden;
 }
 
 .agent-layout-header {
@@ -31,7 +34,12 @@
 }
 
 .agent-layout-content {
-  padding: 32px;
+  padding: 20px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
 }
 
 @media (max-width: 768px) {

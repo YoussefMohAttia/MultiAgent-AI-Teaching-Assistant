@@ -23,11 +23,12 @@ export default function Layout() {
     { to: '/profile', icon: User, label: t('navProfile') },
     { section: t('navFocusBreak') },
     { to: '/pomodoro', icon: Timer, label: t('navPomodoro') },
-    { to: '/mini-games', icon: Gamepad2, label: t('navMiniGames') },
+    { to: '/mini-games', icon: Gamepad2, label: t('navMiniGames'), showLock: !isBreak },
     { section: t('navSupport') },
     { to: '/user-manual', icon: BookOpen, label: t('navUserManual') },
   ];
 
+  // If break ends while on mini-games page, redirect to pomodoro
   useEffect(() => {
     if (!isBreak && pathname === '/mini-games') {
       navigate('/pomodoro', { replace: true });
@@ -50,7 +51,7 @@ export default function Layout() {
       {/* ── Sidebar ──────────────────────────────────── */}
       <aside className="w-64 flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300">
         
-        {/* Brand Header - Fixed the broken image by using a sleek vector icon */}
+        {/* Brand Header */}
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <div className="w-8 h-8 mr-3 bg-indigo-500/20 rounded-lg flex items-center justify-center">
             <GraduationCap className="w-5 h-5 text-indigo-400" />
@@ -71,39 +72,28 @@ export default function Layout() {
 
             const Icon = item.icon;
 
-            if (item.to === '/mini-games' && !isBreak) {
-              return (
-                <div 
-                  key={item.to} 
-                  className="flex items-center justify-between mx-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed text-slate-400 bg-transparent border-l-2 border-transparent"
-                  title={t('availableDuringBreak')}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium text-sm">{item.label}</span>
-                  </div>
-                  <Lock className="w-3.5 h-3.5 text-slate-500" />
-                </div>
-              );
-            }
-
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === '/dashboard'}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 mx-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group border-l-2 ${
+                  `flex items-center justify-between mx-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group border-l-2 ${
                     isActive 
-                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500' // Added left accent border
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500'
                       : 'border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300 transition-colors'}`} />
-                    {item.label}
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300 transition-colors'}`} />
+                      {item.label}
+                    </div>
+                    {item.showLock && (
+                      <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    )}
                   </>
                 )}
               </NavLink>

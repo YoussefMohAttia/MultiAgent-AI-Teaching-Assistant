@@ -126,7 +126,7 @@ export default function Summarizer() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] animate-in fade-in duration-500 max-w-6xl mx-auto">
+    <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-500 w-full">
       
       <div className="mb-6 flex-shrink-0">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3 mb-2">

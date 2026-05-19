@@ -6,11 +6,42 @@ const PomodoroContext = createContext(null);
 const WORK_DEFAULT_MINUTES = 30;
 const BREAK_DEFAULT_MINUTES = 5;
 const STORAGE_KEY = 'pomodoro_state_v1';
+const DAILY_KEY = 'pomodoro_daily_v1';
+const DEFAULT_FOCUS_GOAL = 120; // minutes
 
 function clampMinutes(value, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(120, Math.max(1, Math.round(parsed)));
+}
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function loadDailyState() {
+  try {
+    const raw = localStorage.getItem(DAILY_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (saved?.date !== getTodayStr()) return null; // stale — reset
+    return {
+      todayFocusSeconds: Math.max(0, Number(saved?.todayFocusSeconds) || 0),
+      focusGoalMinutes: Math.max(10, Math.min(480, Number(saved?.focusGoalMinutes) || DEFAULT_FOCUS_GOAL)),
+      sessionHistory: Array.isArray(saved?.sessionHistory) ? saved.sessionHistory : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getDailyDefaults() {
+  return {
+    todayFocusSeconds: 0,
+    focusGoalMinutes: DEFAULT_FOCUS_GOAL,
+    sessionHistory: [],
+  };
 }
 
 function loadInitialState() {
@@ -90,6 +121,7 @@ function playGentleTone() {
 
 export function PomodoroProvider({ children }) {
   const initial = loadInitialState() || getDefaults();
+  const dailyInitial = loadDailyState() || getDailyDefaults();
 
   const [workMinutes, setWorkMinutes] = useState(initial.workMinutes);
   const [breakMinutes, setBreakMinutes] = useState(initial.breakMinutes);
@@ -100,14 +132,20 @@ export function PomodoroProvider({ children }) {
   const [completedCycles, setCompletedCycles] = useState(initial.completedCycles);
   const [streakBonus, setStreakBonus] = useState(initial.streakBonus);
 
-  const completedRef = useRef(initial.completedCycles);
+  // Daily focus tracking
+  const [todayFocusSeconds, setTodayFocusSeconds] = useState(dailyInitial.todayFocusSeconds);
+  const [focusGoalMinutes, setFocusGoalMinutes] = useState(dailyInitial.focusGoalMinutes);
+  const [sessionHistory, setSessionHistory] = useState(dailyInitial.sessionHistory);
 
+  const completedRef = useRef(initial.completedCycles);
   const intervalRef = useRef(null);
 
   const isBreak = mode === 'break';
   const totalSeconds = (isBreak ? breakMinutes : workMinutes) * 60;
   const progress = totalSeconds > 0 ? ((totalSeconds - secondsLeft) / totalSeconds) * 100 : 0;
+  const todayFocusMinutes = Math.floor(todayFocusSeconds / 60);
 
+  // Persist main timer state
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
@@ -122,6 +160,19 @@ export function PomodoroProvider({ children }) {
       }),
     );
   }, [workMinutes, breakMinutes, mode, secondsLeft, autoStartNext, completedCycles, streakBonus]);
+
+  // Persist daily state
+  useEffect(() => {
+    localStorage.setItem(
+      DAILY_KEY,
+      JSON.stringify({
+        date: getTodayStr(),
+        todayFocusSeconds,
+        focusGoalMinutes,
+        sessionHistory,
+      }),
+    );
+  }, [todayFocusSeconds, focusGoalMinutes, sessionHistory]);
 
   useEffect(() => {
     const last = completedRef.current;
@@ -154,10 +205,14 @@ export function PomodoroProvider({ children }) {
             setSecondsLeft(breakMinutes * 60);
             setCompletedCycles((value) => value + 1);
             setStreakBonus((value) => value + 10);
+            // Log completed work session
+            setSessionHistory((prev) => [...prev, { type: 'work', timestamp: Date.now() }]);
             if (autoStartNext) setIsRunning(true);
           } else {
             setMode('work');
             setSecondsLeft(workMinutes * 60);
+            // Log completed break session
+            setSessionHistory((prev) => [...prev, { type: 'break', timestamp: Date.now() }]);
             if (autoStartNext) setIsRunning(true);
           }
 
@@ -166,6 +221,11 @@ export function PomodoroProvider({ children }) {
 
         return prev - 1;
       });
+
+      // Track focus time (only during work mode)
+      if (mode === 'work') {
+        setTodayFocusSeconds((prev) => prev + 1);
+      }
     }, 1000);
 
     return () => {
@@ -209,6 +269,11 @@ export function PomodoroProvider({ children }) {
     if (mode === 'break' && !isRunning) setSecondsLeft(next * 60);
   }
 
+  function updateFocusGoal(value) {
+    const clamped = Math.max(10, Math.min(480, Math.round(Number(value) || DEFAULT_FOCUS_GOAL)));
+    setFocusGoalMinutes(clamped);
+  }
+
   const value = useMemo(
     () => ({
       workMinutes,
@@ -221,12 +286,17 @@ export function PomodoroProvider({ children }) {
       completedCycles,
       streakBonus,
       progress,
+      todayFocusMinutes,
+      todayFocusSeconds,
+      focusGoalMinutes,
+      sessionHistory,
       start,
       pause,
       reset,
       skipBreak,
       updateWorkMinutes,
       updateBreakMinutes,
+      updateFocusGoal,
       setAutoStartNext,
     }),
     [
@@ -240,6 +310,10 @@ export function PomodoroProvider({ children }) {
       completedCycles,
       streakBonus,
       progress,
+      todayFocusMinutes,
+      todayFocusSeconds,
+      focusGoalMinutes,
+      sessionHistory,
     ],
   );
 

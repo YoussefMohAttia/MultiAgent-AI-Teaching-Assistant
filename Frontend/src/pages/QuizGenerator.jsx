@@ -132,7 +132,7 @@ export default function QuizGenerator() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] animate-in fade-in duration-500 max-w-6xl mx-auto">
+    <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-500 w-full">
       
       {/* Header */}
       <div className="mb-6 flex-shrink-0 flex justify-between items-end">

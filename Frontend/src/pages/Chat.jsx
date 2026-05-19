@@ -668,7 +668,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-var(--header-h))] w-full max-w-none -m-4 md:-m-8 rounded-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
+    <div className="relative flex flex-col flex-1 min-h-0 w-full rounded-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black border border-white/5 shadow-2xl overflow-hidden">
       <div className="lg:hidden flex items-center justify-center gap-2 px-4 pt-4">
         <button
           type="button"

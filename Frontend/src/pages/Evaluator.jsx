@@ -3,7 +3,7 @@ import { evaluateSummary, evaluateUploadedSummary, getCourses, getDocuments, log
 import '../components/Shared.css';
 import { useLanguage } from '../contexts/LanguageContext';
 import { incrementStat } from '../lib/activity';
-import { UploadCloud } from 'lucide-react';
+import { ClipboardCheck, UploadCloud, ChevronDown, AlertCircle, Zap, ChevronRight } from 'lucide-react';
 import CustomSelect from '../components/CustomSelect';
 
 function buildMetricInfo(t) {
@@ -42,12 +42,56 @@ function buildMetricInfo(t) {
 }
 
 function colorForScore(score) {
-  if (score >= 8) return 'var(--success)';
-  if (score >= 5) return 'var(--warning, #f59e0b)';
-  return 'var(--danger)';
+  if (score >= 8) return '#22c55e';
+  if (score >= 5) return '#f59e0b';
+  return '#ef4444';
+}
+
+function tierForScore(score) {
+  if (score >= 8) return 'high';
+  if (score >= 5) return 'mid';
+  return 'low';
 }
 
 const TECH_DETAIL_RE = /(cos_|rouge|mean_sim|max_sim|covered=|domain terms matched|length ratio)/i;
+
+/* ── Score Ring SVG ────────────────────────────────────────────────────── */
+function ScoreRing({ score, max = 10, size = 140, strokeWidth = 10 }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.max(0, Math.min(1, score / max));
+  const offset = circumference - progress * circumference;
+  const color = colorForScore(score);
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke={color} strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.5s', filter: `drop-shadow(0 0 6px ${color}40)` }}
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>
+          {score}
+        </span>
+        <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+          / {max}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Evaluator() {
   const { t } = useLanguage();
@@ -61,7 +105,7 @@ export default function Evaluator() {
   const [docsLoading, setDocsLoading] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState('');
 
-  // Student summary (always typed manually)
+  // Student summary
   const [studentSummary, setStudentSummary] = useState('');
   const [summaryInputMode, setSummaryInputMode] = useState('text'); // 'text' | 'upload'
   const [studentSummaryFile, setStudentSummaryFile] = useState(null);
@@ -73,6 +117,7 @@ export default function Evaluator() {
   const [error, setError] = useState('');
   const [elapsed, setElapsed] = useState(null);
   const [showTechnical, setShowTechnical] = useState(false);
+  const [expandedMetric, setExpandedMetric] = useState(null);
 
   useEffect(() => {
     getCourses()
@@ -131,154 +176,156 @@ export default function Evaluator() {
   };
 
   return (
-    <div>
-      {/* ── Input Section ──────────────────────────── */}
-      <div className="grid-2" style={{ marginBottom: 24 }}>
-        {/* Lecture / Source */}
-        <div className="card">
-          <div className="card-header">
-            <span className="icon">📄</span>
-            <h3 style={{ fontSize: '0.95rem' }}>{t('evaluatorLectureTitle')}</h3>
-          </div>
+    <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-500 w-full">
 
-          {/* Source mode toggle */}
-          <div className="form-group">
-            <label>{t('evaluatorInputType')}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+      {/* ── Header ──────────────────────────────────── */}
+      <div className="mb-6 flex-shrink-0">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3 mb-2">
+          <ClipboardCheck className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+          {t('aiEvaluatorTitle')}
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400">
+          {t('aiEvaluatorContent')}
+        </p>
+      </div>
+
+      {/* ── Main Layout ─────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+
+        {/* Left Panel — Inputs */}
+        <div className="w-full lg:w-2/5 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-1">
+
+          {/* Lecture / Source Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              📄 {t('evaluatorLectureTitle')}
+            </h2>
+
+            {/* Source mode toggle */}
+            <div className="flex bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 mb-5">
               <button
                 type="button"
-                className={`btn btn-sm ${sourceMode === 'text' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSourceMode('text')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-indigo-600 dark:bg-slate-800 text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
               >
                 ✏️ {t('evaluatorInputText')}
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${sourceMode === 'document' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSourceMode('document')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${sourceMode === 'document' ? 'bg-indigo-600 dark:bg-slate-800 text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
               >
                 📄 {t('evaluatorInputDocument')}
               </button>
             </div>
-          </div>
 
-          {sourceMode === 'text' && (
-            <div className="form-group">
-              <textarea
-                className="form-textarea"
-                rows={10}
-                placeholder={t('evaluatorLecturePlaceholder')}
-                value={lectureText}
-                onChange={(e) => setLectureText(e.target.value)}
-              />
-              <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                {lectureText.length.toLocaleString()} {t('evaluatorChars')}
-              </div>
-            </div>
-          )}
-
-          {sourceMode === 'document' && (
-            <div className="form-group">
-              <label>{t('evaluatorCourseLabel')}</label>
-              <CustomSelect
-                value={courseId}
-                onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
-                options={courses.map(c => ({ id: c.id, title: c.title }))}
-                placeholder={t('evaluatorLoadingCourses')}
-              />
-
-              <label>{t('evaluatorSelectDocument')}</label>
-              {docsLoading ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <span className="spinner" style={{ marginRight: 6 }} />{t('evaluatorLoadingDocuments')}
-                </p>
-              ) : docs.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  {t('evaluatorNoUsableDocs')}
-                </p>
-              ) : (
-                <CustomSelect
-                  value={selectedDocId}
-                  onChange={(val) => setSelectedDocId(String(val))}
-                  options={docs.map(d => ({ id: d.id, title: `${d.download_url ? '📄' : d.google_drive_url ? '☁️' : '📝'} ${d.title}${d.doc_type ? ` (${d.doc_type})` : ''}` }))}
-                  placeholder={t('evaluatorSelectDocument')}
-                  disabled={!courseId}
+            {sourceMode === 'text' && (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
+                  rows={8}
+                  placeholder={t('evaluatorLecturePlaceholder')}
+                  value={lectureText}
+                  onChange={(e) => setLectureText(e.target.value)}
                 />
-              )}
-            </div>
-          )}
-        </div>
+                <div className="text-right text-xs text-slate-500">
+                  {lectureText.length.toLocaleString()} {t('evaluatorChars')}
+                </div>
+              </div>
+            )}
 
-        {/* Student Summary */}
-        <div className="card">
-          <div className="card-header">
-            <span className="icon">📝</span>
-            <h3 style={{ fontSize: '0.95rem' }}>{t('evaluatorStudentSummaryTitle')}</h3>
+            {sourceMode === 'document' && (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('evaluatorCourseLabel')}</label>
+                  <CustomSelect
+                    value={courseId}
+                    onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
+                    options={courses.map(c => ({ id: c.id, title: c.title }))}
+                    placeholder={t('evaluatorLoadingCourses')}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('evaluatorSelectDocument')}</label>
+                  {docsLoading ? (
+                    <p className="text-sm text-slate-500 flex items-center gap-2">
+                      <span className="spinner" style={{ width: 14, height: 14 }} />{t('evaluatorLoadingDocuments')}
+                    </p>
+                  ) : docs.length === 0 ? (
+                    <p className="text-sm text-slate-500">{t('evaluatorNoUsableDocs')}</p>
+                  ) : (
+                    <CustomSelect
+                      value={selectedDocId}
+                      onChange={(val) => setSelectedDocId(String(val))}
+                      options={docs.map(d => ({ id: d.id, title: `${d.download_url ? '📄' : d.google_drive_url ? '☁️' : '📝'} ${d.title}${d.doc_type ? ` (${d.doc_type})` : ''}` }))}
+                      placeholder={t('evaluatorSelectDocument')}
+                      disabled={!courseId}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="form-group" style={{ marginBottom: 16 }}>
-            <label>{t('evaluatorSummaryInputType')}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+
+          {/* Student Summary Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              📝 {t('evaluatorStudentSummaryTitle')}
+            </h2>
+
+            {/* Summary input toggle */}
+            <div className="flex bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 mb-5">
               <button
                 type="button"
-                className={`btn btn-sm ${summaryInputMode === 'text' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSummaryInputMode('text')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${summaryInputMode === 'text' ? 'bg-indigo-600 dark:bg-slate-800 text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
               >
                 ✏️ {t('evaluatorSummaryInputText')}
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${summaryInputMode === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setSummaryInputMode('upload')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${summaryInputMode === 'upload' ? 'bg-indigo-600 dark:bg-slate-800 text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
               >
                 📄 {t('evaluatorSummaryInputUpload')}
               </button>
             </div>
-          </div>
-          <div className="form-group">
+
             {summaryInputMode === 'text' ? (
-              <>
+              <div className="flex flex-col gap-2">
                 <textarea
-                  className="form-textarea"
-                  rows={14}
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
+                  rows={10}
                   placeholder={t('evaluatorStudentSummaryPlaceholder')}
                   value={studentSummary}
                   onChange={(e) => setStudentSummary(e.target.value)}
                 />
-                <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                <div className="text-right text-xs text-slate-500">
                   {studentSummary.length.toLocaleString()} {t('evaluatorChars')}
                 </div>
-              </>
+              </div>
             ) : (
               <div
                 onClick={() => studentSummaryFileInputRef.current?.click()}
-                style={{
-                  border: '2px dashed var(--border)',
-                  borderRadius: 16,
-                  padding: 24,
-                  minHeight: 300,
-                  background: 'var(--bg-hover)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  cursor: 'pointer',
-                }}
+                className="border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer group min-h-[200px]"
               >
-                <div className="icon" style={{ width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <UploadCloud size={22} />
+                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/10 rounded-full flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/20 transition-colors">
+                  <UploadCloud className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <p style={{ margin: 0, fontWeight: 600, textAlign: 'center' }}>
-                  {studentSummaryFile ? studentSummaryFile.name : t('evaluatorSummaryUploadBrowse')}
-                </p>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {t('evaluatorSummaryUploadHint')}
-                </p>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {studentSummaryFile ? studentSummaryFile.name : t('evaluatorSummaryUploadBrowse')}
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-500 mt-1">
+                    {t('evaluatorSummaryUploadHint')}
+                  </p>
+                </div>
                 <input
                   ref={studentSummaryFileInputRef}
                   type="file"
                   accept="application/pdf"
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={(e) => {
                     setStudentSummaryFile(e.target.files?.[0] || null);
                     setError('');
@@ -286,93 +333,109 @@ export default function Evaluator() {
                 />
               </div>
             )}
+
+            {/* Error */}
+            {error && (
+              <div className="mt-4 bg-red-50 dark:bg-rose-500/10 border border-red-200 dark:border-rose-500/20 text-red-700 dark:text-rose-400 p-3 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="pt-5 border-t border-slate-200 dark:border-slate-800 mt-5">
+              <button
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleEvaluate}
+                disabled={isDisabled}
+              >
+                <Zap className={`w-4 h-4 ${loading ? 'animate-pulse text-yellow-300' : ''}`} />
+                {loading ? t('evaluatorEvaluating') : `🔍 ${t('evaluatorEvaluate')}`}
+              </button>
+              {elapsed && (
+                <div className="mt-3 text-center">
+                  <span className="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-full">
+                    ⏱ {elapsed}s
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24 }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleEvaluate}
-          disabled={isDisabled}
-        >
-          {loading ? <><span className="spinner" /> {t('evaluatorEvaluating')}</> : `🔍 ${t('evaluatorEvaluate')}`}
-        </button>
-        {elapsed && (
-          <span className="badge" style={{ background: 'var(--primary)', color: '#fff' }}>
-            ⏱ {elapsed}s
-          </span>
-        )}
-      </div>
-
-      {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
-
-      {/* ── Results Section ─────────────────────────── */}
-      {result && (
-        <>
-          <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>{t('evaluatorOverallScore')}</p>
-            <div style={{ fontSize: '3.5rem', fontWeight: 700, color: colorForScore(result.overall_score) }}>
-              {result.overall_score}<span style={{ fontSize: '1.5rem', opacity: 0.6 }}>/10</span>
-            </div>
-            {result.overall_feedback && (
-              <p style={{ marginTop: 12, whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-muted)' }}>
-                {result.overall_feedback}
+        {/* Right Panel — Results */}
+        <div className="w-full lg:w-3/5 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+          
+          {!result ? (
+            /* Empty State */
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+              <ClipboardCheck className="w-14 h-14 text-slate-300 dark:text-slate-700 mb-4" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                {t('aiEvaluatorContent')}
               </p>
-            )}
-          </div>
+              <p className="text-slate-400 dark:text-slate-600 text-xs mt-2 max-w-xs">
+                {t('evaluatorLecturePlaceholder')}
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => setShowTechnical((v) => !v)}
-            >
-              {showTechnical ? t('evaluatorHideTechnical') : t('evaluatorShowTechnical')}
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorStudentWords')}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-                {summaryInputMode === 'upload'
-                  ? (studentSummaryFile ? t('evaluatorStudentWordsUpload') : '-')
-                  : studentSummary.trim().split(/\s+/).filter(Boolean).length}
+              {/* Score Hero */}
+              <div className="flex flex-col items-center py-6 mb-6 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
+                  {t('evaluatorOverallScore')}
+                </p>
+                <ScoreRing score={result.overall_score} />
+                {result.overall_feedback && (
+                  <p className="mt-4 text-sm text-slate-600 dark:text-slate-400 text-center max-w-md leading-relaxed px-4">
+                    {result.overall_feedback}
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorReferenceWords')}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-                {result.reference_summary ? result.reference_summary.trim().split(/\s+/).filter(Boolean).length : '-'}
-              </div>
-            </div>
-            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorKeyPoints')}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{result.key_points?.length ?? '-'}</div>
-            </div>
-            <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorMetrics')}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{Object.keys(result.metrics || {}).length}</div>
-            </div>
-          </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-hover)' }}>
-                  <th style={{ textAlign: 'left', padding: 12 }}>{t('evaluatorMetric')}</th>
-                  <th style={{ textAlign: 'center', padding: 12, width: 120 }}>{t('evaluatorScore')}</th>
-                  <th style={{ textAlign: 'left', padding: 12, width: '30%' }}>{t('evaluatorVisual')}</th>
-                  <th style={{ textAlign: 'left', padding: 12 }}>{t('evaluatorDetails')}</th>
-                </tr>
-              </thead>
-              <tbody>
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">{t('evaluatorStudentWords')}</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                    {summaryInputMode === 'upload'
+                      ? (studentSummaryFile ? t('evaluatorStudentWordsUpload') : '-')
+                      : studentSummary.trim().split(/\s+/).filter(Boolean).length}
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">{t('evaluatorReferenceWords')}</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                    {result.reference_summary ? result.reference_summary.trim().split(/\s+/).filter(Boolean).length : '-'}
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">{t('evaluatorKeyPoints')}</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">{result.key_points?.length ?? '-'}</div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">{t('evaluatorMetrics')}</div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">{Object.keys(result.metrics || {}).length}</div>
+                </div>
+              </div>
+
+              {/* Technical Toggle */}
+              <div className="flex justify-end mb-3">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setShowTechnical((v) => !v)}
+                >
+                  {showTechnical ? t('evaluatorHideTechnical') : t('evaluatorShowTechnical')}
+                </button>
+              </div>
+
+              {/* Metric Cards */}
+              <div className="flex flex-col gap-3">
                 {Object.entries(metricInfo).map(([key, info]) => {
                   const metric = result.metrics?.[key];
                   if (!metric) return null;
                   const score = Number(metric.score || 0);
-                  const icon = score >= 7 ? '🟢' : score >= 4 ? '🟡' : '🔴';
                   const detail = metric.feedback || '';
                   const isEvalError = /^Evaluation error/i.test(detail);
                   const isTechnical = TECH_DETAIL_RE.test(detail);
@@ -384,39 +447,63 @@ export default function Evaluator() {
                   const displayDetail = showTechnical || !isTechnical
                     ? (isEvalError ? t('metricEvalError') : detail)
                     : strength;
+                  const tier = tierForScore(score);
+                  const isExpanded = expandedMetric === key;
+
                   return (
-                    <tr key={key} style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: 12, fontWeight: 600 }}>{icon} {info.label}</td>
-                      <td style={{ padding: 12, textAlign: 'center', fontWeight: 700 }}>
-                        {score.toFixed(1)}
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> /10</span>
-                      </td>
-                      <td style={{ padding: 12 }}>
-                        <div style={{ height: 10, borderRadius: 6, background: 'var(--bg-hover)', overflow: 'hidden' }}>
-                          <div
-                            style={{
-                              width: `${Math.max(0, Math.min(100, score * 10))}%`,
-                              height: '100%',
-                              borderRadius: 6,
-                              background: colorForScore(score),
-                              transition: 'width .4s ease',
-                            }}
-                          />
+                    <div
+                      key={key}
+                      className={`bg-slate-50 dark:bg-slate-950 border rounded-xl overflow-hidden transition-all cursor-pointer ${
+                        tier === 'high' ? 'border-emerald-200 dark:border-emerald-900/50' :
+                        tier === 'mid' ? 'border-amber-200 dark:border-amber-900/50' :
+                        'border-red-200 dark:border-red-900/50'
+                      }`}
+                      onClick={() => setExpandedMetric(isExpanded ? null : key)}
+                    >
+                      <div className="flex items-center gap-3 p-4">
+                        <span className="text-xl flex-shrink-0">{info.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white">{info.label}</span>
+                            <span className={`text-sm font-bold ${
+                              tier === 'high' ? 'text-emerald-500' :
+                              tier === 'mid' ? 'text-amber-500' :
+                              'text-red-500'
+                            }`}>
+                              {score.toFixed(1)}/10
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{
+                                width: `${Math.max(0, Math.min(100, score * 10))}%`,
+                                background: colorForScore(score),
+                              }}
+                            />
+                          </div>
                         </div>
-                      </td>
-                      <td style={{ padding: 12, fontSize: '0.85rem', lineHeight: 1.45 }}>
-                        <div style={{ marginBottom: 4, color: 'var(--text-muted)' }}>{info.desc}</div>
-                        {displayDetail && <div>{displayDetail}</div>}
-                      </td>
-                    </tr>
+                        <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                      </div>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-0 border-t border-slate-200 dark:border-slate-800">
+                          <p className="text-xs text-slate-500 mt-3 mb-1">{info.desc}</p>
+                          {displayDetail && (
+                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                              {displayDetail}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-

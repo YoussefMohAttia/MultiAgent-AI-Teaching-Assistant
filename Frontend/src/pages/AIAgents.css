@@ -1,466 +1,568 @@
-.ai-orbit {
-  --card: #151d2e;
-  --card-alt: #1a2236;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-md: rgba(255, 255, 255, 0.11);
-  --text: #e8eaf0;
-  --muted: rgba(255, 255, 255, 0.42);
-  --muted2: rgba(255, 255, 255, 0.22);
-  --purple: #7c5cfc;
-  --purple-bg: rgba(124, 92, 252, 0.18);
-  --purple-glow: rgba(124, 92, 252, 0.35);
-  --teal: #14b8a6;
-  --teal-bg: rgba(20, 184, 166, 0.18);
-  --orange: #f97316;
-  --orange-bg: rgba(249, 115, 22, 0.18);
-  --pink: #ec4899;
-  --pink-bg: rgba(236, 72, 153, 0.18);
-  --blue: #3b82f6;
-  --blue-bg: rgba(59, 130, 246, 0.18);
-  --R: 210px;
-  --node: 80px;
-  --ring-dur: 60s;
+/* ═══════════════════════════════════════════════════════════════════════════
+   AI Agents Hub — Bento Grid (Full Screen + Flashy)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  color: var(--text);
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+.ai-bento {
+  --card-surface: #0c1017;
+  --card-surface-hover: #111827;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --text: #f1f5f9;
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-dim: rgba(255, 255, 255, 0.25);
+
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  min-height: 70vh;
-  position: relative;
+  color: var(--text);
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
 }
 
-[data-theme="light"] .ai-orbit {
-  --card: #ffffff;
-  --card-alt: #f1f5f9;
-  --border: rgba(15, 23, 42, 0.08);
-  --border-md: rgba(15, 23, 42, 0.14);
+[data-theme="light"] .ai-bento {
+  --card-surface: #ffffff;
+  --card-surface-hover: #f8fafc;
+  --border: rgba(15, 23, 42, 0.07);
+  --border-hover: rgba(15, 23, 42, 0.16);
   --text: #0f172a;
-  --muted: #475569;
-  --muted2: #64748b;
-  --purple: #5b4cf0;
-  --purple-bg: rgba(91, 76, 240, 0.12);
-  --teal: #0f766e;
-  --teal-bg: rgba(15, 118, 110, 0.12);
-  --orange: #c2410c;
-  --orange-bg: rgba(194, 65, 12, 0.12);
-  --pink: #be185d;
-  --pink-bg: rgba(190, 24, 93, 0.12);
-  --blue: #1d4ed8;
-  --blue-bg: rgba(29, 78, 216, 0.12);
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
 }
 
-.ai-orbit-header {
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.ai-bento-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 20px;
+  flex-shrink: 0;
 }
 
-.ai-orbit-header-left h1 {
-  font-size: 26px;
-  font-weight: 700;
+.ai-bento-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 11px;
+  font-weight: 600;
+  color: #818cf8;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  animation: badge-pulse 3s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { box-shadow: 0 0 16px 4px rgba(99, 102, 241, 0.15); }
+}
+
+.ai-bento-header-badge-icon {
+  width: 12px;
+  height: 12px;
+  animation: badge-sparkle 2s ease-in-out infinite;
+}
+
+@keyframes badge-sparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(15deg) scale(1.15); }
+}
+
+[data-theme="light"] .ai-bento-header-badge {
+  background: rgba(99, 102, 241, 0.06);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.ai-bento-header-left h1 {
+  font-size: 30px;
+  font-weight: 800;
   color: var(--text);
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
-.ai-orbit-header-left p {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 4px;
+.ai-bento-header-left p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
-.ai-orbit-header-actions {
+.ai-bento-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.ai-orbit-btn {
+.ai-bento-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  border-radius: 8px;
-  background: var(--card);
-  border: 1px solid var(--border-md);
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--card-surface);
+  border: 1px solid var(--border);
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.18s, color 0.18s;
+  transition: all 0.2s ease;
 }
 
-.ai-orbit-btn:hover {
-  background: var(--card-alt);
+.ai-bento-btn:hover {
+  background: var(--card-surface-hover);
   color: var(--text);
+  border-color: var(--border-hover);
 }
 
-.ai-orbit-btn svg {
+.ai-bento-btn svg {
   width: 14px;
   height: 14px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
 }
 
-.ai-orbit-body {
+/* ── Bento Grid — fills remaining space ──────────────────────────────────── */
+.ai-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 14px;
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  padding: 20px;
-  min-height: 520px;
+  min-height: 0;
+  padding: 6px;
+  margin: -6px;
+  overflow: visible;
 }
 
-.ai-orbit-body::before {
+/* ── Card Base ───────────────────────────────────────────────────────────── */
+.ai-bento-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--card-surface);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  color: var(--text);
+  transition: border-color 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.ai-bento-card:hover {
+  border-color: var(--card-color);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow:
+    0 0 0 1px var(--card-color),
+    0 8px 40px -8px var(--card-glow),
+    0 0 80px -20px var(--card-glow);
+}
+
+.ai-bento-card:active {
+  transform: translateY(-1px) scale(0.995);
+  transition-duration: 0.1s;
+}
+
+/* Hero card spans full width, takes first row */
+.ai-bento-card-hero {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+/* ── Animated gradient border on hover ───────────────────────────────────── */
+.ai-bento-card::before {
   content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  padding: 1px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    var(--card-color) 10%,
+    transparent 20%,
+    transparent 50%,
+    var(--card-color) 60%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 3;
+  animation: border-spin 4s linear infinite paused;
+}
+
+.ai-bento-card:hover::before {
+  opacity: 0.7;
+  animation-play-state: running;
+}
+
+@keyframes border-spin {
+  to { rotate: 360deg; }
+}
+
+/* ── Animated background gradient ────────────────────────────────────────── */
+.ai-bento-card-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(124, 92, 252, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 92, 252, 0.025) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
+  background: var(--card-gradient);
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-[data-theme="light"] .ai-orbit-body::before {
-  background-image:
-    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+.ai-bento-card:hover .ai-bento-card-bg {
+  opacity: 1;
 }
 
-.ai-orbit-scene {
-  position: relative;
-  width: calc(var(--R) * 2 + var(--node) * 2 + 100px);
-  height: calc(var(--R) * 2 + var(--node) * 2 + 100px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ai-orbit-ring-base {
-  position: absolute;
-  width: calc(var(--R) * 2);
-  height: calc(var(--R) * 2);
-  border-radius: 50%;
-  border: 1px solid var(--border-md);
-}
-
-.ai-orbit-ring-spin {
-  position: absolute;
-  width: calc(var(--R) * 2);
-  height: calc(var(--R) * 2);
-  border-radius: 50%;
-  animation: ai-orbit-ring-rot var(--ring-dur) linear infinite;
-  pointer-events: none;
-}
-
-@keyframes ai-orbit-ring-rot {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.ai-orbit-ring-spin::before {
+/* ── Radial light following the card ─────────────────────────────────────── */
+.ai-bento-card-bg::after {
   content: '';
   position: absolute;
-  inset: -2px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: conic-gradient(
-    rgba(124, 92, 252, 0) 0%,
-    rgba(124, 92, 252, 0.75) 14%,
-    rgba(20, 184, 166, 0.65) 30%,
-    rgba(59, 130, 246, 0.6) 46%,
-    rgba(236, 72, 153, 0.55) 62%,
-    rgba(249, 115, 22, 0.5) 76%,
-    rgba(124, 92, 252, 0) 84%
+  background: var(--card-color);
+  opacity: 0.08;
+  filter: blur(60px);
+  top: -60px;
+  right: -40px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  transform: scale(0.6);
+}
+
+.ai-bento-card:hover .ai-bento-card-bg::after {
+  opacity: 0.15;
+  transform: scale(1.2);
+}
+
+/* ── Shine sweep effect ──────────────────────────────────────────────────── */
+.ai-bento-card-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.04) 42%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 58%,
+    transparent 65%
   );
-  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 100%);
-  mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 100%);
+  transform: translateX(-120%);
+  pointer-events: none;
+  z-index: 2;
 }
 
-.ai-orbit-ring-spin::after {
+.ai-bento-card:hover .ai-bento-card-shine {
+  animation: bento-shine 0.7s ease forwards;
+}
+
+@keyframes bento-shine {
+  to { transform: translateX(120%); }
+}
+
+/* ── Corner decoration — two orbs ────────────────────────────────────────── */
+.ai-bento-card-corner {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: var(--card-color);
+  opacity: 0.03;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+.ai-bento-card:hover .ai-bento-card-corner {
+  opacity: 0.09;
+  transform: scale(1.8);
+}
+
+.ai-bento-card-corner::after {
   content: '';
   position: absolute;
-  top: -5px;
-  left: 50%;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
+  bottom: -80px;
+  left: -120px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 12px 4px rgba(160, 140, 255, 0.9);
+  background: var(--card-color);
+  opacity: 0.5;
+  filter: blur(40px);
 }
 
-[data-theme="light"] .ai-orbit-ring-spin::after {
-  background: #1e1b4b;
-  box-shadow: 0 0 12px 3px rgba(99, 102, 241, 0.45);
-}
-
-.ai-orbit-ring-inner {
-  position: absolute;
-  width: calc(var(--R) * 2 - 52px);
-  height: calc(var(--R) * 2 - 52px);
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="light"] .ai-orbit-ring-inner {
-  border: 1px dashed rgba(15, 23, 42, 0.08);
-}
-
-.ai-orbit-node {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: var(--node);
-  height: var(--node);
-  margin: calc(var(--node) / -2);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-}
-
-.ai-orbit-disk {
-  width: var(--node);
-  height: var(--node);
-  border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--border-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Card content layout ─────────────────────────────────────────────────── */
+.ai-bento-card-content {
   position: relative;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s, background 0.3s;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 36px;
+  width: 100%;
 }
 
-.ai-orbit-disk-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--ic-bg);
+.ai-bento-card-hero .ai-bento-card-content {
+  padding: 40px 48px;
+  gap: 28px;
+}
+
+/* ── Icon ─────────────────────────────────────────────────────────────────── */
+.ai-bento-card-icon {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 16px;
+  background: var(--card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
-  color: var(--ic-color);
+  color: var(--card-color);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
 }
 
-.ai-orbit-disk-icon svg {
+.ai-bento-card-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.ai-bento-card-hero .ai-bento-card-icon {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 20px;
+}
+
+.ai-bento-card-hero .ai-bento-card-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.ai-bento-card:hover .ai-bento-card-icon {
+  transform: scale(1.12) rotate(-3deg);
+  box-shadow: 0 0 30px var(--card-glow), 0 0 60px rgba(0,0,0,0.2);
+}
+
+[data-theme="light"] .ai-bento-card-icon {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ── Text ─────────────────────────────────────────────────────────────────── */
+.ai-bento-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-bento-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ai-bento-card-text h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  transition: color 0.3s ease;
+}
+
+.ai-bento-card-hero .ai-bento-card-text h3 {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.ai-bento-card:hover .ai-bento-card-text h3 {
+  color: var(--card-color);
+}
+
+[data-theme="light"] .ai-bento-card:hover .ai-bento-card-text h3 {
+  color: var(--card-color);
+}
+
+.ai-bento-card-text p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ai-bento-card-hero .ai-bento-card-text p {
+  font-size: 15px;
+  -webkit-line-clamp: 3;
+}
+
+/* ── Badge ────────────────────────────────────────────────────────────────── */
+.ai-bento-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  animation: badge-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(99, 102, 241, 0); }
+  50% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.25); }
+}
+
+[data-theme="light"] .ai-bento-card-badge {
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+}
+
+/* ── Arrow ────────────────────────────────────────────────────────────────── */
+.ai-bento-card-arrow {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-bento-card-arrow svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-bento-card-hero .ai-bento-card-arrow {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 14px;
+}
+
+.ai-bento-card-hero .ai-bento-card-arrow svg {
   width: 22px;
   height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  display: block;
 }
 
-.ai-orbit-node:hover .ai-orbit-disk {
-  transform: scale(1.14) translateY(-4px);
-  background: var(--card-alt);
-  border-color: var(--ic-color);
-  box-shadow: 0 0 20px var(--ic-glow), 0 12px 32px rgba(0, 0, 0, 0.5);
-}
-
-.ai-orbit-node:hover .ai-orbit-disk-icon {
+.ai-bento-card:hover .ai-bento-card-arrow {
+  background: var(--card-color);
+  border-color: var(--card-color);
+  color: #fff;
+  box-shadow: 0 0 24px var(--card-glow);
   transform: scale(1.08);
 }
 
-.ai-orbit-label {
-  margin-top: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  white-space: nowrap;
-  text-align: center;
-  transition: color 0.25s;
+.ai-bento-card:hover .ai-bento-card-arrow svg {
+  transform: translateX(3px);
 }
 
-.ai-orbit-node:hover .ai-orbit-label {
-  color: var(--text);
+[data-theme="light"] .ai-bento-card-arrow {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
-.ai-orbit-tip {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background: var(--card-alt);
-  border: 1px solid var(--border-md);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 11.5px;
-  color: var(--muted);
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
-  z-index: 50;
-}
-
-.ai-orbit-node:hover .ai-orbit-tip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.ai-orbit-orb {
-  position: absolute;
-  width: 82px;
-  height: 82px;
-  border-radius: 50%;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ai-orbit-orb-pings {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.ai-orbit-orb-ping {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.5px solid rgba(124, 92, 252, 0.35);
-  animation: ai-orbit-ping 3.2s ease-out infinite;
-}
-
-.ai-orbit-orb-ping:nth-child(2) {
-  animation-delay: 1.07s;
-}
-
-.ai-orbit-orb-ping:nth-child(3) {
-  animation-delay: 2.14s;
-}
-
-@keyframes ai-orbit-ping {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2.8);
-    opacity: 0;
-  }
-}
-
-.ai-orbit-orb-core {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 34%, #a78bfa 0%, #7c5cfc 30%, #4f46e5 60%, #1e1b4b 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: ai-orbit-breathe 4s ease-in-out infinite;
-  overflow: hidden;
-}
-
-[data-theme="light"] .ai-orbit-orb-core {
-  background: radial-gradient(circle at 38% 34%, #c7d2fe 0%, #818cf8 35%, #4f46e5 70%, #1e1b4b 100%);
-}
-
-.ai-orbit-orb-core::after {
+/* ── Outer glow on hover ──────────────────────────────────────────────────── */
+.ai-bento-card::after {
   content: '';
   position: absolute;
-  top: -25%;
-  left: -18%;
-  width: 50%;
-  height: 46%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  filter: blur(8px);
-}
-
-@keyframes ai-orbit-breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 24px rgba(124, 92, 252, 0.5), 0 0 64px rgba(124, 92, 252, 0.18);
-  }
-  50% {
-    box-shadow: 0 0 38px rgba(124, 92, 252, 0.7), 0 0 90px rgba(124, 92, 252, 0.28);
-  }
-}
-
-.ai-orbit-orb-core svg {
-  width: 26px;
-  height: 26px;
-  position: relative;
-  z-index: 1;
-  fill: rgba(255, 255, 255, 0.92);
-  stroke: rgba(255, 255, 255, 0.4);
-  stroke-width: 1.1;
-}
-
-[data-theme="light"] .ai-orbit-orb-core svg {
-  fill: rgba(255, 255, 255, 0.95);
-  stroke: rgba(15, 23, 42, 0.25);
-}
-
-.ai-orbit-hint {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 12px;
-  color: var(--muted2);
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  text-align: center;
-}
-
-.ai-orbit-ripple {
-  position: fixed;
-  border-radius: 50%;
+  inset: -2px;
+  border-radius: 25px;
+  background: var(--card-color);
+  opacity: 0;
+  filter: blur(32px);
+  transition: opacity 0.5s ease;
   pointer-events: none;
-  animation: ai-orbit-ripple 0.6s ease-out forwards;
-  z-index: 999;
+  z-index: -1;
 }
 
-@keyframes ai-orbit-ripple {
-  from {
-    transform: scale(0);
-    opacity: 0.45;
-  }
-  to {
-    transform: scale(5);
-    opacity: 0;
-  }
+.ai-bento-card:hover::after {
+  opacity: 0.1;
 }
 
-@media (max-width: 1024px) {
-  .ai-orbit-body {
-    padding: 12px 12px 60px;
-  }
-
-  .ai-orbit-scene {
-    transform: scale(0.85);
-  }
+/* ── Hint ─────────────────────────────────────────────────────────────────── */
+.ai-bento-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  padding: 12px 0 4px;
+  flex-shrink: 0;
 }
 
-@media (max-width: 640px) {
-  .ai-orbit-header {
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ai-bento-header {
     flex-direction: column;
     align-items: flex-start;
+    padding-bottom: 16px;
   }
 
-  .ai-orbit-scene {
-    transform: scale(0.7);
+  .ai-bento-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 10px;
   }
 
-  .ai-orbit-hint {
-    bottom: 18px;
-    font-size: 11px;
+  .ai-bento-card-hero {
+    grid-column: 1;
+  }
+
+  .ai-bento-card-content {
+    padding: 22px 20px;
+    gap: 16px;
+  }
+
+  .ai-bento-card-hero .ai-bento-card-content {
+    padding: 26px 24px;
+  }
+
+  .ai-bento-card-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 12px;
+  }
+
+  .ai-bento-card-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .ai-bento-card-hero .ai-bento-card-icon {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+  }
+
+  .ai-bento-card-text h3 {
+    font-size: 15px;
+  }
+
+  .ai-bento-card-hero .ai-bento-card-text h3 {
+    font-size: 18px;
   }
 }
