@@ -4,8 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
-import { getCourses, getProgress } from '../services/api';
+import { getCourses, getProgress, runFullSync } from '../services/api';
 import { getStats } from '../lib/activity';
+import CourseAutomationSelector from '../components/CourseAutomationSelector';
+import { readAutomationPrefs, saveAutomationPrefs } from '../lib/automationPreferences';
 import {
   Award,
   BookOpen,
@@ -65,6 +67,7 @@ export default function Profile() {
   const { theme, toggle } = useTheme();
   const { lang, toggleLang, t } = useLanguage();
   const { completedCycles, streakBonus, workMinutes } = usePomodoro();
+  const isLocalAccount = user?.auth_provider === 'local';
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -76,6 +79,9 @@ export default function Profile() {
     return raw ? raw === 'true' : true;
   });
   const [stats, setStats] = useState(() => getStats());
+  const [automationSelection, setAutomationSelection] = useState([]);
+  const [automationSaved, setAutomationSaved] = useState(false);
+  const [automationSyncing, setAutomationSyncing] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -99,6 +105,18 @@ export default function Profile() {
 
     setStats(getStats());
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const stored = readAutomationPrefs(user.id);
+    setAutomationSelection(stored.selectedCourseIds);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (courses.length === 0) return;
+    const courseIds = courses.map((course) => String(course.id));
+    setAutomationSelection((prev) => prev.filter((id) => courseIds.includes(id)));
+  }, [courses]);
 
   useEffect(() => {
     localStorage.setItem('profile_notifications', String(notificationsEnabled));
@@ -158,6 +176,29 @@ export default function Profile() {
     if (completedCycles === 0) return t('profileNextFocus');
     return t('profileNextReview');
   })();
+
+  const automationCanSave = courses.length > 0 && automationSelection.length > 0 && !coursesLoading;
+
+  const handleSaveAutomation = async () => {
+    if (!user?.id || !automationCanSave) return;
+    const courseIds = new Set(courses.map((course) => String(course.id)));
+    const nextSelection = automationSelection.filter((id) => courseIds.has(id));
+    saveAutomationPrefs(user.id, nextSelection);
+    setAutomationSelection(nextSelection);
+    setAutomationSaved(true);
+    window.setTimeout(() => setAutomationSaved(false), 2000);
+    if (!isLocalAccount) {
+      try {
+        setAutomationSyncing(true);
+        await runFullSync(user.id, nextSelection);
+        localStorage.setItem('last_sync_ts', String(Date.now()));
+      } catch {
+        // Ignore sync errors; user can retry from dashboard if needed.
+      } finally {
+        setAutomationSyncing(false);
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -348,6 +389,36 @@ export default function Profile() {
               <Settings className="w-5 h-5 text-slate-600 dark:text-slate-300" /> {t('profileSettings')}
             </h2>
             <div className="flex flex-col gap-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">{t('automationTitle')}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-500">{t('automationBody')}</p>
+                  </div>
+                  {automationSaved && (
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t('automationSaved')}</span>
+                  )}
+                </div>
+                {coursesLoading ? (
+                  <p className="text-xs text-slate-600 dark:text-slate-500">{t('profileLoadingCourses')}</p>
+                ) : (
+                  <CourseAutomationSelector
+                    courses={courses}
+                    selectedCourseIds={automationSelection}
+                    onChange={setAutomationSelection}
+                  />
+                )}
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={handleSaveAutomation}
+                    disabled={!automationCanSave || automationSyncing}
+                    className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {automationSyncing ? t('syncing') : t('automationSave')}
+                  </button>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={toggle}

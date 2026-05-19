@@ -76,6 +76,14 @@ export const getQuizStatus = (docIds) =>
     params: { doc_ids: (docIds || []).join(',') },
   });
 
+export const runFullSync = (userId, selectedCourseIds = []) => {
+  const normalizedIds = (selectedCourseIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id));
+  const payload = normalizedIds.length ? { selected_course_ids: normalizedIds } : null;
+  return api.post(`/sync/full-sync?user_id=${userId}`, payload);
+};
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {

@@ -4,9 +4,11 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSummaryStatus, getQuizStatus } from '../services/api';
+import { getSummaryStatus, getQuizStatus, runFullSync } from '../services/api';
 import { useToasts } from '../contexts/ToastContext';
 import { getStats } from '../lib/activity';
+import CourseAutomationSelector from '../components/CourseAutomationSelector';
+import { hasAutomationPrefs, readAutomationPrefs, saveAutomationPrefs } from '../lib/automationPreferences';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
   Bot, FileText, BrainCircuit, PenTool, Inbox,
@@ -82,6 +84,9 @@ export default function Dashboard() {
   const summaryPollRef = useRef(null);
   const quizPollRef = useRef(null);
   const syncRunRef = useRef(false);
+  const [automationModalOpen, setAutomationModalOpen] = useState(false);
+  const [automationSelection, setAutomationSelection] = useState([]);
+  const [automationPrefsLoaded, setAutomationPrefsLoaded] = useState(false);
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -96,8 +101,12 @@ export default function Dashboard() {
       fetchCourses();
       return;
     }
+    if (!automationPrefsLoaded || automationModalOpen) {
+      fetchCourses();
+      return;
+    }
     autoSync();
-  }, [user, isLocalAccount]);
+  }, [user, isLocalAccount, automationPrefsLoaded, automationModalOpen]);
 
   useEffect(() => {
     function handleVisibilityChange() {
@@ -120,6 +129,33 @@ export default function Dashboard() {
       quizPollRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAutomationPrefsLoaded(false);
+      setAutomationSelection([]);
+      setAutomationModalOpen(false);
+      return;
+    }
+
+    const stored = readAutomationPrefs(user.id);
+    setAutomationSelection(stored.selectedCourseIds);
+    setAutomationPrefsLoaded(true);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!automationPrefsLoaded || coursesLoading || !user?.id) return;
+    const courseIds = courses.map((course) => String(course.id));
+    if (courseIds.length === 0) return;
+
+    if (!hasAutomationPrefs(user.id)) {
+      setAutomationSelection(courseIds);
+      setAutomationModalOpen(true);
+      return;
+    }
+
+    setAutomationSelection((prev) => prev.filter((id) => courseIds.includes(id)));
+  }, [automationPrefsLoaded, coursesLoading, courses, user?.id]);
 
   function scheduleSummaryPolling(items) {
     if (summaryPollRef.current) {
@@ -201,19 +237,17 @@ export default function Dashboard() {
     await runSync();
   }
 
-  async function runSync() {
+  async function runSync(selectionOverride = null) {
     if (syncRunRef.current) return;
     syncRunRef.current = true;
     setSyncing(true);
     try {
-      const res = await axios.post(`/api/sync/full-sync?user_id=${user.id}`, null, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
+      const res = await runFullSync(user.id, selectionOverride || automationSelection);
 
-      const payload = res?.data || {};
-      const newMaterials = payload.new_materials || [];
-      const scheduledSummaryIds = payload.auto_summary?.scheduled_doc_ids || [];
-      const scheduledQuizIds = payload.auto_quiz?.scheduled_doc_ids || [];
+      const responsePayload = res?.data || {};
+      const newMaterials = responsePayload.new_materials || [];
+      const scheduledSummaryIds = responsePayload.auto_summary?.scheduled_doc_ids || [];
+      const scheduledQuizIds = responsePayload.auto_quiz?.scheduled_doc_ids || [];
 
       if (newMaterials.length) {
         newMaterials.forEach((doc) => {
@@ -283,6 +317,18 @@ export default function Dashboard() {
     }
   }
 
+  function handleSaveAutomation() {
+    if (!user?.id || automationSelection.length === 0) return;
+    const courseIds = new Set(courses.map((course) => String(course.id)));
+    const nextSelection = automationSelection.filter((id) => courseIds.has(id));
+    saveAutomationPrefs(user.id, nextSelection);
+    setAutomationSelection(nextSelection);
+    setAutomationModalOpen(false);
+    if (!isLocalAccount) {
+      void runSync(nextSelection);
+    }
+  }
+
   const initials = user?.name
     ? user.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
@@ -291,6 +337,7 @@ export default function Dashboard() {
   const greeting = getGreeting(hour, copy);
   const dateLocale = copy.dateLocale || 'en-US';
   const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
+  const automationCanSave = automationSelection.length > 0;
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -423,6 +470,30 @@ export default function Dashboard() {
           <ActionCard icon={PenTool} title={copy.gradeEssay} desc={copy.gradeEssayDesc} onClick={() => navigate('/essay-grader')} />
         </div>
       </section>
+
+      {automationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-white mb-2">{t('automationModalTitle')}</h2>
+            <p className="text-sm text-slate-400 mb-4">{t('automationModalBody')}</p>
+            <CourseAutomationSelector
+              courses={courses}
+              selectedCourseIds={automationSelection}
+              onChange={setAutomationSelection}
+            />
+            <div className="mt-6 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleSaveAutomation}
+                disabled={!automationCanSave}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('automationModalCta')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -9,7 +9,7 @@ Endpoints:
   GET  /api/sync/documents/{course_id} → list synced documents for a course
 """
 import asyncio
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -315,7 +315,8 @@ async def sync_courses(
 async def full_sync(
     user_id: int,   # TODO: extract from JWT cookie in a later sprint
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    selected_course_ids: list[int] | None = Body(default=None, embed=True),
 ):
     """
     Full sync of Google Classroom data for a user.
@@ -372,9 +373,14 @@ async def full_sync(
     docs_skipped = 0
     new_drive_doc_ids = []
     new_material_doc_ids = []
+    new_material_course_map = {}
     new_material_docs = []
     auto_summary_doc_ids = []
     auto_quiz_doc_ids = []
+    allowed_course_ids = None
+
+    if selected_course_ids:
+        allowed_course_ids = {int(course_id) for course_id in selected_course_ids if course_id}
 
     for course_sync in synced_courses:
         db_course_id = course_sync["course_id"]
@@ -407,6 +413,7 @@ async def full_sync(
                 raw_text=item.get("description")
             )
             new_material_doc_ids.append(new_doc.id)
+            new_material_course_map[new_doc.id] = db_course_id
             new_material_docs.append({
                 "id": new_doc.id,
                 "title": new_doc.title,
@@ -472,8 +479,16 @@ async def full_sync(
         background_tasks.add_task(_background_index_documents, new_drive_doc_ids, user_id)
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
+    new_material_doc_ids_for_auto = (
+        [doc_id for doc_id in new_material_doc_ids if not allowed_course_ids or new_material_course_map.get(doc_id) in allowed_course_ids]
+        if new_material_doc_ids
+        else []
+    )
+
     if settings.AUTO_SUMMARIZE_MATERIALS:
         course_ids = [course_sync["course_id"] for course_sync in synced_courses]
+        if allowed_course_ids:
+            course_ids = [course_id for course_id in course_ids if course_id in allowed_course_ids]
         if course_ids:
             summary_exists = (
                 select(1)
@@ -492,7 +507,7 @@ async def full_sync(
                 )
             ).scalars().all()
 
-            candidate_ids = list({*missing_summary_ids, *new_material_doc_ids})
+            candidate_ids = list({*missing_summary_ids, *new_material_doc_ids_for_auto})
             if candidate_ids:
                 auto_summary_doc_ids = candidate_ids
                 background_tasks.add_task(_background_auto_summarize_materials, candidate_ids, user_id)
@@ -500,6 +515,8 @@ async def full_sync(
 
     if settings.AUTO_GENERATE_QUIZZES:
         course_ids = [course_sync["course_id"] for course_sync in synced_courses]
+        if allowed_course_ids:
+            course_ids = [course_id for course_id in course_ids if course_id in allowed_course_ids]
         if course_ids:
             quiz_exists = (
                 select(1)
@@ -517,7 +534,7 @@ async def full_sync(
                 )
             ).scalars().all()
 
-            candidate_ids = list({*missing_quiz_ids, *new_material_doc_ids})
+            candidate_ids = list({*missing_quiz_ids, *new_material_doc_ids_for_auto})
             if candidate_ids:
                 auto_quiz_doc_ids = candidate_ids
                 background_tasks.add_task(_background_auto_generate_quizzes, candidate_ids, user_id)
