@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .schemas import Quiz, QuizQuestion, Course, UserCourse, User, Comment, Document, OTPVerification
+from .schemas import Quiz, QuizQuestion, QuizDocument, Course, UserCourse, User, Comment, Document, OTPVerification
 from .models import QuizCreate
 from datetime import datetime, timedelta, timezone
 from services.google_token_services import refresh_google_token
@@ -305,7 +305,10 @@ async def get_document_comments(db: AsyncSession, doc_id: int):
 async def get_quizzes_by_course_id(db: AsyncSession, course_id: int):
     result = await db.execute(
         select(Quiz)
-        .options(selectinload(Quiz.questions))
+        .options(
+            selectinload(Quiz.questions),
+            selectinload(Quiz.document_links).selectinload(QuizDocument.document),
+        )
         .where(Quiz.course_id == course_id)
     )
     return result.scalars().all()

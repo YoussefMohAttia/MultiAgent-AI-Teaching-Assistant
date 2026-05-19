@@ -49,6 +49,8 @@ class QuizOut(QuizBase):
     id: int
     course_id: int
     created_at: datetime
+    document_id: Optional[int] = None
+    document_title: Optional[str] = None
     questions: List[QuizQuestionOut]
     model_config = ConfigDict(from_attributes=True)
 

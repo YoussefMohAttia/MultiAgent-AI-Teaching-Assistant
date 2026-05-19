@@ -15,7 +15,19 @@ async def get_quizzes_by_course(
     db: AsyncSession = Depends(get_db)
 ):
     quizzes = await crud.get_quizzes_by_course_id(db=db, course_id=course_id)
-    return quizzes
+    payload = []
+    for quiz in quizzes:
+        doc = None
+        if getattr(quiz, "document_links", None):
+            for link in quiz.document_links:
+                if link.document:
+                    doc = link.document
+                    break
+        base = QuizOut.model_validate(quiz).model_dump()
+        base["document_id"] = doc.id if doc else None
+        base["document_title"] = doc.title if doc else None
+        payload.append(base)
+    return payload
 
 @router.get("/{subject_name}/quizzes", response_model=List[QuizOut])
 async def get_quizzes_by_subject(
@@ -29,7 +41,19 @@ async def get_quizzes_by_subject(
     
     # 2. Logic: Get Quizzes
     quizzes = await crud.get_quizzes_by_course_id(db=db, course_id=course.id)
-    return quizzes
+    payload = []
+    for quiz in quizzes:
+        doc = None
+        if getattr(quiz, "document_links", None):
+            for link in quiz.document_links:
+                if link.document:
+                    doc = link.document
+                    break
+        base = QuizOut.model_validate(quiz).model_dump()
+        base["document_id"] = doc.id if doc else None
+        base["document_title"] = doc.title if doc else None
+        payload.append(base)
+    return payload
 
 @router.post("/{subject_name}/quizzes", response_model=QuizOut)
 async def create_quiz_for_subject(

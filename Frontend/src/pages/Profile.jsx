@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
-import { getCourses, getProgress, runFullSync } from '../services/api';
+import { useToasts } from '../contexts/ToastContext';
+import { getCourses, getProgress, getQuizStatus, getSummaryStatus, runFullSync } from '../services/api';
 import { getStats } from '../lib/activity';
 import CourseAutomationSelector from '../components/CourseAutomationSelector';
 import { readAutomationPrefs, saveAutomationPrefs } from '../lib/automationPreferences';
@@ -67,6 +68,7 @@ export default function Profile() {
   const { theme, toggle } = useTheme();
   const { lang, toggleLang, t } = useLanguage();
   const { completedCycles, streakBonus, workMinutes } = usePomodoro();
+  const { pushToast } = useToasts();
   const isLocalAccount = user?.auth_provider === 'local';
 
   const [courses, setCourses] = useState([]);
@@ -82,6 +84,8 @@ export default function Profile() {
   const [automationSelection, setAutomationSelection] = useState([]);
   const [automationSaved, setAutomationSaved] = useState(false);
   const [automationSyncing, setAutomationSyncing] = useState(false);
+  const summaryPollRef = useRef(null);
+  const quizPollRef = useRef(null);
 
   useEffect(() => {
     if (!user) {
@@ -105,6 +109,17 @@ export default function Profile() {
 
     setStats(getStats());
   }, [user, navigate]);
+
+  useEffect(() => () => {
+    if (summaryPollRef.current) {
+      clearTimeout(summaryPollRef.current);
+      summaryPollRef.current = null;
+    }
+    if (quizPollRef.current) {
+      clearTimeout(quizPollRef.current);
+      quizPollRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -179,6 +194,84 @@ export default function Profile() {
 
   const automationCanSave = courses.length > 0 && automationSelection.length > 0 && !coursesLoading;
 
+  function scheduleSummaryPolling(scheduledIds) {
+    if (summaryPollRef.current) {
+      clearTimeout(summaryPollRef.current);
+      summaryPollRef.current = null;
+    }
+
+    const pendingIds = Array.from(new Set(scheduledIds || []));
+    if (!pendingIds.length) return;
+    const maxAttempts = 12;
+
+    const poll = async (attempt) => {
+      if (!pendingIds.length || attempt >= maxAttempts) return;
+      try {
+        const res = await getSummaryStatus(pendingIds);
+        const statuses = res.data?.statuses || {};
+        for (let i = pendingIds.length - 1; i >= 0; i -= 1) {
+          const docId = pendingIds[i];
+          if (statuses[String(docId)] === 'ready') {
+            pendingIds.splice(i, 1);
+          }
+        }
+        if (!pendingIds.length) {
+          pushToast({
+            title: t('syncSummaryReadyTitle'),
+            message: t('syncSummaryReadyContent'),
+            tone: 'success',
+          });
+          return;
+        }
+      } catch {
+        return;
+      }
+
+      summaryPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
+    };
+
+    poll(0);
+  }
+
+  function scheduleQuizPolling(scheduledIds) {
+    if (quizPollRef.current) {
+      clearTimeout(quizPollRef.current);
+      quizPollRef.current = null;
+    }
+
+    const pendingIds = Array.from(new Set(scheduledIds || []));
+    if (!pendingIds.length) return;
+    const maxAttempts = 12;
+
+    const poll = async (attempt) => {
+      if (!pendingIds.length || attempt >= maxAttempts) return;
+      try {
+        const res = await getQuizStatus(pendingIds);
+        const statuses = res.data?.statuses || {};
+        for (let i = pendingIds.length - 1; i >= 0; i -= 1) {
+          const docId = pendingIds[i];
+          if (statuses[String(docId)] === 'ready') {
+            pendingIds.splice(i, 1);
+          }
+        }
+        if (!pendingIds.length) {
+          pushToast({
+            title: t('syncQuizReadyTitle'),
+            message: t('syncQuizReadyContent'),
+            tone: 'success',
+          });
+          return;
+        }
+      } catch {
+        return;
+      }
+
+      quizPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
+    };
+
+    poll(0);
+  }
+
   const handleSaveAutomation = async () => {
     if (!user?.id || !automationCanSave) return;
     const courseIds = new Set(courses.map((course) => String(course.id)));
@@ -190,7 +283,28 @@ export default function Profile() {
     if (!isLocalAccount) {
       try {
         setAutomationSyncing(true);
-        await runFullSync(user.id, nextSelection);
+        const res = await runFullSync(user.id, nextSelection);
+        const responsePayload = res?.data || {};
+        const scheduledSummaryIds = responsePayload.auto_summary?.scheduled_doc_ids || [];
+        const scheduledQuizIds = responsePayload.auto_quiz?.scheduled_doc_ids || [];
+
+        if (scheduledSummaryIds.length) {
+          pushToast({
+            title: t('syncSummaryQueuedTitle'),
+            message: t('syncSummaryQueuedGeneric'),
+            tone: 'warning',
+          });
+          scheduleSummaryPolling(scheduledSummaryIds);
+        }
+
+        if (scheduledQuizIds.length) {
+          pushToast({
+            title: t('syncQuizQueuedTitle'),
+            message: t('syncQuizQueuedGeneric'),
+            tone: 'warning',
+          });
+          scheduleQuizPolling(scheduledQuizIds);
+        }
         localStorage.setItem('last_sync_ts', String(Date.now()));
       } catch {
         // Ignore sync errors; user can retry from dashboard if needed.

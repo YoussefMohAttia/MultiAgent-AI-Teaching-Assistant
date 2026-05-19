@@ -12,6 +12,10 @@ const formatDocLabel = (doc) => {
   return doc.doc_type ? `${doc.title} (${doc.doc_type})` : doc.title;
 };
 
+const getQuizDisplayTitle = (quiz, t) => (
+  quiz?.document_title || quiz?.documentTitle || quiz?.document?.title || t('quizLabel')
+);
+
 export default function QuizGenerator() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -313,11 +317,13 @@ export default function QuizGenerator() {
                         <p className="text-slate-400">{t('quizNoQuizzes')}</p>
                       </div>
                     ) : (
-                      quizzes.map((quiz) => (
+                      quizzes.map((quiz) => {
+                        const quizTitle = getQuizDisplayTitle(quiz, t);
+                        return (
                         <div key={quiz.id} onClick={() => handleSelectQuiz(quiz)} className="bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-slate-800/80 p-5 rounded-xl cursor-pointer transition-all flex flex-col justify-between min-h-[120px] group">
                            <div>
                               <div className="flex justify-between items-start mb-2">
-                                <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-md">{t('quizLabel')} #{quiz.id}</span>
+                                <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-md max-w-[14rem] truncate" title={quizTitle}>{quizTitle}</span>
                                 <span className="text-xs text-slate-500">{new Date(quiz.created_at).toLocaleDateString()}</span>
                               </div>
                               <p className="text-sm text-slate-300 font-medium">{quiz.questions?.length || 0} {t('quizQuestionsLabel')}</p>
@@ -326,7 +332,8 @@ export default function QuizGenerator() {
                              <span className="text-xs font-bold text-indigo-400 flex items-center gap-1">{t('quizTakeQuiz')} <span className="text-lg leading-none">&rarr;</span></span>
                            </div>
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </>
@@ -337,7 +344,7 @@ export default function QuizGenerator() {
                       &larr; {t('quizBackToQuizzes')}
                     </button>
                     <div>
-                      <h2 className="text-lg font-bold text-white">{t('quizLabel')} #{activeQuiz.id}</h2>
+                      <h2 className="text-lg font-bold text-white">{getQuizDisplayTitle(activeQuiz, t)}</h2>
                       <p className="text-xs text-slate-400">{takeItems.length} {t('quizQuestionsLabel')}</p>
                     </div>
                   </div>
