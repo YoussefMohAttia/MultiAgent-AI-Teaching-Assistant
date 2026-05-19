@@ -161,34 +161,42 @@ export default function Dashboard() {
     setAutomationSelection((prev) => prev.filter((id) => courseIds.includes(id)));
   }, [automationPrefsLoaded, coursesLoading, courses, user?.id]);
 
-  function scheduleSummaryPolling(items) {
+  function scheduleSummaryPolling(items, scheduledIds = null) {
     if (summaryPollRef.current) {
       clearTimeout(summaryPollRef.current);
       summaryPollRef.current = null;
     }
 
-    const pending = items.slice();
+    const pendingIds = (scheduledIds && scheduledIds.length)
+      ? Array.from(new Set(scheduledIds))
+      : items.map((doc) => doc.id);
+    if (!pendingIds.length) return;
     const maxAttempts = 12;
 
     const poll = async (attempt) => {
-      if (!pending.length || attempt >= maxAttempts) return;
+      if (!pendingIds.length || attempt >= maxAttempts) return;
       try {
-        const res = await getSummaryStatus(pending.map((doc) => doc.id));
+        const res = await getSummaryStatus(pendingIds);
         const statuses = res.data?.statuses || {};
-        for (let i = pending.length - 1; i >= 0; i -= 1) {
-          const doc = pending[i];
-          if (statuses[String(doc.id)] === 'ready') {
-            pushToast({
-              ...makeStudyToast(doc, 'syncSummaryReadyContent', 'success', t),
-            });
-            pending.splice(i, 1);
+        for (let i = pendingIds.length - 1; i >= 0; i -= 1) {
+          const docId = pendingIds[i];
+          if (statuses[String(docId)] === 'ready') {
+            pendingIds.splice(i, 1);
           }
+        }
+        if (!pendingIds.length) {
+          pushToast({
+            title: t('syncSummaryReadyTitle'),
+            message: t('syncSummaryReadyContent'),
+            tone: 'success',
+          });
+          return;
         }
       } catch {
         return;
       }
 
-      if (pending.length) {
+      if (pendingIds.length) {
         summaryPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
       }
     };
@@ -196,34 +204,42 @@ export default function Dashboard() {
     poll(0);
   }
 
-  function scheduleQuizPolling(items) {
+  function scheduleQuizPolling(items, scheduledIds = null) {
     if (quizPollRef.current) {
       clearTimeout(quizPollRef.current);
       quizPollRef.current = null;
     }
 
-    const pending = items.slice();
+    const pendingIds = (scheduledIds && scheduledIds.length)
+      ? Array.from(new Set(scheduledIds))
+      : items.map((doc) => doc.id);
+    if (!pendingIds.length) return;
     const maxAttempts = 12;
 
     const poll = async (attempt) => {
-      if (!pending.length || attempt >= maxAttempts) return;
+      if (!pendingIds.length || attempt >= maxAttempts) return;
       try {
-        const res = await getQuizStatus(pending.map((doc) => doc.id));
+        const res = await getQuizStatus(pendingIds);
         const statuses = res.data?.statuses || {};
-        for (let i = pending.length - 1; i >= 0; i -= 1) {
-          const doc = pending[i];
-          if (statuses[String(doc.id)] === 'ready') {
-            pushToast({
-              ...makeStudyToast(doc, 'syncQuizReadyContent', 'success', t),
-            });
-            pending.splice(i, 1);
+        for (let i = pendingIds.length - 1; i >= 0; i -= 1) {
+          const docId = pendingIds[i];
+          if (statuses[String(docId)] === 'ready') {
+            pendingIds.splice(i, 1);
           }
+        }
+        if (!pendingIds.length) {
+          pushToast({
+            title: t('syncQuizReadyTitle'),
+            message: t('syncQuizReadyContent'),
+            tone: 'success',
+          });
+          return;
         }
       } catch {
         return;
       }
 
-      if (pending.length) {
+      if (pendingIds.length) {
         quizPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
       }
     };
@@ -259,42 +275,22 @@ export default function Dashboard() {
         });
       }
 
-      const summaryCandidates = newMaterials.filter((doc) =>
-        scheduledSummaryIds.includes(doc.id)
-      );
-
-      if (summaryCandidates.length) {
-        summaryCandidates.forEach((doc) => {
-          pushToast({
-            ...makeStudyToast(doc, 'syncSummaryQueuedContent', 'warning', t),
-          });
-        });
-        scheduleSummaryPolling(summaryCandidates);
-      } else if (scheduledSummaryIds.length) {
+      if (scheduledSummaryIds.length) {
         pushToast({
           title: t('syncSummaryQueuedTitle'),
           message: t('syncSummaryQueuedGeneric'),
           tone: 'warning',
         });
+        scheduleSummaryPolling([], scheduledSummaryIds);
       }
 
-      const quizCandidates = newMaterials.filter((doc) =>
-        scheduledQuizIds.includes(doc.id)
-      );
-
-      if (quizCandidates.length) {
-        quizCandidates.forEach((doc) => {
-          pushToast({
-            ...makeStudyToast(doc, 'syncQuizQueuedContent', 'warning', t),
-          });
-        });
-        scheduleQuizPolling(quizCandidates);
-      } else if (scheduledQuizIds.length) {
+      if (scheduledQuizIds.length) {
         pushToast({
           title: t('syncQuizQueuedTitle'),
           message: t('syncQuizQueuedGeneric'),
           tone: 'warning',
         });
+        scheduleQuizPolling([], scheduledQuizIds);
       }
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
