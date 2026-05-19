@@ -162,8 +162,8 @@ class GoogleAuthorization:
             if not user:
                 # Create new user if they don't exist
                 user = await crud.create_new_user(db, google_id, email, name)
-            user.google_access_token = token.access_token
-            user.google_refresh_token = token.refresh_token
+            user.google_access_token = encrypt_token(token.access_token)
+            user.google_refresh_token = encrypt_token(token.refresh_token)
             user.auto_jobs_enabled = True
             if token.expires_in is not None:
                 if isinstance(token.expires_in, timedelta):

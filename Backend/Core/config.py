@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
 
     SECRET_KEY: str = "change_this_in_production_please_make_it_long_and_random"
+    ENCRYPTION_KEY: str = "lGzN2gTKNFA4zqH5ii1g8c0Dz_JV5uaO8uV2LDFVYxY="
     REDIRECT_URI: str = "http://localhost:8000/login/token"
     FRONTEND_URL: str = "http://localhost:5173"
     CORS_ALLOWED_ORIGINS: str = ""

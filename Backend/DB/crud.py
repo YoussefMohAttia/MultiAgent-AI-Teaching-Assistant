@@ -10,8 +10,11 @@ from .models import QuizCreate
 from datetime import datetime, timedelta, timezone
 from services.google_token_services import refresh_google_token
 from typing import Optional
+from cryptography.fernet import Fernet
+from Core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+cipher_suite = Fernet(settings.ENCRYPTION_KEY.encode())
 
 
 def get_password_hash(password: str) -> str:
@@ -20,6 +23,20 @@ def get_password_hash(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+def encrypt_token(token: Optional[str]) -> Optional[str]:
+    if not token:
+        return None
+    return cipher_suite.encrypt(token.encode()).decode()
+
+def decrypt_token(encrypted_token: Optional[str]) -> Optional[str]:
+    if not encrypted_token:
+        return None
+    try:
+        return cipher_suite.decrypt(encrypted_token.encode()).decode()
+    except Exception:
+        # Fallback for plain text tokens already in db
+        return encrypted_token
 
 # ---------------------------
 # USER OPERATIONS
@@ -325,12 +342,15 @@ async def get_valid_access_token(
     if not user or not user.google_refresh_token:
         print(f"  User {user_id} not found or has no refresh token")
         return None
+    
+    decrypted_refresh_token = decrypt_token(user.google_refresh_token)
+    
     if is_token_valid(user):
         print(f"  Token for user {user_id} is still valid")
-        return user.google_access_token
+        return decrypt_token(user.google_access_token)
         
     token_data = await refresh_google_token(
-        refresh_token=user.google_refresh_token,
+        refresh_token=decrypted_refresh_token,
         client_id=client_id,
         client_secret=client_secret
     )
@@ -349,7 +369,7 @@ async def get_valid_access_token(
 async def update_user_access_token(
     db: AsyncSession, user: User, access_token: str, expires_in: int
 ) -> User:
-    user.google_access_token = access_token
+    user.google_access_token = encrypt_token(access_token)
     user.google_token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
     await db.commit()
     await db.refresh(user)

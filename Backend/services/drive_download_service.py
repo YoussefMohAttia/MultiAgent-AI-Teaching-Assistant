@@ -48,15 +48,8 @@ async def _download_bytes(file_id: str, is_gdoc: bool, access_token: str) -> byt
         return resp.content
 
 def _extract_text_from_bytes(file_bytes: bytes) -> str:
-    temp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(file_bytes)
-            temp_path = tmp.name
-        return extract_text_from_pdf(temp_path)
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+    from services.pdf_processor import extract_text_from_pdf_bytes
+    return extract_text_from_pdf_bytes(file_bytes)
 
 
 async def ensure_document_text(doc, db: AsyncSession) -> str:

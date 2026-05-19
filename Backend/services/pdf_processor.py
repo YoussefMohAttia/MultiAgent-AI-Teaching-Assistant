@@ -12,6 +12,7 @@ import os
 import time
 from typing import List
 
+import fitz
 import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
@@ -25,6 +26,13 @@ def load_pdf(pdf_path: str) -> List[Document]:
     loader = PyPDFLoader(pdf_path)
     return loader.load()
 
+def load_pdf_from_bytes(file_bytes: bytes) -> List[Document]:
+    """Load a PDF from bytes and return a list of LangChain Document objects."""
+    docs = []
+    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        for i, page in enumerate(doc):
+            docs.append(Document(page_content=page.get_text(), metadata={"page": i}))
+    return docs
 
 def split_documents(
     documents: List[Document],
@@ -44,6 +52,11 @@ def split_documents(
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Load a PDF and return its full plain text (all pages joined)."""
     docs = load_pdf(pdf_path)
+    return "\n\n".join(doc.page_content for doc in docs)
+
+def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
+    """Load a PDF from bytes and return its full plain text."""
+    docs = load_pdf_from_bytes(file_bytes)
     return "\n\n".join(doc.page_content for doc in docs)
 
 
