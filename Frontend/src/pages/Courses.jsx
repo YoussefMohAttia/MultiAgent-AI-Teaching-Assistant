@@ -37,6 +37,21 @@ export default function Courses() {
     return url;
   };
 
+  const resolveDownloadUrl = (url) => {
+    if (!url) return null;
+    if (url.includes('drive.google.com')) {
+      const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+      if (fileMatch && fileMatch[1]) {
+        return `https://drive.google.com/uc?export=download&id=${fileMatch[1]}`;
+      }
+      const idMatch = url.match(/[?&]id=([^&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://drive.google.com/uc?export=download&id=${idMatch[1]}`;
+      }
+    }
+    return url;
+  };
+
 
   useEffect(() => {
     setCoursesLoading(true);
@@ -67,7 +82,13 @@ export default function Courses() {
     try {
       setIsProcessingFile(true);
       if (doc.download_url && doc.download_url.startsWith('http')) {
-        window.open(doc.download_url, '_blank', 'noopener');
+        const resolvedUrl = resolveDownloadUrl(doc.download_url);
+        const link = document.createElement('a');
+        link.href = resolvedUrl || doc.download_url;
+        link.setAttribute('download', doc.title || 'download');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
         return;
       }
       const res = await getDocumentBlob(doc.id);
