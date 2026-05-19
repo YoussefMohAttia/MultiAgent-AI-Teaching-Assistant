@@ -87,8 +87,8 @@ export const runFullSync = (userId, selectedCourseIds = []) => {
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {
-    course_id: courseId,
-    created_by: createdBy,
+    course_id: courseId ?? null,
+    created_by: createdBy ?? null,
     text: source.text || null,
     document_id: source.documentId || null,
     n_items: nItems,

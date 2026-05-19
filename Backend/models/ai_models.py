@@ -70,8 +70,8 @@ class QuizGenerateRequest(BaseModel):
     """Generate quiz questions from raw text or a document in a course."""
     text: Optional[str] = None
     document_id: Optional[int] = None
-    course_id: int
-    created_by: int
+    course_id: Optional[int] = None
+    created_by: Optional[int] = None
     objectives: Optional[List[str]] = None
     n_items: int = Field(default=5, ge=1, le=20)
     n_options: int = Field(default=4, ge=2, le=6)
@@ -84,8 +84,8 @@ class QuizItem(BaseModel):
 
 
 class QuizGenerateResponse(BaseModel):
-    quiz_id: int
-    course_id: int
+    quiz_id: Optional[int] = None
+    course_id: Optional[int] = None
     items: List[QuizItem]
 
 

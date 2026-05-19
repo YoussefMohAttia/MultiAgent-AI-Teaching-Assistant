@@ -73,7 +73,7 @@ export default function QuizGenerator() {
   }, [sourceMode, courseId]);
 
   const isGenerateDisabled = genLoading || (
-    sourceMode === 'text' ? (!courseId || !text.trim()) :
+    sourceMode === 'text' ? (!text.trim()) :
     sourceMode === 'document' ? (!courseId || !selectedDocId) :
     (!uploadFile)
   );
@@ -95,9 +95,11 @@ export default function QuizGenerator() {
         setGeneratedItems(res.data.items || []);
       } else {
         const source = sourceMode === 'document' ? { documentId: Number(selectedDocId) } : { text };
-        const res = await generateQuiz(Number(courseId), user.id, source, nItems, nOptions);
+        const courseValue = sourceMode === 'document' ? Number(courseId) : null;
+        const createdBy = sourceMode === 'document' ? user.id : null;
+        const res = await generateQuiz(courseValue, createdBy, source, nItems, nOptions);
         setGeneratedItems(res.data.items || []);
-        setGeneratedQuizId(res.data.quiz_id);
+        setGeneratedQuizId(res.data.quiz_id || null);
       }
 
       incrementStat('quizzesGenerated');
@@ -171,7 +173,7 @@ export default function QuizGenerator() {
                   <button onClick={() => setSourceMode('text')} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${sourceMode === 'text' ? 'bg-indigo-600 dark:bg-slate-800 text-white' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>{t('quizSourceText')}</button>
                 </div>
 
-                {sourceMode !== 'upload' && (
+                {sourceMode === 'document' && (
                   <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-400">{t('quizCourseLabel')}</label>
                     <div className="relative">
@@ -252,14 +254,14 @@ export default function QuizGenerator() {
           
           {tab === 'generate' && (
             <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-              {generatedQuizId && sourceMode !== 'upload' && (
+              {generatedQuizId && (
                 <div className="mb-6 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 p-4 rounded-xl flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5" />
                   <p className="text-sm font-medium">{t('quizSaved')}</p>
                 </div>
               )}
               
-              {!generatedQuizId && generatedItems.length > 0 && sourceMode === 'upload' && (
+              {!generatedQuizId && generatedItems.length > 0 && (
                 <div className="mb-6 bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-xl flex items-center gap-3">
                   <Zap className="w-5 h-5" />
                   <p className="text-sm font-medium">{t('quizEphemeral')}</p>

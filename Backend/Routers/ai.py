@@ -531,7 +531,18 @@ async def chat_upload(
 # ══════════════════════════════════════════════════════════════════════════════
 @router.post("/generate-quiz", response_model=QuizGenerateResponse)
 async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
+    if not req.document_id and not req.text:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either 'text' or 'document_id'.",
+        )
+
     if req.document_id:
+        if not req.course_id:
+            raise HTTPException(
+                status_code=400,
+                detail="'course_id' is required when generating from a document.",
+            )
         existing_quiz = await find_quiz_by_doc_and_criteria(
             db,
             doc_id=req.document_id,
@@ -548,14 +559,17 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
 
     text = req.text if req.text else await _get_document_text(req.document_id, db)
     raw_items = gen(passage=text[:15000], objectives=req.objectives, n_items=req.n_items, n_options=req.n_options)
+
+    if not req.document_id:
+        return QuizGenerateResponse(quiz_id=None, course_id=None, items=[QuizItem(**i) for i in raw_items])
+
     from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM, QuizDocument as QuizDocumentORM
     db_quiz = QuizORM(course_id=req.course_id, created_by=req.created_by)
     db.add(db_quiz)
     await db.flush()
     for item in raw_items:
         db.add(QuizQuestionORM(quiz_id=db_quiz.id, question=item["stem"], type="mcq", options=item["options"], correct_answer=item["options"][item["answer_index"]]))
-    if req.document_id:
-        db.add(QuizDocumentORM(quiz_id=db_quiz.id, doc_id=req.document_id))
+    db.add(QuizDocumentORM(quiz_id=db_quiz.id, doc_id=req.document_id))
     await db.commit()
     return QuizGenerateResponse(quiz_id=db_quiz.id, course_id=req.course_id, items=[QuizItem(**i) for i in raw_items])
 
@@ -912,12 +926,12 @@ async def quiz_status(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  4.  EVALUATION  —  10-dimension hybrid student summary evaluator
+#  4.  EVALUATION  —  6-dimension hybrid student summary evaluator
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/evaluate", response_model=EvaluateResponse)
 async def evaluate(req: EvaluateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
-    """Evaluate a student summary against a lecture / document across 10 metrics.
+    """Evaluate a student summary against a lecture / document across 6 metrics.
     
     The evaluator uses 12B for scoring. If no reference_summary is
     provided, the Summarizer ( 27B) auto-generates one as ground truth."""

@@ -38,26 +38,6 @@ function buildMetricInfo(t) {
       icon: '📖',
       desc: t('metricTerminologyDesc'),
     },
-    hallucination: {
-      label: t('metricHallucination'),
-      icon: '👻',
-      desc: t('metricHallucinationDesc'),
-    },
-    missing_key_points: {
-      label: t('metricMissingKeyPoints'),
-      icon: '🔑',
-      desc: t('metricMissingKeyPointsDesc'),
-    },
-    factual_accuracy: {
-      label: t('metricFactualAccuracy'),
-      icon: '📐',
-      desc: t('metricFactualAccuracyDesc'),
-    },
-    critical_analysis: {
-      label: t('metricCriticalAnalysis'),
-      icon: '🧠',
-      desc: t('metricCriticalAnalysisDesc'),
-    },
   };
 }
 
@@ -66,6 +46,8 @@ function colorForScore(score) {
   if (score >= 5) return 'var(--warning, #f59e0b)';
   return 'var(--danger)';
 }
+
+const TECH_DETAIL_RE = /(cos_|rouge|mean_sim|max_sim|covered=|domain terms matched|length ratio)/i;
 
 export default function Evaluator() {
   const { t } = useLanguage();
@@ -90,6 +72,7 @@ export default function Evaluator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [elapsed, setElapsed] = useState(null);
+  const [showTechnical, setShowTechnical] = useState(false);
 
   useEffect(() => {
     getCourses()
@@ -149,19 +132,6 @@ export default function Evaluator() {
 
   return (
     <div>
-      {/* ── Course selector ───────────────────────── */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>{t('evaluatorCourseLabel')}</label>
-          <CustomSelect
-            value={courseId}
-            onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
-            options={courses.map(c => ({ id: c.id, title: c.title }))}
-            placeholder={t('evaluatorLoadingCourses')}
-          />
-        </div>
-      </div>
-
       {/* ── Input Section ──────────────────────────── */}
       <div className="grid-2" style={{ marginBottom: 24 }}>
         {/* Lecture / Source */}
@@ -209,6 +179,14 @@ export default function Evaluator() {
 
           {sourceMode === 'document' && (
             <div className="form-group">
+              <label>{t('evaluatorCourseLabel')}</label>
+              <CustomSelect
+                value={courseId}
+                onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
+                options={courses.map(c => ({ id: c.id, title: c.title }))}
+                placeholder={t('evaluatorLoadingCourses')}
+              />
+
               <label>{t('evaluatorSelectDocument')}</label>
               {docsLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -344,6 +322,16 @@ export default function Evaluator() {
             )}
           </div>
 
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setShowTechnical((v) => !v)}
+            >
+              {showTechnical ? t('evaluatorHideTechnical') : t('evaluatorShowTechnical')}
+            </button>
+          </div>
+
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div className="card" style={{ flex: 1, minWidth: 150, padding: 12 }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('evaluatorStudentWords')}</div>
@@ -385,6 +373,17 @@ export default function Evaluator() {
                   if (!metric) return null;
                   const score = Number(metric.score || 0);
                   const icon = score >= 7 ? '🟢' : score >= 4 ? '🟡' : '🔴';
+                  const detail = metric.feedback || '';
+                  const isEvalError = /^Evaluation error/i.test(detail);
+                  const isTechnical = TECH_DETAIL_RE.test(detail);
+                  const strength = score >= 8
+                    ? t('metricStrengthStrong')
+                    : score >= 5
+                      ? t('metricStrengthOkay')
+                      : t('metricStrengthWeak');
+                  const displayDetail = showTechnical || !isTechnical
+                    ? (isEvalError ? t('metricEvalError') : detail)
+                    : strength;
                   return (
                     <tr key={key} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: 12, fontWeight: 600 }}>{icon} {info.label}</td>
@@ -407,7 +406,7 @@ export default function Evaluator() {
                       </td>
                       <td style={{ padding: 12, fontSize: '0.85rem', lineHeight: 1.45 }}>
                         <div style={{ marginBottom: 4, color: 'var(--text-muted)' }}>{info.desc}</div>
-                        {metric.feedback && <div>{metric.feedback}</div>}
+                        {displayDetail && <div>{displayDetail}</div>}
                       </td>
                     </tr>
                   );

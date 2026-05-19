@@ -1,11 +1,11 @@
 """
-Student summary evaluator service — 10-dimension hybrid evaluation.
+Student summary evaluator service — 6-dimension hybrid evaluation.
 
 Extracted from Ai Team/Main/EVALUATOR.ipynb.
 
 Uses hybrid scoring aligned with EVALUATOR.ipynb:
 - embeddings + ROUGE for deterministic metrics
-- LLM judging for coherence/hallucination/factual accuracy/critical analysis
+- LLM judging for coherence
 
 Model: configurable evaluator model via settings.EVALUATOR_MODEL_NAME
 Ground truth: summarizer service output + extracted lecture key points
@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
@@ -48,6 +49,24 @@ def _get_embedder():
     return _embedder_mod
 
 
+_JSON_RE = re.compile(r"\{.*?\}", re.DOTALL)
+
+
+def _extract_json_block(raw: str) -> Dict:
+    if not raw:
+        raise ValueError("Empty response")
+    for match in _JSON_RE.findall(raw):
+        try:
+            return json.loads(match)
+        except json.JSONDecodeError:
+            continue
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end > start:
+        return json.loads(raw[start:end + 1])
+    raise ValueError("No JSON object found")
+
+
 def _ensure_nltk():
     global _nltk_ready
     if not _nltk_ready:
@@ -70,6 +89,7 @@ def _ai_chat(prompt: str, max_tokens: int = 500) -> str:
         max_tokens=max_tokens,
         temperature=0.3,
         model=model_name,
+        timeout_s=settings.EVALUATOR_LLM_TIMEOUT_S,
     )
 
 
@@ -86,8 +106,7 @@ def _ai_score(criteria_name: str, criteria_desc: str, student: str,
     )
     try:
         raw = _ai_chat(prompt, max_tokens=250)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
+        data = _extract_json_block(raw)
         return round(float(data.get("score", 5)), 2), data.get("reason", "No reason provided.")
     except Exception as e:
         return 5.0, f"Evaluation error: {e}"
@@ -105,7 +124,7 @@ def generate_reference_summary(lecture: str) -> str:
         "  - Is written in clear, formal academic prose\n\n"
         f"LECTURE:\n{lecture}\n\nSUMMARY:"
     )
-    return _ai_chat(prompt, max_tokens=1500)
+    return _ai_chat(prompt, max_tokens=900)
 
 
 def extract_key_points(lecture: str) -> List[str]:
@@ -121,17 +140,50 @@ def extract_key_points(lecture: str) -> List[str]:
         'Return ONLY valid JSON: {{"key_points": ["<point1>", "<point2>", ..., "<point15>"]}}'
     )
     try:
-        raw = _ai_chat(prompt, max_tokens=1000)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
+        raw = _ai_chat(prompt, max_tokens=450)
+        data = _extract_json_block(raw)
         pts = data.get("key_points", [])
-        return pts if pts else [lecture[:200]]
+        if isinstance(pts, list):
+            cleaned = [str(p).strip() for p in pts if str(p).strip()]
+            if len(cleaned) >= 3:
+                return cleaned
     except Exception:
+        pass
+    return _fallback_key_points(lecture)
+
+
+def _fallback_key_points(lecture: str, n: int = 8) -> List[str]:
+    _ensure_nltk()
+    try:
+        from nltk.tokenize import sent_tokenize
+        sentences = sent_tokenize(lecture)
+    except Exception:
+        sentences = re.split(r"(?<=[.!?])\s+", lecture)
+
+    cleaned = [re.sub(r"\s+", " ", s).strip() for s in sentences]
+    filtered = [s for s in cleaned if len(s.split()) >= 6]
+
+    if not filtered:
         return [lecture[:200]]
+
+    seen = set()
+    uniq = []
+    for s in filtered:
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(s)
+
+    if len(uniq) <= n:
+        return uniq[:n]
+
+    step = max(1, len(uniq) // n)
+    return [uniq[i] for i in range(0, len(uniq), step)][:n]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  10 Scoring functions — each returns (score, detail_text)
+#  6 Scoring functions — each returns (score, detail_text)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _score_correctness(student: str, reference: str, lecture: str) -> Tuple[float, str]:
@@ -188,8 +240,7 @@ def _score_coherence(student: str) -> Tuple[float, str]:
     )
     try:
         raw = _ai_chat(prompt, max_tokens=200)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
+        data = _extract_json_block(raw)
         return round(float(data.get("score", 5)), 2), data.get("reason", "No reason provided.")
     except Exception as e:
         return 5.0, f"Evaluation error: {e}"
@@ -249,95 +300,6 @@ def _score_terminology(student: str, lecture: str) -> Tuple[float, str]:
     return round(matched / len(lecture_terms) * 10, 2), f"{matched}/{len(lecture_terms)} domain terms matched"
 
 
-def _score_hallucination(student: str, lecture: str) -> Tuple[float, str]:
-    prompt = (
-        "Identify claims in the STUDENT SUMMARY NOT supported by the LECTURE.\n\n"
-        f'LECTURE:\n"""\n{lecture}\n"""\n\n'
-        f'STUDENT SUMMARY:\n"""\n{student}\n"""\n\n'
-        'Return ONLY valid JSON:\n'
-        '{"score": <0-10 where 10=no hallucinations>, '
-        '"hallucinations": ["<claim1>", ...] or []}'
-    )
-    try:
-        raw = _ai_chat(prompt, max_tokens=500)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
-        score = round(float(data.get("score", 7)), 2)
-        items = data.get("hallucinations", [])
-        detail = ("No unsupported claims detected." if not items
-                  else "Unsupported claims: " + "; ".join(items[:4]))
-        return score, detail
-    except Exception as e:
-        return 7.0, f"Evaluation error: {e}"
-
-
-def _score_missing_points(student: str, key_points: List[str]) -> Tuple[float, str]:
-    from sentence_transformers import util
-
-    embedder = _get_embedder()
-
-    if not key_points:
-        return 5.0, "No key points available."
-
-    emb_s = embedder.encode(student, convert_to_tensor=True)
-    emb_kp = embedder.encode(key_points, convert_to_tensor=True)
-    sims = util.cos_sim(emb_s, emb_kp)[0].tolist()
-
-    threshold = 0.38
-    missed = [key_points[i] for i, sim in enumerate(sims) if sim < threshold]
-    covered_frac = 1.0 - len(missed) / len(key_points)
-    score = round(covered_frac * 10, 2)
-
-    if not missed:
-        detail = "All key lecture points appear to be covered."
-    else:
-        snippets = [p[:80] + "..." if len(p) > 80 else p for p in missed[:3]]
-        detail = f"Missing ({len(missed)}/{len(key_points)} pts): " + "; ".join(snippets)
-
-    return score, detail
-
-
-def _score_factual_accuracy(student: str, lecture: str) -> Tuple[float, str]:
-    prompt = (
-        "Check whether the specific facts in the STUDENT SUMMARY are accurate "
-        "according to the LECTURE.\n\n"
-        f'LECTURE:\n"""\n{lecture}\n"""\n\n'
-        f'STUDENT SUMMARY:\n"""\n{student}\n"""\n\n'
-        'Return ONLY valid JSON:\n'
-        '{"score": <0-10>, "errors": ["<error1>", ...] or [], "reason": "<1 sentence>"}'
-    )
-    try:
-        raw = _ai_chat(prompt, max_tokens=500)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
-        score = round(float(data.get("score", 7)), 2)
-        errors = data.get("errors", [])
-        reason = data.get("reason", "")
-        detail = reason if not errors else reason + "  Errors: " + "; ".join(errors[:3])
-        return score, detail
-    except Exception as e:
-        return 7.0, f"Evaluation error: {e}"
-
-
-def _score_critical_analysis(student: str) -> Tuple[float, str]:
-    prompt = (
-        "Evaluate the CRITICAL ANALYSIS DEPTH of the student summary on a scale of 0-10.\n\n"
-        "Criteria:\n"
-        "  - Student explains WHY, not just WHAT\n"
-        "  - Student identifies tensions, trade-offs, or ethical dilemmas\n"
-        "  - Student synthesises ideas rather than just listing facts\n\n"
-        f'Student Summary:\n"""\n{student}\n"""\n\n'
-        'Respond ONLY with valid JSON: {"score": <number 0-10>, "reason": "<1-2 sentences>"}'
-    )
-    try:
-        raw = _ai_chat(prompt, max_tokens=200)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(m.group()) if m else {}
-        return round(float(data.get("score", 5)), 2), data.get("reason", "No reason provided.")
-    except Exception as e:
-        return 5.0, f"Evaluation error: {e}"
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Public API
 # ══════════════════════════════════════════════════════════════════════════════
@@ -349,7 +311,7 @@ def evaluate_summary(
     key_points: Optional[List[str]] = None,
 ) -> Dict:
     """
-    Run the full 10-metric evaluation.
+    Run the full 6-metric evaluation.
 
     If *reference_summary* is not provided it will be generated by the
     **summarizer service**  to serve as ground truth.
@@ -365,41 +327,54 @@ def evaluate_summary(
     """
     lecture_ctx = lecture_text
 
-    # Auto-generate reference summary using the Summarizer service 27B)
-    if reference_summary is None:
-        log.info("[EVAL] Generating reference summary …")
+    def _generate_reference_summary() -> str:
+        log.info("[EVAL] Generating reference summary ...")
         from services.summarizer_service import summarize_text
         try:
-            reference_summary = summarize_text(lecture_ctx)
+            return summarize_text(lecture_ctx)
         except Exception as e:
             log.warning("[EVAL] Reference summary generation failed, using trimmed lecture fallback: %s", e)
-            reference_summary = lecture_ctx[:1500]
+            return lecture_ctx[:1500]
 
-    reference_ctx = reference_summary
+    def _extract_key_points_safe() -> List[str]:
+        log.info("[EVAL] Extracting key points ...")
+        try:
+            return extract_key_points(lecture_ctx)
+        except Exception as e:
+            log.warning("[EVAL] Key point extraction failed, using lecture fallback: %s", e)
+            return [lecture_ctx[:200]]
 
-    if key_points is None:
-        log.info("[EVAL] Extracting key points …")
-        key_points = extract_key_points(lecture_ctx)
-
-    # Run all 10 scorers
     results: Dict[str, Dict] = {}
-    metrics = [
-        ("correctness",      lambda: _score_correctness(student_summary, reference_ctx, lecture_ctx)),
-        ("relevance",        lambda: _score_relevance(student_summary, lecture_ctx)),
-        ("coherence",        lambda: _score_coherence(student_summary)),
-        ("completeness",     lambda: _score_completeness(student_summary, reference_ctx, key_points)),
-        ("conciseness",      lambda: _score_conciseness(student_summary, reference_ctx)),
-        ("terminology",      lambda: _score_terminology(student_summary, lecture_ctx)),
-        ("hallucination",    lambda: _score_hallucination(student_summary, lecture_ctx)),
-        ("missing_key_points", lambda: _score_missing_points(student_summary, key_points)),
-        ("factual_accuracy", lambda: _score_factual_accuracy(student_summary, lecture_ctx)),
-        ("critical_analysis", lambda: _score_critical_analysis(student_summary)),
-    ]
-    for i, (name, fn) in enumerate(metrics, 1):
-        log.info("[EVAL] Scoring %d/10: %s", i, name)
-        score, detail = fn()
+
+    def _save_result(name: str, score: float, detail: str) -> None:
         results[name] = {"score": score, "detail": detail}
         log.info("[EVAL] %s = %.2f", name, score)
+
+    _ensure_nltk()
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        ref_future = None
+        kp_future = None
+        if reference_summary is None:
+            ref_future = executor.submit(_generate_reference_summary)
+        if key_points is None:
+            kp_future = executor.submit(_extract_key_points_safe)
+
+        llm_futures = {
+            "coherence": executor.submit(_score_coherence, student_summary),
+        }
+
+        reference_ctx = reference_summary if reference_summary is not None else ref_future.result()
+        key_points = key_points if key_points is not None else kp_future.result()
+
+        _save_result("correctness", *_score_correctness(student_summary, reference_ctx, lecture_ctx))
+        _save_result("relevance", *_score_relevance(student_summary, lecture_ctx))
+        _save_result("completeness", *_score_completeness(student_summary, reference_ctx, key_points))
+        _save_result("conciseness", *_score_conciseness(student_summary, reference_ctx))
+        _save_result("terminology", *_score_terminology(student_summary, lecture_ctx))
+        for name, future in llm_futures.items():
+            score, detail = future.result()
+            _save_result(name, score, detail)
 
     overall = round(
         sum(v["score"] for v in results.values()) / len(results), 2

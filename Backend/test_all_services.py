@@ -171,9 +171,9 @@ t2_result = t2_ok
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  TEST 3 — EVALUATOR  (10 metrics)
+#  TEST 3 — EVALUATOR  (6 metrics)
 # ══════════════════════════════════════════════════════════════════════════════
-section("TEST 3 — EVALUATOR SERVICE  (10 metrics)")
+section("TEST 3 — EVALUATOR SERVICE  (6 metrics)")
 
 r3 = requests.post(
     f"{BASE}/evaluate",
@@ -193,10 +193,9 @@ if t3_ok:
     overall = body.get("overall")
     EXPECTED_METRICS = [
         "correctness", "relevance", "coherence", "completeness",
-        "conciseness", "terminology", "hallucination",
-        "missing_key_points", "factual_accuracy", "critical_analysis",
+        "conciseness", "terminology",
     ]
-    check("All 10 metrics present", all(m in scores for m in EXPECTED_METRICS),
+    check("All 6 metrics present", all(m in scores for m in EXPECTED_METRICS),
           f"found={list(scores.keys())}")
     check("'overall' score present", overall is not None, str(overall))
     check("'reference_summary' present", bool(body.get("reference_summary", "")))
@@ -260,7 +259,7 @@ section("INTEGRATION TEST SUMMARY")
 results = [
     ("Summarize service",              t1_result),
     ("Quiz generation + DB persist",   t2_result),
-    ("Evaluator service (10 metrics)", t3_result),
+    ("Evaluator service (6 metrics)", t3_result),
     ("Chatbot / RAG tutor",            t4_result),
     ("Index document (404 expected)",  t5_result),
 ]

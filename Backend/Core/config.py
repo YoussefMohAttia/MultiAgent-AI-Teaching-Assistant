@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     GOOGLE_AI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     AI_MODEL_NAME: str = "gemma-3-27b-it"
     EVALUATOR_MODEL_NAME: str = "gemma-4-31b-it"
+    EVALUATOR_LLM_TIMEOUT_S: int = 45
     TTS_MODEL_NAME: str = "gemini-3.1-flash-tts"
     TTS_VOICE_NAME: str = "alloy"
     TTS_RESPONSE_FORMAT: str = "mp3"
