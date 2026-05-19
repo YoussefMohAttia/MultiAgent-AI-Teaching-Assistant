@@ -158,11 +158,11 @@ export default function Courses() {
         <div className="w-full lg:w-1/3 flex flex-col gap-4 h-full">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-indigo-400" />
                 {t('myCourses')}
               </h2>
-              <span className="bg-slate-800 text-slate-300 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-700">
+              <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700">
                 {courses.length}
               </span>
             </div>
@@ -174,7 +174,7 @@ export default function Courses() {
                 placeholder={t('searchCourses')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -188,7 +188,7 @@ export default function Courses() {
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-2">
             {coursesLoading ? (
-              [1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-slate-800/50 rounded-xl animate-pulse border border-slate-700/50" />)
+              [1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-slate-200 dark:bg-slate-800/50 rounded-xl animate-pulse border border-slate-300 dark:border-slate-700/50" />)
             ) : filteredCourses.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-center px-4">
                 <FolderOpen className="w-8 h-8 text-slate-600 mb-2" />
@@ -202,11 +202,11 @@ export default function Courses() {
                     key={c.id}
                     onClick={() => setSelected(c)}
                     className={`w-full text-left group flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
-                      isSelected ? 'bg-indigo-500/10 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.05)]' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-800'
+                      isSelected ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.05)]' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex flex-col gap-1 pr-4">
-                      <span className={`font-semibold line-clamp-1 ${isSelected ? 'text-indigo-400' : 'text-slate-200 group-hover:text-white'}`}>
+                      <span className={`font-semibold line-clamp-1 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white'}`}>
                         {c.title}
                       </span>
                       <span className="text-xs text-slate-500 font-medium"></span>
@@ -220,24 +220,24 @@ export default function Courses() {
         </div>
 
         {/* ── Right Column: Detail View ──────────────────────── */}
-        <div className="w-full lg:w-2/3 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden h-full">
+        <div className="w-full lg:w-2/3 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden h-full">
           {!selected ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-700">
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-200 dark:border-slate-700">
                 <FileDigit className="w-10 h-10 text-slate-500" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{t('noCourseSelected')}</h3>
-              <p className="text-slate-400 max-w-sm">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('noCourseSelected')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 max-w-sm">
                 {t('noCourseSelectedBody')}
               </p>
             </div>
           ) : (
             <div className="flex flex-col h-full">
-              <div className="p-6 border-b border-slate-800 bg-slate-900/50">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">{selected.title}</h2>
-                    <p className="text-sm text-slate-400 flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{selected.title}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
                       <FolderOpen className="w-4 h-4" /> {t('courseMaterials')}
                     </p>
                   </div>
@@ -250,14 +250,14 @@ export default function Courses() {
               <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50 dark:bg-slate-950/30">
                 {docsLoading ? (
                   <div className="flex flex-col gap-3">
-                     {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-800/50 rounded-xl animate-pulse border border-slate-700/50" />)}
+                     {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-200 dark:bg-slate-800/50 rounded-xl animate-pulse border border-slate-300 dark:border-slate-700/50" />)}
                   </div>
                 ) : docs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
-                    <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
                       <Inbox className="w-8 h-8 text-slate-500" />
                     </div>
-                    <h4 className="text-lg font-semibold text-slate-300 mb-1">{t('folderEmpty')}</h4>
+                    <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('folderEmpty')}</h4>
                     <p className="text-sm text-slate-500 max-w-xs">{t('folderEmptyBody')}</p>
                   </div>
                 ) : (
@@ -333,10 +333,10 @@ export default function Courses() {
 
       {/* ── PDF Preview Modal Overlay ── */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/50 dark:bg-slate-950/90 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-200">
           <div className="flex items-center justify-between mb-4 max-w-5xl mx-auto w-full">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Eye className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Eye className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               {previewTitle}
             </h3>
             <button 
@@ -344,13 +344,13 @@ export default function Courses() {
                 window.URL.revokeObjectURL(previewUrl);
                 setPreviewUrl(null);
               }}
-              className="p-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition-colors"
+              className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors shadow-sm"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
           
-          <div className="flex-1 w-full max-w-5xl mx-auto bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+          <div className="flex-1 w-full max-w-5xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-2xl">
             <iframe 
               src={`${previewUrl}#toolbar=0`} 
               className="w-full h-full border-none"

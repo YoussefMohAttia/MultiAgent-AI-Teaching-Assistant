@@ -144,8 +144,8 @@ const SECTIONS = [
               <Eye size={18} />
             </div>
             <div>
-              <h4>In-app Preview</h4>
-              <p>View PDFs inside a full-screen modal without leaving the page.</p>
+              <h4>Preview</h4>
+              <p>View PDFs inside a full-screen.</p>
             </div>
           </div>
           <div className="um-feature-card">
@@ -202,11 +202,11 @@ const SECTIONS = [
     ),
   },
   {
-    id: 'summariser',
+    id: 'summarizer',
     icon: FileText,
     color: '#14b8a6',
     bg: 'rgba(20,184,166,0.12)',
-    title: 'Summariser',
+    title: 'Summarizer',
     subtitle: 'AI-generated summaries of your lecture material',
     content: (
       <div className="um-prose">
@@ -220,7 +220,7 @@ const SECTIONS = [
           <li><strong>Choose Document</strong> — Select a course, then pick a synced PDF</li>
           <li><strong>Upload PDF</strong> — Upload a file from your device</li>
         </ul>
-        <h4 className="um-subheading">Auto-Summarise on Sync</h4>
+        <h4 className="um-subheading">Auto-Summarize on Sync</h4>
         <p>
           When the Dashboard syncs new materials, the system can automatically queue summaries
           in the background for any course you've opted in. A toast appears when they're ready
@@ -522,44 +522,68 @@ export default function UserManual() {
         })}
       </div>
 
-      {/* Accordion sections */}
-      <div className="um-accordion">
-        {SECTIONS.map((s) => {
-          const Icon = s.icon;
-          const isOpen = openId === s.id;
-          return (
-            <div key={s.id} className={`um-section ${isOpen ? 'um-section-open' : ''}`}>
-              <button
-                className="um-section-header"
-                onClick={() => toggle(s.id)}
-                aria-expanded={isOpen}
-              >
-                <div className="um-section-left">
-                  <div
-                    className="um-section-icon"
-                    style={{ background: s.bg, color: s.color }}
+      {/* Row-chunked grid: panel opens after its own row */}
+      {Array.from({ length: Math.ceil(SECTIONS.length / 3) }, (_, rowIdx) => {
+        const row = SECTIONS.slice(rowIdx * 3, rowIdx * 3 + 3);
+        const openSection = row.find((s) => s.id === openId);
+        return (
+          <div key={rowIdx} className="um-row-group">
+            <div className="um-accordion">
+              {row.map((s) => {
+                const Icon = s.icon;
+                const isOpen = openId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    className={`um-section ${isOpen ? 'um-section-open' : ''}`}
+                    style={isOpen ? { borderColor: s.color + '55', boxShadow: `0 0 0 1px ${s.color}22` } : {}}
+                    onClick={() => toggle(s.id)}
+                    aria-expanded={isOpen}
                   >
-                    <Icon size={18} />
-                  </div>
-                  <div>
-                    <h2 className="um-section-title">{s.title}</h2>
-                    <p className="um-section-sub">{s.subtitle}</p>
-                  </div>
-                </div>
-                <div className="um-chevron" style={{ color: isOpen ? s.color : undefined }}>
-                  {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                </div>
-              </button>
-
-              {isOpen && (
-                <div className="um-section-body">
-                  {s.content}
-                </div>
-              )}
+                    <div className="um-section-left">
+                      <div className="um-section-icon" style={{ background: s.bg, color: s.color }}>
+                        <Icon size={18} />
+                      </div>
+                      <div className="um-section-text">
+                        <h2 className="um-section-title">{s.title}</h2>
+                        <p className="um-section-sub">{s.subtitle}</p>
+                      </div>
+                    </div>
+                    <div className="um-chevron" style={{ color: isOpen ? s.color : undefined }}>
+                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+
+            {openSection && (() => {
+              const s = openSection;
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.id}
+                  className="um-content-panel"
+                  style={{ borderColor: s.color + '33' }}
+                >
+                  <div className="um-content-panel-header">
+                    <div className="um-section-icon" style={{ background: s.bg, color: s.color }}>
+                      <Icon size={20} />
+                    </div>
+                    <div>
+                      <h2 className="um-content-panel-title" style={{ color: s.color }}>{s.title}</h2>
+                      <p className="um-content-panel-sub">{s.subtitle}</p>
+                    </div>
+                  </div>
+                  <div className="um-content-panel-body">
+                    {s.content}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })}
     </div>
   );
 }

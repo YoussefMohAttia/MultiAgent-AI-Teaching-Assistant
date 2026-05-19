@@ -7,7 +7,6 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 860px;
 }
 
 /* ── Hero ── */
@@ -90,12 +89,19 @@
   font-weight: 700;
 }
 
+/* ── Row group (one grid row + its panel) ── */
+.um-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ── Accordion ── */
 .um-accordion {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  align-items: stretch;
 }
 
 .um-section {
@@ -103,34 +109,42 @@
   border: 1px solid var(--border);
   background: var(--bg-card);
   overflow: hidden;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  /* button reset */
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  height: 96px;           /* fixed — all cards same height */
+  box-sizing: border-box;
 }
 
 .um-section-open {
   border-color: var(--border-subtle);
-  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
 }
 
-.um-section-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  cursor: pointer;
-  background: transparent;
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.um-section-header:hover {
+.um-section:hover {
   background: var(--bg-card-hover);
 }
+
+/* header button now IS .um-section — no separate element needed */
 
 .um-section-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.um-section-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .um-section-icon {
@@ -145,26 +159,67 @@
 }
 
 .um-section-title {
-  font-size: 0.98rem;
+  font-size: 0.93rem;
   font-weight: 700;
   color: var(--text-heading);
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .um-section-sub {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .um-chevron {
   flex-shrink: 0;
   color: var(--text-muted);
   transition: color 0.2s;
+  margin-left: 8px;
 }
 
 .um-section-body {
-  padding: 0 20px 24px;
-  border-top: 1px solid var(--border-subtle);
+  /* no longer used — kept for safety */
+  display: none;
+}
+
+/* ── Full-width Content Panel ── */
+.um-content-panel {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+  animation: um-panel-in 0.18s ease;
+}
+
+@keyframes um-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.um-content-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-card-hover);
+}
+
+.um-content-panel-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.um-content-panel-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.um-content-panel-body {
+  padding: 0 24px 24px;
 }
 
 /* ── Prose ── */
@@ -378,7 +433,16 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+  .um-accordion {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 640px) {
+  .um-accordion {
+    grid-template-columns: 1fr;
+  }
   .um-hero {
     flex-direction: column;
     gap: 14px;

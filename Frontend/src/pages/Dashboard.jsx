@@ -11,7 +11,7 @@ import CourseAutomationSelector from '../components/CourseAutomationSelector';
 import { hasAutomationPrefs, readAutomationPrefs, saveAutomationPrefs } from '../lib/automationPreferences';
 import { 
   BookOpen, Flame, RefreshCw, CloudSync, 
-  Bot, FileText, BrainCircuit, PenTool, Inbox,
+  BrainCircuit, Inbox, Sparkles,
   Sun, Moon, Languages, ShieldCheck
 } from 'lucide-react';
 
@@ -343,75 +343,95 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
       
-      {/* ── Header ── */}
-      <header className="flex items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          {/* Changed text-slate-900 to text-white so it shows on dark background */}
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {greeting}, {user?.name?.split(' ')[0] || copy.greetingFallback}
-          </h1>
-          {/* Changed to text-slate-400 for a softer subtitle */}
-          <p className="text-sm text-slate-400 font-medium">
-            {new Date().toLocaleDateString(dateLocale, {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggle}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors"
-            aria-label={theme === 'dark' ? copy.lightMode : copy.darkMode}
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            <span>{theme === 'dark' ? copy.lightMode : copy.darkMode}</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleLang}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors"
-            aria-label={copy.language}
-          >
-            <Languages className="w-4 h-4" />
-            <span>{lang === 'en' ? 'AR' : 'EN'}</span>
-          </button>
-          <div className="h-12 w-12 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-lg font-bold shadow-sm border border-indigo-500/30">
-            {initials}
+      {/* ── Hero Banner ── */}
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-8 md:p-10"
+        style={{
+          background: theme === 'dark'
+            ? 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(15,23,42,0.95) 40%, rgba(15,23,42,0.98) 100%)'
+            : 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(248,250,252,0.95) 40%, rgba(248,250,252,0.98) 100%)',
+        }}
+      >
+        {/* Animated gradient orbs */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-30 blur-3xl pointer-events-none animate-pulse"
+          style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.6), transparent 70%)' }}
+        />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-20 blur-3xl pointer-events-none animate-pulse"
+          style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.5), transparent 70%)', animationDelay: '2s' }}
+        />
+        
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="h-16 w-16 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-2xl font-bold text-indigo-600 dark:text-indigo-200 shadow-lg shadow-indigo-500/5 dark:shadow-indigo-500/10">
+              {initials}
+            </div>
+            <div>
+              <p className="text-sm text-indigo-600 dark:text-indigo-300 font-medium mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                {new Date().toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {greeting},{' '}
+                <span className="bg-gradient-to-r from-indigo-500 to-sky-500 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent">
+                  {user?.name?.split(' ')[0] || copy.greetingFallback}
+                </span>
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={toggle}
+              className="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors backdrop-blur-sm"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <span>{theme === 'dark' ? copy.lightMode : copy.darkMode}</span>
+            </button>
+            <button type="button" onClick={toggleLang}
+              className="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors backdrop-blur-sm"
+            >
+              <Languages className="w-4 h-4" />
+              <span>{lang === 'en' ? 'AR' : 'EN'}</span>
+            </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* ── Top Stats Row ── */}
+      {/* ── Stats Row ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard 
           icon={BookOpen} 
           label={copy.activeCourses} 
           value={coursesLoading ? '—' : courses.length} 
-          colorClass="bg-blue-500/20 text-blue-400" 
+          accent="indigo"
         />
         <StatCard 
           icon={Flame} 
           label={copy.dayStreak} 
           value={dayStreak} 
-          colorClass="bg-orange-500/20 text-orange-400" 
+          accent="orange"
+          suffix={dayStreak === 1 ? ' day' : ' days'}
         />
         <StatCard 
           icon={BrainCircuit} 
           label={copy.aiInteractions} 
           value={aiInteractions} 
-          colorClass="bg-emerald-500/20 text-emerald-400" 
+          accent="emerald"
         />
       </div>
 
       {/* ── Courses Section ── */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          {/* Section titles updated to white */}
-          <h2 className="text-xl font-bold text-white">{copy.yourCourses}</h2>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-6 rounded-full bg-indigo-500" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{copy.yourCourses}</h2>
+            {!coursesLoading && courses.length > 0 && (
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-transparent">
+                {courses.length} {courses.length === 1 ? 'course' : 'courses'}
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
             {isLocalAccount ? (
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 text-sm font-medium rounded-lg">
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg">
                 <ShieldCheck className="w-4 h-4" />
                 Local account only
               </div>
@@ -427,9 +447,9 @@ export default function Dashboard() {
             )}
             <button 
               onClick={fetchCourses}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
             >
-              <RefreshCw className={`w-4 h-4 ${coursesLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${coursesLoading ? 'animate-spin text-indigo-500 dark:text-indigo-400' : ''}`} />
             </button>
           </div>
         </div>
@@ -437,16 +457,16 @@ export default function Dashboard() {
         {coursesLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-slate-800 animate-pulse rounded-xl border border-slate-700" />
+              <div key={i} className="h-36 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-xl border border-slate-300 dark:border-slate-700" />
             ))}
           </div>
         ) : courses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 bg-slate-800/50 border border-slate-700 border-dashed rounded-xl text-center">
-            <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mb-4">
-              <Inbox className="w-6 h-6 text-slate-400" />
+          <div className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 border-dashed rounded-xl text-center">
+            <div className="w-14 h-14 bg-slate-200 dark:bg-slate-700 rounded-2xl flex items-center justify-center mb-4">
+              <Inbox className="w-7 h-7 text-slate-500 dark:text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">{copy.noCoursesTitle}</h3>
-            <p className="text-sm text-slate-400 max-w-sm">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{copy.noCoursesTitle}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
               {isLocalAccount
                 ? 'This account was created locally, so Google Classroom sync is disabled. Create a course manually and use the AI tools with text or PDF uploads.'
                 : copy.noCoursesBody}
@@ -461,22 +481,12 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* ── Quick Actions Section ── */}
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-white">{copy.quickActions}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <ActionCard icon={Bot} title={copy.askAi} desc={copy.askAiDesc} onClick={() => navigate('/chat')} />
-          <ActionCard icon={FileText} title={copy.summarize} desc={copy.summarizeDesc} onClick={() => navigate('/summarizer')} />
-          <ActionCard icon={BrainCircuit} title={copy.takeQuiz} desc={copy.takeQuizDesc} onClick={() => navigate('/quiz?tab=take')} />
-          <ActionCard icon={PenTool} title={copy.gradeEssay} desc={copy.gradeEssayDesc} onClick={() => navigate('/essay-grader')} />
-        </div>
-      </section>
-
+      {/* ── Automation Modal ── */}
       {automationModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
-            <h2 className="text-xl font-semibold text-white mb-2">{t('automationModalTitle')}</h2>
-            <p className="text-sm text-slate-400 mb-4">{t('automationModalBody')}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 dark:bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">{t('automationModalTitle')}</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{t('automationModalBody')}</p>
             <CourseAutomationSelector
               courses={courses}
               selectedCourseIds={automationSelection}
@@ -502,16 +512,39 @@ export default function Dashboard() {
 
 // ─── Subcomponents ──────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, colorClass }) {
+const ACCENT_MAP = {
+  indigo:  { bg: 'rgba(99,102,241,0.12)',  ring: 'rgba(99,102,241,0.25)',  text: '#6366f1', darkText: '#a5b4fc', glow: 'rgba(99,102,241,0.08)' },
+  orange:  { bg: 'rgba(249,115,22,0.12)',  ring: 'rgba(249,115,22,0.25)',  text: '#ea580c', darkText: '#fdba74', glow: 'rgba(249,115,22,0.08)' },
+  emerald: { bg: 'rgba(16,185,129,0.12)',  ring: 'rgba(16,185,129,0.25)',  text: '#059669', darkText: '#6ee7b7', glow: 'rgba(16,185,129,0.08)' },
+};
+
+function StatCard({ icon: Icon, label, value, accent, suffix = '' }) {
+  const c = ACCENT_MAP[accent] || ACCENT_MAP.indigo;
   return (
-    // Changed bg-white to bg-slate-800 and borders to slate-700
-    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm flex items-center gap-4">
-      <div className={`p-3 rounded-lg ${colorClass}`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-slate-400">{label}</p>
-        <p className="text-2xl font-bold text-white">{value}</p>
+    <div
+      className="relative group bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 overflow-hidden hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 cursor-default"
+      style={{ boxShadow: `0 0 40px ${c.glow}` }}
+    >
+      {/* Corner glow on hover */}
+      <div
+        className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl pointer-events-none"
+        style={{ background: c.ring }}
+      />
+      <div className="relative flex items-center gap-4">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{ background: c.bg, boxShadow: `0 0 0 1px ${c.ring}` }}
+        >
+          <Icon className="w-6 h-6" style={{ color: c.text }} className="dark:hidden" />
+          <Icon className="w-6 h-6 hidden dark:block" style={{ color: c.darkText }} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white tabular-nums">
+            {value}
+            <span className="text-sm font-medium text-slate-500">{suffix}</span>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -519,41 +552,40 @@ function StatCard({ icon: Icon, label, value, colorClass }) {
 
 function CourseCard({ course }) {
   const navigate = useNavigate();
-  const colors = ['bg-indigo-500', 'bg-violet-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
-  const colorClass = colors[course.id % colors.length];
+  const gradients = [
+    'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
+    'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)',
+    'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+    'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+    'linear-gradient(135deg, #f43f5e 0%, #fb7185 100%)',
+  ];
+  const gradient = gradients[course.id % gradients.length];
 
   return (
     <div 
       onClick={() => navigate('/courses')}
-      className="group bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all cursor-pointer flex flex-col justify-between min-h-[140px]"
+      className="group relative bg-white dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 cursor-pointer"
     >
-      <div>
-        <div className="flex items-start justify-between mb-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${colorClass}`}>
+      {/* Gradient accent bar at top */}
+      <div className="h-1.5 w-full" style={{ background: gradient }} />
+      <div className="p-5 flex flex-col justify-between min-h-[130px]">
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md"
+            style={{ background: gradient }}
+          >
             <BookOpen className="w-5 h-5" />
           </div>
-          {/* Removed the ID badge completely as requested */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-1 rounded-full border border-indigo-100 dark:border-transparent">
+              View →
+            </span>
+          </div>
         </div>
-        <h3 className="font-semibold text-white group-hover:text-indigo-400 transition-colors line-clamp-2">
+        <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors line-clamp-2 mt-3 text-sm leading-snug">
           {course.title}
         </h3>
-      </div>
-    </div>
-  );
-}
-
-function ActionCard({ icon: Icon, title, desc, onClick }) {
-  return (
-    <div 
-      onClick={onClick} 
-      className="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-sm hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all flex flex-col gap-3 group"
-    >
-      <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-300 group-hover:text-indigo-400 group-hover:bg-indigo-500/20 transition-colors">
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <h3 className="font-semibold text-white text-sm mb-1">{title}</h3>
-        <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
       </div>
     </div>
   );
