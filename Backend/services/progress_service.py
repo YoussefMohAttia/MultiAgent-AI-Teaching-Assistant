@@ -9,18 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from DB.schemas import User, UserProgress, UserTask
 
 LEVEL_TABLE = [
-    {"level": 1, "xp": 0, "rank": "Rookie"},
-    {"level": 2, "xp": 120, "rank": "Rookie"},
-    {"level": 3, "xp": 260, "rank": "Apprentice"},
-    {"level": 4, "xp": 450, "rank": "Apprentice"},
-    {"level": 5, "xp": 700, "rank": "Scholar"},
-    {"level": 6, "xp": 1000, "rank": "Scholar"},
-    {"level": 7, "xp": 1350, "rank": "Mentor"},
-    {"level": 8, "xp": 1750, "rank": "Mentor"},
-    {"level": 9, "xp": 2200, "rank": "Master"},
-    {"level": 10, "xp": 2700, "rank": "Master"},
-    {"level": 11, "xp": 3250, "rank": "Legend"},
-    {"level": 12, "xp": 4000, "rank": "Legend"},
+    {"level": 1, "xp": 0, "rank": "Copper"},
+    {"level": 2, "xp": 100, "rank": "Copper"},
+    {"level": 3, "xp": 220, "rank": "Bronze"},
+    {"level": 4, "xp": 380, "rank": "Bronze"},
+    {"level": 5, "xp": 580, "rank": "Silver"},
+    {"level": 6, "xp": 820, "rank": "Silver"},
+    {"level": 7, "xp": 1100, "rank": "Gold"},
+    {"level": 8, "xp": 1420, "rank": "Gold"},
+    {"level": 9, "xp": 1800, "rank": "Platinum"},
+    {"level": 10, "xp": 2250, "rank": "Platinum"},
+    {"level": 11, "xp": 2750, "rank": "Emerald"},
+    {"level": 12, "xp": 3300, "rank": "Emerald"},
+    {"level": 13, "xp": 3900, "rank": "Diamond"},
+    {"level": 14, "xp": 4600, "rank": "Diamond"},
+    {"level": 15, "xp": 5400, "rank": "Champion"},
+    {"level": 16, "xp": 6400, "rank": "Champion"},
+    {"level": 17, "xp": 7600, "rank": "Grand Champion"},
+    {"level": 18, "xp": 9000, "rank": "Grand Champion"},
+    {"level": 19, "xp": 11000, "rank": "Legend"},
+    {"level": 20, "xp": 14000, "rank": "Legend"},
 ]
 
 TASK_DEFS = [
@@ -56,13 +64,37 @@ TASK_DEFS = [
         "metric_key": "chats",
         "xp_reward": 20,
     },
+    {
+        "key": "daily_essay",
+        "title": "Grade an essay",
+        "description": "Submit 1 essay for grading",
+        "goal": 1,
+        "metric_key": "essays",
+        "xp_reward": 25,
+    },
+    {
+        "key": "daily_evaluation",
+        "title": "Evaluate a summary",
+        "description": "Run 1 summary evaluation",
+        "goal": 1,
+        "metric_key": "evaluations",
+        "xp_reward": 25,
+    },
 ]
 
 ACHIEVEMENTS = [
     {"key": "streak_3", "title": "3-day streak", "metric_key": "day_streak", "goal": 3},
+    {"key": "streak_7", "title": "7-day streak", "metric_key": "day_streak", "goal": 7},
+    {"key": "streak_14", "title": "14-day streak", "metric_key": "day_streak", "goal": 14},
     {"key": "summaries_3", "title": "3 summaries created", "metric_key": "summaries", "goal": 3},
+    {"key": "summaries_10", "title": "10 summaries created", "metric_key": "summaries", "goal": 10},
     {"key": "quizzes_2", "title": "2 quizzes generated", "metric_key": "quizzes_generated", "goal": 2},
+    {"key": "quizzes_10", "title": "10 quizzes generated", "metric_key": "quizzes_generated", "goal": 10},
     {"key": "focus_3", "title": "3 focus cycles", "metric_key": "pomodoro_cycles", "goal": 3},
+    {"key": "focus_10", "title": "10 focus cycles", "metric_key": "pomodoro_cycles", "goal": 10},
+    {"key": "chats_20", "title": "20 tutor chats", "metric_key": "chats", "goal": 20},
+    {"key": "essays_5", "title": "5 essays graded", "metric_key": "essays", "goal": 5},
+    {"key": "evaluations_5", "title": "5 evaluations completed", "metric_key": "evaluations", "goal": 5},
 ]
 
 
