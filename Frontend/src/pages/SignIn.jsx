@@ -20,6 +20,11 @@ export default function SignIn() {
   return (
     <div className="signin-root">
       <SplineSceneBasic onSignIn={handleGoogleLogin} />
+      <div className="signin-footer">
+        <a href="/privacy">Privacy</a>
+        <span aria-hidden="true">•</span>
+        <a href="/terms">Terms</a>
+      </div>
     </div>
   );
 }
