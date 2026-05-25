@@ -5,6 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EduAI</title>
+    <style>
+      .static-legal-footer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        z-index: 9999;
+        pointer-events: auto;
+      }
+      .static-legal-footer a {
+        color: #ffffff;
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .static-legal-footer a:hover {
+        color: rgba(255, 255, 255, 0.8);
+      }
+    </style>
     <script>
       // Set theme before React renders to avoid flash
       document.documentElement.setAttribute(
@@ -15,6 +39,11 @@
   </head>
   <body>
     <div id="root"></div>
+    <div class="static-legal-footer" aria-label="Legal">
+      <a href="/privacy">Privacy Policy</a>
+      <span aria-hidden="true">•</span>
+      <a href="/terms">Terms of Service</a>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
