@@ -152,6 +152,8 @@ def _resolve_model_path() -> str:
         p = Path(configured)
         if p.exists():
             return str(p.resolve())
+        # Allow non-local paths (e.g., Hugging Face repo IDs) via env var.
+        return configured
 
     backend_root = Path(__file__).resolve().parents[1]
     workspace_root = backend_root.parent
