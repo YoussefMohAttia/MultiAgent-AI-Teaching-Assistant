@@ -109,7 +109,12 @@ export default function Dashboard() {
       fetchCourses();
       return;
     }
-    autoSync();
+    // Only auto-sync if user has previously saved automation prefs
+    if (hasAutomationPrefs(user.id)) {
+      autoSync();
+    } else {
+      fetchCourses();
+    }
   }, [user, isLocalAccount, automationPrefsLoaded, automationModalOpen]);
 
   useEffect(() => {
@@ -153,7 +158,7 @@ export default function Dashboard() {
     if (courseIds.length === 0) return;
 
     if (!hasAutomationPrefs(user.id)) {
-      setAutomationSelection(courseIds);
+      setAutomationSelection([]);
       setAutomationModalOpen(true);
       return;
     }
@@ -318,7 +323,7 @@ export default function Dashboard() {
   }
 
   function handleSaveAutomation() {
-    if (!user?.id || automationSelection.length === 0) return;
+    if (!user?.id) return;
     const courseIds = new Set(courses.map((course) => String(course.id)));
     const nextSelection = automationSelection.filter((id) => courseIds.has(id));
     saveAutomationPrefs(user.id, nextSelection);
@@ -338,7 +343,7 @@ export default function Dashboard() {
   const dateLocale = copy.dateLocale || 'en-US';
   const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
   const dayStreak = progress?.day_streak ?? streak;
-  const automationCanSave = automationSelection.length > 0;
+  const automationCanSave = true;
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">

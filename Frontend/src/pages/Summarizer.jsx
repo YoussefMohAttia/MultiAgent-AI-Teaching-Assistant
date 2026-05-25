@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { getCourses, getDocuments, getSummaries, logProgressEvent } from '../services/api'; 
 import { FileText, ChevronDown, CheckCircle2, Zap, BarChart, AlertCircle, UploadCloud } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import axios from 'axios';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { incrementStat } from '../lib/activity';
+import { readAutomationPrefs } from '../lib/automationPreferences';
 
 const formatDocLabel = (doc) => {
   if (!doc) return '';
@@ -68,9 +69,15 @@ export default function Summarizer() {
     try {
       const res = await getSummaries(user.id, libraryCourseId ? Number(libraryCourseId) : null);
       const items = res.data.summaries || [];
-      setLibrarySummaries(items);
-      if (items.length) {
-        setSelectedSummary(items[0]);
+      // Filter to only show summaries for courses the user opted into automation
+      const automationPrefs = readAutomationPrefs(user.id);
+      const allowedCourseIds = new Set(automationPrefs.selectedCourseIds.map(id => String(id)));
+      const filtered = allowedCourseIds.size > 0
+        ? items.filter(item => allowedCourseIds.has(String(item.course_id)))
+        : [];
+      setLibrarySummaries(filtered);
+      if (filtered.length) {
+        setSelectedSummary(filtered[0]);
       } else {
         setSelectedSummary(null);
       }
@@ -124,6 +131,15 @@ export default function Summarizer() {
       setIsSummarizing(false);
     }
   };
+
+  // Filter courses in library tab to only those the user opted into automation
+  const libraryCourses = useMemo(() => {
+    if (!user) return courses;
+    const prefs = readAutomationPrefs(user.id);
+    const allowed = new Set(prefs.selectedCourseIds.map(id => String(id)));
+    if (allowed.size === 0) return [];
+    return courses.filter(c => allowed.has(String(c.id)));
+  }, [user, courses, activeTab]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-500 w-full">
@@ -309,7 +325,7 @@ export default function Summarizer() {
                     onChange={(e) => setLibraryCourseId(e.target.value)}
                   >
                     <option value="">{t('summarizerLibraryAllCourses')}</option>
-                    {courses.map((c) => (
+                    {libraryCourses.map((c) => (
                       <option key={c.id} value={c.id}>{c.title}</option>
                     ))}
                   </select>

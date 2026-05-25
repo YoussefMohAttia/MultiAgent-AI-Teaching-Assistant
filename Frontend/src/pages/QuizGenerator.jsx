@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { generateQuiz, getQuizzesByCourse, getCourses, getDocuments, logProgressEvent } from '../services/api';
@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BrainCircuit, BookOpen, ChevronDown, UploadCloud, AlertCircle, Sparkles, CheckCircle2, XCircle, Zap } from 'lucide-react';
 import { incrementStat } from '../lib/activity';
+import { readAutomationPrefs } from '../lib/automationPreferences';
 
 const formatDocLabel = (doc) => {
   if (!doc) return '';
@@ -61,7 +62,21 @@ export default function QuizGenerator() {
     if (tab === 'take' && courseId) {
       setActiveQuiz(null); setTakeItems([]); setQuizzesLoading(true);
       getQuizzesByCourse(Number(courseId))
-        .then((r) => setQuizzes(r.data || []))
+        .then((r) => {
+          const allQuizzes = r.data || [];
+          // Filter quizzes to only show those for courses the user opted into automation
+          if (user) {
+            const prefs = readAutomationPrefs(user.id);
+            const allowed = new Set(prefs.selectedCourseIds.map(id => String(id)));
+            if (allowed.size > 0) {
+              setQuizzes(allQuizzes.filter(q => allowed.has(String(q.course_id || courseId))));
+            } else {
+              setQuizzes([]);
+            }
+          } else {
+            setQuizzes(allQuizzes);
+          }
+        })
         .catch(() => setQuizzes([]))
         .finally(() => setQuizzesLoading(false));
     }
@@ -130,6 +145,15 @@ export default function QuizGenerator() {
     });
     setTakeItems(items);
   };
+
+  // Filter courses in Take tab to only those the user opted into automation
+  const takeCourses = useMemo(() => {
+    if (!user) return courses;
+    const prefs = readAutomationPrefs(user.id);
+    const allowed = new Set(prefs.selectedCourseIds.map(id => String(id)));
+    if (allowed.size === 0) return [];
+    return courses.filter(c => allowed.has(String(c.id)));
+  }, [user, courses, tab]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 animate-in fade-in duration-500 w-full">
@@ -302,7 +326,7 @@ export default function QuizGenerator() {
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-indigo-500"
                         value={courseId} onChange={(e) => setCourseId(e.target.value)}
                       >
-                        {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                        {takeCourses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                     </div>

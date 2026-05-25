@@ -238,7 +238,7 @@ export default function Profile() {
     return t('profileNextReview');
   })();
 
-  const automationCanSave = courses.length > 0 && automationSelection.length > 0 && !coursesLoading;
+  const automationCanSave = courses.length > 0 && !coursesLoading;
 
   function scheduleSummaryPolling(scheduledIds) {
     if (summaryPollRef.current) {
