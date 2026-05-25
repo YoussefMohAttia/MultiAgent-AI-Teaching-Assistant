@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSummaryStatus, getQuizStatus, getProgress, runFullSync } from '../services/api';
+import { getSummaryStatus, getQuizStatus, getProgress, runCourseSync, runFullSync } from '../services/api';
 import { useToasts } from '../contexts/ToastContext';
 import { getStats } from '../lib/activity';
 import CourseAutomationSelector from '../components/CourseAutomationSelector';
@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [automationPrefsLoaded, setAutomationPrefsLoaded] = useState(false);
 
   const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
+  const syncStorageKey = user?.id ? `last_sync_ts_${user.id}` : 'last_sync_ts_guest';
 
   useEffect(() => {
     if (!user) {
@@ -149,14 +150,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!automationPrefsLoaded || coursesLoading || !user?.id) return;
-    const courseIds = courses.map((course) => String(course.id));
-    if (courseIds.length === 0) return;
-
     if (!hasAutomationPrefs(user.id)) {
-      setAutomationSelection([]);
       setAutomationModalOpen(true);
       return;
     }
+
+    const courseIds = courses.map((course) => String(course.id));
+    if (courseIds.length === 0) return;
 
     setAutomationSelection((prev) => prev.filter((id) => courseIds.includes(id)));
   }, [automationPrefsLoaded, coursesLoading, courses, user?.id]);
@@ -249,7 +249,7 @@ export default function Dashboard() {
 
 
   async function autoSync() {
-    const lastSync = parseInt(localStorage.getItem('last_sync_ts') || '0', 10);
+    const lastSync = parseInt(localStorage.getItem(syncStorageKey) || '0', 10);
     if (Date.now() - lastSync < SYNC_COOLDOWN_MS) {
       await fetchCourses();
       return;
@@ -261,7 +261,19 @@ export default function Dashboard() {
     if (syncRunRef.current) return;
     syncRunRef.current = true;
     setSyncing(true);
+    let liveFetchTimer = null;
     try {
+      try {
+        await runCourseSync(user.id);
+        await fetchCourses();
+      } catch {
+        // Continue to full sync even if course-only sync fails.
+      }
+
+      liveFetchTimer = setInterval(() => {
+        void fetchCourses();
+      }, 3000);
+
       const res = await runFullSync(user.id, selectionOverride || automationSelection);
 
       const responsePayload = res?.data || {};
@@ -295,7 +307,10 @@ export default function Dashboard() {
     } catch (err) {
       console.warn('Sync failed:', err?.response?.data?.detail || err.message);
     } finally {
-      localStorage.setItem('last_sync_ts', String(Date.now()));
+      if (liveFetchTimer) {
+        clearInterval(liveFetchTimer);
+      }
+      localStorage.setItem(syncStorageKey, String(Date.now()));
       setSyncing(false);
       syncRunRef.current = false;
     }
@@ -338,7 +353,7 @@ export default function Dashboard() {
   const dateLocale = copy.dateLocale || 'en-US';
   const aiInteractions = stats.summaries + stats.quizzesGenerated + stats.quizzesTaken + stats.chats;
   const dayStreak = progress?.day_streak ?? streak;
-  const automationCanSave = true;
+  const automationCanSave = courses.length > 0 && !coursesLoading;
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">

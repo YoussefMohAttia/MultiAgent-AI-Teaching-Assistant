@@ -70,11 +70,11 @@ export default function QuizGenerator() {
             const allowed = new Set(prefs.selectedCourseIds.map(id => String(id)));
             if (allowed.size > 0) {
               setQuizzes(allQuizzes.filter(q => {
-                if (q.created_by === user.id) return true;
+                if (String(q.created_by) === String(user.id)) return true;
                 return allowed.has(String(q.course_id || courseId));
               }));
             } else {
-              setQuizzes(allQuizzes.filter(q => q.created_by === user.id));
+              setQuizzes(allQuizzes.filter(q => String(q.created_by) === String(user.id)));
             }
           } else {
             setQuizzes(allQuizzes);

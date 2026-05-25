@@ -74,7 +74,7 @@ export default function Summarizer() {
       const allowedCourseIds = new Set(automationPrefs.selectedCourseIds.map(id => String(id)));
       const filtered = items.filter(item => {
         // Always show manual summaries created by this user
-        if (item.created_by === user.id) return true;
+        if (String(item.created_by) === String(user.id)) return true;
         // For auto-generated summaries (created_by is null), only show if course is selected for automation
         return allowedCourseIds.has(String(item.course_id));
       });

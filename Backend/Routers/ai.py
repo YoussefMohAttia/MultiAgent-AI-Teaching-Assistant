@@ -530,7 +530,13 @@ async def chat_upload(
 #  2. QUIZ GENERATION
 # ══════════════════════════════════════════════════════════════════════════════
 @router.post("/generate-quiz", response_model=QuizGenerateResponse)
-async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
+async def generate_quiz(
+    req: QuizGenerateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
+    db_user = await _resolve_db_user(request, db, user)
     if not req.document_id and not req.text:
         raise HTTPException(
             status_code=400,
@@ -550,6 +556,29 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
             n_options=req.n_options,
         )
         if existing_quiz:
+            if db_user and getattr(existing_quiz, "created_by", None) != db_user.id:
+                from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM, QuizDocument as QuizDocumentORM
+                user_quiz = QuizORM(course_id=existing_quiz.course_id, created_by=db_user.id)
+                db.add(user_quiz)
+                await db.flush()
+                for q in existing_quiz.questions:
+                    db.add(
+                        QuizQuestionORM(
+                            quiz_id=user_quiz.id,
+                            question=q.question,
+                            type=q.type,
+                            options=q.options,
+                            correct_answer=q.correct_answer,
+                        )
+                    )
+                db.add(QuizDocumentORM(quiz_id=user_quiz.id, doc_id=req.document_id))
+                await db.commit()
+                items = build_quiz_items(existing_quiz.questions)
+                return QuizGenerateResponse(
+                    quiz_id=user_quiz.id,
+                    course_id=user_quiz.course_id,
+                    items=[QuizItem(**i) for i in items],
+                )
             items = build_quiz_items(existing_quiz.questions)
             return QuizGenerateResponse(
                 quiz_id=existing_quiz.id,
@@ -564,7 +593,7 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
         return QuizGenerateResponse(quiz_id=None, course_id=None, items=[QuizItem(**i) for i in raw_items])
 
     from DB.schemas import Quiz as QuizORM, QuizQuestion as QuizQuestionORM, QuizDocument as QuizDocumentORM
-    db_quiz = QuizORM(course_id=req.course_id, created_by=req.created_by)
+    db_quiz = QuizORM(course_id=req.course_id, created_by=db_user.id if db_user else req.created_by)
     db.add(db_quiz)
     await db.flush()
     for item in raw_items:
@@ -601,8 +630,14 @@ async def generate_quiz_from_upload(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/summarize", response_model=SummarizeResponse)
-async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), user: CurrentUser | None = _auth):
+async def summarize(
+    req: SummarizeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser | None = _auth,
+):
     """Summarise text or an uploaded document and persist results to DB."""
+    db_user = await _resolve_db_user(request, db, user)
     
 
     # ── 1. GLOBAL CACHE CHECK (The Senior Optimization) ───────────────────
@@ -618,6 +653,20 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
         existing_summary = (await db.execute(existing_summary_query)).scalars().first()
 
         if existing_summary:
+            if db_user and getattr(existing_summary, "created_by", None) != db_user.id:
+                db_summary = SummaryORM(text=existing_summary.text, method="llm", created_by=db_user.id)
+                db.add(db_summary)
+                await db.flush()
+                linked_chunk_ids = (
+                    await db.execute(
+                        sa_select(SummaryChunkORM.chunk_id).where(SummaryChunkORM.summary_id == existing_summary.id)
+                    )
+                ).scalars().all()
+                for chunk_id in linked_chunk_ids:
+                    db.add(SummaryChunkORM(summary_id=db_summary.id, chunk_id=chunk_id))
+                await db.commit()
+                await db.refresh(db_summary)
+                return SummarizeResponse(summary_id=db_summary.id, summary=db_summary.text)
             print(f"⚡ CACHE HIT: Returning existing summary for Document {req.document_id}")
             # Return instantly. Cost: $0. Wait time: ~15ms.
             return SummarizeResponse(
@@ -646,7 +695,7 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
     # ── 4. PERSIST TO DB (For future cache hits) ──────────────────────────
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-    db_summary = SummaryORM(text=summary_text, method="llm", created_by=user.id if user else None)
+    db_summary = SummaryORM(text=summary_text, method="llm", created_by=db_user.id if db_user else None)
     db.add(db_summary)
     await db.flush()  # get db_summary.id
 

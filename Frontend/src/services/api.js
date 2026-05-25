@@ -84,6 +84,9 @@ export const runFullSync = (userId, selectedCourseIds = []) => {
   return api.post(`/sync/full-sync?user_id=${userId}`, payload);
 };
 
+export const runCourseSync = (userId) =>
+  api.post(`/sync/sync-courses?user_id=${userId}`);
+
 // source: { text: "..." }  OR  { documentId: 123 }  (the lecture / reference material)
 export const generateQuiz = (courseId, createdBy, source, nItems = 5, nOptions = 4) =>
   api.post('/ai/generate-quiz', {

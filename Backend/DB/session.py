@@ -39,3 +39,12 @@ async def create_all_tables():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_jobs_enabled BOOLEAN DEFAULT TRUE"))
             await conn.execute(text("UPDATE users SET auth_provider = 'google' WHERE auth_provider IS NULL OR auth_provider = ''"))
             await conn.execute(text("ALTER TABLE users ALTER COLUMN auth_provider SET DEFAULT 'google'"))
+        elif settings.DATABASE_URL.startswith("sqlite"):
+            result = await conn.execute(text("PRAGMA table_info(users)"))
+            user_columns = {row[1] for row in result.fetchall()}
+            if "auth_provider" not in user_columns:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'google'"))
+            if "password_hash" not in user_columns:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"))
+            if "auto_jobs_enabled" not in user_columns:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN auto_jobs_enabled BOOLEAN NOT NULL DEFAULT 1"))
