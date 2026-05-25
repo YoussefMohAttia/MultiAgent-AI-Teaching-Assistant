@@ -646,7 +646,7 @@ async def summarize(req: SummarizeRequest, db: AsyncSession = Depends(get_db), u
     # ── 4. PERSIST TO DB (For future cache hits) ──────────────────────────
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-    db_summary = SummaryORM(text=summary_text, method="llm")
+    db_summary = SummaryORM(text=summary_text, method="llm", created_by=user.id if user else None)
     db.add(db_summary)
     await db.flush()  # get db_summary.id
 
@@ -869,6 +869,7 @@ async def list_summaries(
                 "course_title": course.title,
                 "doc_type": doc.doc_type,
                 "created_at": summary.created_at.isoformat() if summary.created_at else None,
+                "created_by": getattr(summary, "created_by", None),
                 "summary": summary.text,
             }
         )
