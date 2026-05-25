@@ -106,15 +106,10 @@ export default function Dashboard() {
       return;
     }
     if (!automationPrefsLoaded || automationModalOpen) {
-      fetchCourses();
       return;
     }
-    // Only auto-sync if user has previously saved automation prefs
-    if (hasAutomationPrefs(user.id)) {
-      autoSync();
-    } else {
-      fetchCourses();
-    }
+    
+    autoSync();
   }, [user, isLocalAccount, automationPrefsLoaded, automationModalOpen]);
 
   useEffect(() => {

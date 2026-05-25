@@ -379,7 +379,7 @@ async def full_sync(
     auto_quiz_doc_ids = []
     allowed_course_ids = None
 
-    if selected_course_ids:
+    if selected_course_ids is not None:
         allowed_course_ids = {int(course_id) for course_id in selected_course_ids if course_id}
 
     for course_sync in synced_courses:
@@ -480,14 +480,14 @@ async def full_sync(
         print(f"📋 Scheduled background indexing for {len(new_drive_doc_ids)} Drive document(s)")
 
     new_material_doc_ids_for_auto = (
-        [doc_id for doc_id in new_material_doc_ids if not allowed_course_ids or new_material_course_map.get(doc_id) in allowed_course_ids]
+        [doc_id for doc_id in new_material_doc_ids if allowed_course_ids is None or new_material_course_map.get(doc_id) in allowed_course_ids]
         if new_material_doc_ids
         else []
     )
 
     if settings.AUTO_SUMMARIZE_MATERIALS:
         course_ids = [course_sync["course_id"] for course_sync in synced_courses]
-        if allowed_course_ids:
+        if allowed_course_ids is not None:
             course_ids = [course_id for course_id in course_ids if course_id in allowed_course_ids]
         if course_ids:
             summary_exists = (
@@ -515,7 +515,7 @@ async def full_sync(
 
     if settings.AUTO_GENERATE_QUIZZES:
         course_ids = [course_sync["course_id"] for course_sync in synced_courses]
-        if allowed_course_ids:
+        if allowed_course_ids is not None:
             course_ids = [course_id for course_id in course_ids if course_id in allowed_course_ids]
         if course_ids:
             quiz_exists = (

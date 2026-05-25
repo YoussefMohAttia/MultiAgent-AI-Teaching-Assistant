@@ -202,9 +202,11 @@ class Summary(Base):
     text = Column(Text)
     method = Column(String(100))
     created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     chunks = relationship("SummaryChunk", back_populates="summary", cascade="all, delete-orphan")
+    creator = relationship("User")
 
 class SummaryChunk(Base):
     __tablename__ = "summary_chunks"
