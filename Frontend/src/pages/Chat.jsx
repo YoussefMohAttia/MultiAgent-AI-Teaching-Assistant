@@ -61,10 +61,10 @@ function CustomSelect({ value, onChange, options, placeholder, disabled }) {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-1 custom-scrollbar"
+            exit={{ opacity: 0, y: 6 }}
+            className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 max-h-[40vh] overflow-y-auto overscroll-contain py-1 custom-scrollbar"
           >
             {options.map(opt => (
               <button

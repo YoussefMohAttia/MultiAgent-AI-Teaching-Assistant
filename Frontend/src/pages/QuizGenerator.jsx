@@ -452,13 +452,13 @@ function QuizTaker({ items }) {
                   let icon = null;
 
                   if (showAsCorrect) {
-                    btnStyle = "bg-emerald-500/20 border-emerald-500 text-emerald-400 font-medium";
+                    btnStyle = "bg-emerald-50 border-emerald-300 text-emerald-700 font-medium dark:bg-emerald-500/20 dark:border-emerald-500 dark:text-emerald-400";
                     icon = <CheckCircle2 className="w-4 h-4 ml-auto" />;
                   } else if (showAsWrong) {
-                    btnStyle = "bg-rose-500/20 border-rose-500 text-rose-400";
+                    btnStyle = "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-500/20 dark:border-rose-500 dark:text-rose-400";
                     icon = <XCircle className="w-4 h-4 ml-auto" />;
                   } else if (isSelectedOption) {
-                    btnStyle = "bg-indigo-500/20 border-indigo-500 text-indigo-300";
+                    btnStyle = "bg-indigo-50 border-indigo-400 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500 dark:text-indigo-300";
                   }
 
                   return (
@@ -478,7 +478,7 @@ function QuizTaker({ items }) {
 
               {(locked[qi] || revealedAll) && (
                 <div className="mt-5 pl-12">
-                  <div className={`p-4 rounded-lg text-sm border ${isCorrectAnswered ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border-rose-500/20 text-rose-200'}`}>
+                  <div className={`p-4 rounded-lg text-sm border ${isCorrectAnswered ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-200' : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-200'}`}>
                     <span className="font-bold mb-1 block">{t('quizAnswerLabel')}: {String.fromCharCode(65 + q.answer_index)}</span>
                      {/* Defensive string conversion for the answer text too */}
                     {String((Array.isArray(q.options) ? q.options : Object.values(q.options || {}))[q.answer_index] || t('quizDataNotFound'))}
