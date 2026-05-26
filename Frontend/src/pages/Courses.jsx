@@ -291,7 +291,7 @@ export default function Courses() {
                               {canFileActions ? (
                                 <>
                                   <span className="font-semibold text-slate-900 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white truncate" title={d.title}>{d.title}</span>
-                                  <span className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">PDF Document</span>
+                                  <span className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">{t('coursePdfDocument')}</span>
                                 </>
                               ) : (
                                 <span className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-wrap break-words">
@@ -309,14 +309,14 @@ export default function Courses() {
                                 disabled={isProcessingFile}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-medium rounded-lg transition-colors border border-slate-300 dark:border-slate-700"
                               >
-                                <Eye className="w-4 h-4" /> Preview
+                                <Eye className="w-4 h-4" /> {t('coursePreview')}
                               </button>
                               <button
                                 onClick={() => handleDownload(d)}
                                 disabled={isProcessingFile}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                               >
-                                <Download className="w-4 h-4" /> Download
+                                <Download className="w-4 h-4" /> {t('courseDownload')}
                               </button>
                             </div>
                           ) : null}
@@ -354,7 +354,7 @@ export default function Courses() {
             <iframe 
               src={`${previewUrl}#toolbar=0`} 
               className="w-full h-full border-none"
-              title="PDF Preview"
+              title={t('coursePdfPreviewTitle')}
             />
           </div>
         </div>

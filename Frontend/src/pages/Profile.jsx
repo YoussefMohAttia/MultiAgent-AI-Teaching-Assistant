@@ -40,8 +40,26 @@ const RANK_META = {
   Legend:            { emoji: '👑', color: '#f1c40f', bg: 'rgba(241,196,15,0.12)' },
 };
 
+const RANK_LABEL_KEYS = {
+  Copper: 'profileRankCopper',
+  Bronze: 'profileRankBronze',
+  Silver: 'profileRankSilver',
+  Gold: 'profileRankGold',
+  Platinum: 'profileRankPlatinum',
+  Emerald: 'profileRankEmerald',
+  Diamond: 'profileRankDiamond',
+  Champion: 'profileRankChampion',
+  'Grand Champion': 'profileRankGrandChampion',
+  Legend: 'profileRankLegend',
+};
+
 function getRankMeta(rank) {
   return RANK_META[rank] || RANK_META.Copper;
+}
+
+function getRankLabel(rank, t) {
+  const key = RANK_LABEL_KEYS[rank];
+  return key ? t(key) : rank;
 }
 
 /* ── XP Progress Ring ───────────────────────────────────────────────────── */
@@ -199,6 +217,7 @@ export default function Profile() {
   const xp = progress?.xp ?? 0;
   const level = progress?.level ?? 1;
   const rank = progress?.rank ?? t('profileRankFallback');
+  const rankLabel = getRankLabel(rank, t);
   const nextLevelXp = progress?.next_level_xp ?? 0;
   const levelProgress = progress?.level_progress ?? 0;
   const streakValue = progress?.day_streak ?? streak;
@@ -413,8 +432,8 @@ export default function Profile() {
             >
               <span className="text-3xl">{rankMeta.emoji}</span>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Rank</p>
-                <p className="text-lg font-bold" style={{ color: rankMeta.color }}>{rank}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">{t('profileRankLabel')}</p>
+                <p className="text-lg font-bold" style={{ color: rankMeta.color }}>{rankLabel}</p>
               </div>
             </div>
 
@@ -548,12 +567,13 @@ export default function Profile() {
           {/* ── Rank Progression Map ── */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5">
-              <Trophy className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> Rank Progression
+              <Trophy className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> {t('profileRankProgression')}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {Object.entries(RANK_META).map(([name, meta]) => {
                 const isActive = name === rank;
                 const isPast = Object.keys(RANK_META).indexOf(name) < Object.keys(RANK_META).indexOf(rank);
+                const label = getRankLabel(name, t);
                 return (
                   <div key={name}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all ${
@@ -569,7 +589,7 @@ export default function Profile() {
                     <div>
                       <p className={`text-xs font-bold ${isActive ? '' : 'text-slate-600 dark:text-slate-400'}`}
                         style={isActive ? { color: meta.color } : {}}
-                      >{name}</p>
+                      >{label}</p>
                     </div>
                     {isActive && <ChevronRight className="w-3 h-3 ml-auto" style={{ color: meta.color }} />}
                   </div>
@@ -608,7 +628,7 @@ export default function Profile() {
                           <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">{entry.name}</p>
                           <p className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
                             <span>{entryRankMeta.emoji}</span>
-                            {t('profileLevel')} {entry.level} · {entry.rank}
+                            {t('profileLevel')} {entry.level} · {getRankLabel(entry.rank, t)}
                           </p>
                         </div>
                       </div>
@@ -676,7 +696,7 @@ export default function Profile() {
                   <MessageCircle className="w-4 h-4" />
                   {t('profileLanguage')}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{lang === 'en' ? 'English' : 'Arabic'}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{lang === 'en' ? t('profileLanguageEnglish') : t('profileLanguageArabic')}</span>
               </button>
               <label className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 text-sm text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer">
                 <span>{t('profileNotifications')}</span>
