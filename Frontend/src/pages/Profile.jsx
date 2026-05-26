@@ -53,6 +53,48 @@ const RANK_LABEL_KEYS = {
   Legend: 'profileRankLegend',
 };
 
+const ACHIEVEMENT_LABEL_KEYS = {
+  streak_3: 'profileAchievementStreak',
+  streak_7: 'profileAchievementStreak7',
+  streak_14: 'profileAchievementStreak14',
+  summaries_3: 'profileAchievementSummaries',
+  summaries_10: 'profileAchievementSummaries10',
+  quizzes_2: 'profileAchievementQuizzes',
+  quizzes_10: 'profileAchievementQuizzes10',
+  focus_3: 'profileAchievementFocus',
+  focus_10: 'profileAchievementFocus10',
+  chats_20: 'profileAchievementChats20',
+  essays_5: 'profileAchievementEssays5',
+  evaluations_5: 'profileAchievementEvaluations5',
+};
+
+const TASK_LABEL_KEYS = {
+  daily_summaries: {
+    title: 'profileTaskDailySummariesTitle',
+    description: 'profileTaskDailySummariesDesc',
+  },
+  daily_quiz_correct: {
+    title: 'profileTaskDailyQuizTitle',
+    description: 'profileTaskDailyQuizDesc',
+  },
+  daily_focus: {
+    title: 'profileTaskDailyFocusTitle',
+    description: 'profileTaskDailyFocusDesc',
+  },
+  daily_tutor: {
+    title: 'profileTaskDailyTutorTitle',
+    description: 'profileTaskDailyTutorDesc',
+  },
+  daily_essay: {
+    title: 'profileTaskDailyEssayTitle',
+    description: 'profileTaskDailyEssayDesc',
+  },
+  daily_evaluation: {
+    title: 'profileTaskDailyEvaluationTitle',
+    description: 'profileTaskDailyEvaluationDesc',
+  },
+};
+
 function getRankMeta(rank) {
   return RANK_META[rank] || RANK_META.Copper;
 }
@@ -60,6 +102,19 @@ function getRankMeta(rank) {
 function getRankLabel(rank, t) {
   const key = RANK_LABEL_KEYS[rank];
   return key ? t(key) : rank;
+}
+
+function getAchievementLabel(key, fallback, t) {
+  const labelKey = ACHIEVEMENT_LABEL_KEYS[key];
+  return labelKey ? t(labelKey) : fallback;
+}
+
+function getTaskCopy(task, t) {
+  const map = TASK_LABEL_KEYS[task.key];
+  return {
+    title: map?.title ? t(map.title) : task.title,
+    description: map?.description ? t(map.description) : task.description,
+  };
 }
 
 /* ── XP Progress Ring ───────────────────────────────────────────────────── */
@@ -238,7 +293,7 @@ export default function Profile() {
   const achievements = (progress?.achievements?.length
     ? progress.achievements.map((item) => ({
         id: item.key,
-        label: item.title,
+        label: getAchievementLabel(item.key, item.title, t),
         goal: item.goal,
         value: item.progress,
       }))
@@ -539,12 +594,13 @@ export default function Profile() {
               <div className="flex flex-col gap-3">
                 {tasks.map((task) => {
                   const progressPct = Math.min(100, Math.round((task.progress / Math.max(task.goal, 1)) * 100));
+                  const taskCopy = getTaskCopy(task, t);
                   return (
                     <div key={task.key} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">{task.title}</p>
-                          {task.description && <p className="text-xs text-slate-500 dark:text-slate-500">{task.description}</p>}
+                          <p className="text-sm text-slate-900 dark:text-slate-200 font-medium">{taskCopy.title}</p>
+                          {taskCopy.description && <p className="text-xs text-slate-500 dark:text-slate-500">{taskCopy.description}</p>}
                         </div>
                         <span className={`text-xs font-semibold ${task.completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-500'}`}>
                           {task.completed ? t('profileTaskCompleted') : `${task.progress}/${task.goal}`}

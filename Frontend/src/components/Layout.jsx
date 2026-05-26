@@ -129,15 +129,6 @@ export default function Layout() {
             </button>
           </div>
 
-          <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-            <a href="/privacy" className="hover:text-indigo-300 transition-colors">
-              Privacy
-            </a>
-            <span className="text-slate-700">•</span>
-            <a href="/terms" className="hover:text-indigo-300 transition-colors">
-              Terms
-            </a>
-          </div>
         </div>
       </aside>
 
