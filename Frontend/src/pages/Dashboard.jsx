@@ -440,7 +440,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">{copy.yourCourses}</h2>
             {!coursesLoading && courses.length > 0 && (
               <span className="text-xs font-medium text-slate-600 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-transparent">
-                {courses.length} {courses.length === 1 ? 'course' : 'courses'}
+                {courses.length} {courses.length === 1 ? copy.courseCountSingular : copy.courseCountPlural}
               </span>
             )}
           </div>
