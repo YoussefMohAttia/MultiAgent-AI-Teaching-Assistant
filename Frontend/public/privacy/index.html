@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Privacy Policy | Squeelearn</title>
+  <title id="page-title">Privacy Policy | Squeelearn</title>
   <style>
     :root {
       color-scheme: dark;
@@ -36,58 +36,122 @@
       color: #a5b4fc;
     }
   </style>
+  <script>
+    (function () {
+      const lang = (localStorage.getItem('lang') || 'en').toLowerCase();
+      const isArabic = lang === 'ar';
+      document.documentElement.lang = isArabic ? 'ar' : 'en';
+      document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
+
+      const copy = isArabic ? {
+        title: 'سياسة الخصوصية | Squeelearn',
+        h1: 'سياسة الخصوصية',
+        date: 'تاريخ السريان: 25 مايو 2026',
+        intro1: 'توضح سياسة الخصوصية هذه كيف تقوم Squeelearn ("نحن" أو "لنا" أو "خاصتنا") بجمع المعلومات واستخدامها ومشاركتها عند استخدامك لخدماتنا.',
+        intro2: 'يلتزم استخدام Squeelearn للمعلومات الواردة من واجهات برمجة تطبيقات Google ونقلها بسياسة بيانات المستخدم لخدمات Google API.',
+        h2_1: 'المعلومات التي نجمعها',
+        list1_1: 'معلومات الحساب التي تقدمها مثل الاسم وعنوان البريد الإلكتروني.',
+        list1_2: 'المحتوى الذي ترسله مثل المقالات أو الملفات أو المطالبات.',
+        list1_3: 'بيانات الاستخدام مثل تفاعلات الميزات وبيانات السجل.',
+        list1_4: 'معلومات الجهاز والمتصفح.',
+        h2_2: 'كيف نستخدم المعلومات',
+        list2_1: 'تقديم الخدمة وصيانتها وتحسينها.',
+        list2_2: 'تخصيص تجربتك والرد على طلبات الدعم.',
+        list2_3: 'مراقبة وإيقاف إساءة الاستخدام ومشكلات الأمان.',
+        list2_4: 'الامتثال للالتزامات القانونية.',
+        h2_3: 'كيف نشارك المعلومات',
+        list3_1: 'مع مزودي الخدمات الذين يساعدون في تشغيل الخدمة.',
+        list3_2: 'للامتثال للقوانين المعمول بها أو الإجراءات القانونية.',
+        list3_3: 'في حال حدوث نقل للأعمال، إن وجد.',
+        h2_4: 'الاحتفاظ بالبيانات',
+        retention: 'نحتفظ بالمعلومات طالما كان ذلك ضرورياً لتقديم الخدمة والامتثال للالتزامات القانونية.',
+        h2_5: 'خياراتك',
+        choices: 'يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها عبر التواصل معنا على البريد الإلكتروني أدناه.',
+        h2_6: 'تواصل معنا',
+        email: 'البريد الإلكتروني: squeelearn@gmail.com',
+      } : null;
+
+      if (!copy) return;
+
+      document.getElementById('page-title').textContent = copy.title;
+      document.getElementById('page-h1').textContent = copy.h1;
+      document.getElementById('page-date').textContent = copy.date;
+      document.getElementById('page-intro1').textContent = copy.intro1;
+      document.getElementById('page-intro2').textContent = copy.intro2;
+      document.getElementById('page-h2-1').textContent = copy.h2_1;
+      document.getElementById('page-list-1-1').textContent = copy.list1_1;
+      document.getElementById('page-list-1-2').textContent = copy.list1_2;
+      document.getElementById('page-list-1-3').textContent = copy.list1_3;
+      document.getElementById('page-list-1-4').textContent = copy.list1_4;
+      document.getElementById('page-h2-2').textContent = copy.h2_2;
+      document.getElementById('page-list-2-1').textContent = copy.list2_1;
+      document.getElementById('page-list-2-2').textContent = copy.list2_2;
+      document.getElementById('page-list-2-3').textContent = copy.list2_3;
+      document.getElementById('page-list-2-4').textContent = copy.list2_4;
+      document.getElementById('page-h2-3').textContent = copy.h2_3;
+      document.getElementById('page-list-3-1').textContent = copy.list3_1;
+      document.getElementById('page-list-3-2').textContent = copy.list3_2;
+      document.getElementById('page-list-3-3').textContent = copy.list3_3;
+      document.getElementById('page-h2-4').textContent = copy.h2_4;
+      document.getElementById('page-retention').textContent = copy.retention;
+      document.getElementById('page-h2-5').textContent = copy.h2_5;
+      document.getElementById('page-choices').textContent = copy.choices;
+      document.getElementById('page-h2-6').textContent = copy.h2_6;
+      document.getElementById('page-email').textContent = copy.email;
+    })();
+  </script>
 </head>
 <body>
   <main>
-    <h1>Privacy Policy</h1>
-    <p>Effective date: May 25, 2026</p>
+    <h1 id="page-h1">Privacy Policy</h1>
+    <p id="page-date">Effective date: May 25, 2026</p>
 
-    <p>
+    <p id="page-intro1">
       This Privacy Policy explains how Squeelearn ("we", "us", or "our") collects,
       uses, and shares information when you use our services.
     </p>
-    <p>
+    <p id="page-intro2">
       Squeelearn's use and transfer of information received from Google APIs will
       adhere to the Google API Services User Data Policy.
     </p>
 
-    <h2>Information We Collect</h2>
+    <h2 id="page-h2-1">Information We Collect</h2>
     <ul>
-      <li>Account information you provide (such as name and email address).</li>
-      <li>Content you submit (such as essays, files, or prompts).</li>
-      <li>Usage data (such as feature interactions and log data).</li>
-      <li>Device and browser information.</li>
+      <li id="page-list-1-1">Account information you provide (such as name and email address).</li>
+      <li id="page-list-1-2">Content you submit (such as essays, files, or prompts).</li>
+      <li id="page-list-1-3">Usage data (such as feature interactions and log data).</li>
+      <li id="page-list-1-4">Device and browser information.</li>
     </ul>
 
-    <h2>How We Use Information</h2>
+    <h2 id="page-h2-2">How We Use Information</h2>
     <ul>
-      <li>Provide, maintain, and improve the service.</li>
-      <li>Personalize your experience and support requests.</li>
-      <li>Monitor and prevent misuse and security issues.</li>
-      <li>Comply with legal obligations.</li>
+      <li id="page-list-2-1">Provide, maintain, and improve the service.</li>
+      <li id="page-list-2-2">Personalize your experience and support requests.</li>
+      <li id="page-list-2-3">Monitor and prevent misuse and security issues.</li>
+      <li id="page-list-2-4">Comply with legal obligations.</li>
     </ul>
 
-    <h2>How We Share Information</h2>
+    <h2 id="page-h2-3">How We Share Information</h2>
     <ul>
-      <li>With service providers that help operate the service.</li>
-      <li>To comply with applicable laws or legal processes.</li>
-      <li>In connection with a business transfer, if applicable.</li>
+      <li id="page-list-3-1">With service providers that help operate the service.</li>
+      <li id="page-list-3-2">To comply with applicable laws or legal processes.</li>
+      <li id="page-list-3-3">In connection with a business transfer, if applicable.</li>
     </ul>
 
-    <h2>Data Retention</h2>
-    <p>
+    <h2 id="page-h2-4">Data Retention</h2>
+    <p id="page-retention">
       We retain information for as long as needed to provide the service and
       comply with legal obligations.
     </p>
 
-    <h2>Your Choices</h2>
-    <p>
+    <h2 id="page-h2-5">Your Choices</h2>
+    <p id="page-choices">
       You may request access, correction, or deletion of your data by contacting
       us at the email below.
     </p>
 
-    <h2>Contact Us</h2>
-    <p>Email: squeelearn@gmail.com</p>
+    <h2 id="page-h2-6">Contact Us</h2>
+    <p id="page-email">Email: squeelearn@gmail.com</p>
   </main>
 </body>
 </html>

@@ -28,6 +28,15 @@
       .static-legal-footer a:hover {
         color: rgba(255, 255, 255, 0.8);
       }
+      [data-theme="light"] .static-legal-footer {
+        color: rgba(15, 23, 42, 0.8);
+      }
+      [data-theme="light"] .static-legal-footer a {
+        color: #1e293b;
+      }
+      [data-theme="light"] .static-legal-footer a:hover {
+        color: #0f172a;
+      }
     </style>
     <script>
       // Set theme before React renders to avoid flash
@@ -39,11 +48,44 @@
   </head>
   <body>
     <div id="root"></div>
-    <div class="static-legal-footer" aria-label="Legal">
-      <a href="/privacy">Privacy Policy</a>
+    <div id="static-legal-footer" class="static-legal-footer" aria-label="Legal">
+      <a id="legal-link-privacy" href="/privacy">Privacy Policy</a>
       <span aria-hidden="true">•</span>
-      <a href="/terms">Terms of Service</a>
+      <a id="legal-link-terms" href="/terms">Terms of Service</a>
     </div>
+    <script>
+      // Keep legal links synced with the selected language.
+      (function () {
+        const root = document.documentElement;
+        const footer = document.getElementById('static-legal-footer');
+        const privacyLink = document.getElementById('legal-link-privacy');
+        const termsLink = document.getElementById('legal-link-terms');
+
+        if (!footer || !privacyLink || !termsLink) return;
+
+        const applyLegalCopy = () => {
+          const lang = (root.getAttribute('lang') || localStorage.getItem('lang') || 'en').toLowerCase();
+          const isArabic = lang === 'ar';
+
+          privacyLink.textContent = isArabic ? 'سياسة الخصوصية' : 'Privacy Policy';
+          termsLink.textContent = isArabic ? 'شروط الاستخدام' : 'Terms of Service';
+          footer.setAttribute('aria-label', isArabic ? 'روابط قانونية' : 'Legal');
+        };
+
+        applyLegalCopy();
+
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'lang') {
+              applyLegalCopy();
+              break;
+            }
+          }
+        });
+
+        observer.observe(root, { attributes: true, attributeFilter: ['lang'] });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
