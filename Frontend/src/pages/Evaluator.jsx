@@ -82,10 +82,10 @@ function ScoreRing({ score, max = 10, size = 140, strokeWidth = 10 }) {
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '2.4rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>
+        <span className="text-slate-900 dark:text-white" style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1 }}>
           {score}
         </span>
-        <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+        <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
           / {max}
         </span>
       </div>
