@@ -124,7 +124,6 @@ export default function Evaluator() {
       .then((r) => {
         const list = r.data.courses || [];
         setCourses(list);
-        if (list.length) setCourseId(String(list[0].id));
       })
       .catch(() => {});
   }, []);
@@ -140,7 +139,6 @@ export default function Evaluator() {
             (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
           );
           setDocs(usable);
-          if (usable.length) setSelectedDocId(String(usable[0].id));
         })
         .catch(() => setDocs([]))
         .finally(() => setDocsLoading(false));
@@ -242,7 +240,7 @@ export default function Evaluator() {
                     value={courseId}
                     onChange={(val) => { setCourseId(String(val)); setResult(null); setDocs([]); setSelectedDocId(''); }}
                     options={courses.map(c => ({ id: c.id, title: c.title }))}
-                    placeholder={t('evaluatorLoadingCourses')}
+                    placeholder={courses.length === 0 ? t('evaluatorLoadingCourses') : t('evaluatorChooseCourse')}
                   />
                 </div>
 
@@ -259,7 +257,7 @@ export default function Evaluator() {
                       value={selectedDocId}
                       onChange={(val) => setSelectedDocId(String(val))}
                       options={docs.map(d => ({ id: d.id, title: `${d.download_url ? '📄' : d.google_drive_url ? '☁️' : '📝'} ${d.title}${d.doc_type ? ` (${d.doc_type})` : ''}` }))}
-                      placeholder={t('evaluatorSelectDocument')}
+                      placeholder={t('evaluatorChooseDocument')}
                       disabled={!courseId}
                     />
                   )}

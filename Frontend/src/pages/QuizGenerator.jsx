@@ -54,7 +54,6 @@ export default function QuizGenerator() {
     getCourses().then((r) => {
       const list = r.data.courses || [];
       setCourses(list);
-      if (list.length) setCourseId(String(list[0].id));
     }).catch(() => {});
   }, []);
 
@@ -94,7 +93,6 @@ export default function QuizGenerator() {
             (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
           );
           setDocs(usable);
-          if (usable.length) setSelectedDocId(String(usable[0].id));
         })
         .catch(() => setDocs([]))
         .finally(() => setDocsLoading(false));
@@ -210,7 +208,7 @@ export default function QuizGenerator() {
                         className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 appearance-none focus:outline-none focus:border-indigo-500"
                         value={courseId} onChange={(e) => setCourseId(e.target.value)}
                       >
-                        {courses.length === 0 && <option value="">{t('quizLoadingCourses')}</option>}
+                        <option value="" disabled>{courses.length === 0 ? t('quizLoadingCourses') : t('quizChooseCourse')}</option>
                         {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />

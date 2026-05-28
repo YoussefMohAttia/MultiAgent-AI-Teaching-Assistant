@@ -151,7 +151,6 @@ export default function Chat() {
             (d) => d.doc_type !== 'announcement' && (d.download_url || d.google_drive_url || d.raw_text)
           );
           setDocs(usable);
-          if (usable.length) setSelectedDocId(String(usable[0].id));
         })
         .catch(() => setDocs([]));
     } else {
