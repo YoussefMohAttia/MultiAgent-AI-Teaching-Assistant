@@ -38,60 +38,68 @@
   </style>
   <script>
     (function () {
-      const lang = (localStorage.getItem('lang') || 'en').toLowerCase();
-      const isArabic = lang === 'ar';
-      document.documentElement.lang = isArabic ? 'ar' : 'en';
-      document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
+      const applyCopy = () => {
+        const lang = (localStorage.getItem('lang') || 'en').toLowerCase();
+        const isArabic = lang === 'ar';
+        document.documentElement.lang = isArabic ? 'ar' : 'en';
+        document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
 
-      const copy = isArabic ? {
-        title: 'شروط الاستخدام | Squeelearn',
-        h1: 'شروط الاستخدام',
-        date: 'تاريخ السريان: 25 مايو 2026',
-        intro: 'تحكم شروط الاستخدام هذه ("الشروط") استخدامك لـ Squeelearn ("نحن" أو "لنا" أو "خاصتنا"). وبمجرد الوصول إلى الخدمة أو استخدامها، فإنك توافق على هذه الشروط.',
-        h2_1: 'استخدام الخدمة',
-        list1_1: 'يجب عليك تقديم معلومات دقيقة والحفاظ على أمان حسابك.',
-        list1_2: 'لا يجوز لك إساءة استخدام الخدمة أو محاولة تعطيلها.',
-        list1_3: 'أنت مسؤول عن المحتوى الذي ترسله.',
-        h2_2: 'المحتوى',
-        content: 'تحتفظ بملكية المحتوى الذي ترسله. وتمنحنا ترخيصاً محدوداً لاستخدام هذا المحتوى لتشغيل الخدمة وتحسينها.',
-        h2_3: 'الملكية الفكرية',
-        ip: 'الخدمة ومحتواها مملوكان لـ Squeelearn ومحميان بموجب القوانين المعمول بها.',
-        h2_4: 'إنهاء الخدمة',
-        termination: 'قد نقوم بتعليق أو إنهاء الوصول إذا انتهكت هذه الشروط أو استخدمت الخدمة بطريقة ضارة.',
-        h2_5: 'إخلاء المسؤولية',
-        disclaimer: 'تُقدَّم الخدمة "كما هي" دون أي ضمانات من أي نوع.',
-        h2_6: 'تحديد المسؤولية',
-        liability: 'إلى أقصى حد يسمح به القانون، لسنا مسؤولين عن الأضرار غير المباشرة أو العرضية أو التبعية.',
-        h2_7: 'تغييرات الشروط',
-        changes: 'قد نقوم بتحديث هذه الشروط من وقت لآخر. ويعني استمرار استخدام الخدمة أنك تقبل الشروط المحدّثة.',
-        h2_8: 'تواصل معنا',
-        email: 'البريد الإلكتروني: squeelearn@gmail.com',
-      } : null;
+        const copy = isArabic ? {
+          title: 'شروط الاستخدام | Squeelearn',
+          h1: 'شروط الاستخدام',
+          date: 'تاريخ السريان: 25 مايو 2026',
+          intro: 'تحكم شروط الاستخدام هذه ("الشروط") استخدامك لـ Squeelearn ("نحن" أو "لنا" أو "خاصتنا"). وبمجرد الوصول إلى الخدمة أو استخدامها، فإنك توافق على هذه الشروط.',
+          h2_1: 'استخدام الخدمة',
+          list1_1: 'يجب عليك تقديم معلومات دقيقة والحفاظ على أمان حسابك.',
+          list1_2: 'لا يجوز لك إساءة استخدام الخدمة أو محاولة تعطيلها.',
+          list1_3: 'أنت مسؤول عن المحتوى الذي ترسله.',
+          h2_2: 'المحتوى',
+          content: 'تحتفظ بملكية المحتوى الذي ترسله. وتمنحنا ترخيصاً محدوداً لاستخدام هذا المحتوى لتشغيل الخدمة وتحسينها.',
+          h2_3: 'الملكية الفكرية',
+          ip: 'الخدمة ومحتواها مملوكان لـ Squeelearn ومحميان بموجب القوانين المعمول بها.',
+          h2_4: 'إنهاء الخدمة',
+          termination: 'قد نقوم بتعليق أو إنهاء الوصول إذا انتهكت هذه الشروط أو استخدمت الخدمة بطريقة ضارة.',
+          h2_5: 'إخلاء المسؤولية',
+          disclaimer: 'تُقدَّم الخدمة "كما هي" دون أي ضمانات من أي نوع.',
+          h2_6: 'تحديد المسؤولية',
+          liability: 'إلى أقصى حد يسمح به القانون، لسنا مسؤولين عن الأضرار غير المباشرة أو العرضية أو التبعية.',
+          h2_7: 'تغييرات الشروط',
+          changes: 'قد نقوم بتحديث هذه الشروط من وقت لآخر. ويعني استمرار استخدام الخدمة أنك تقبل الشروط المحدّثة.',
+          h2_8: 'تواصل معنا',
+          email: 'البريد الإلكتروني: squeelearn@gmail.com',
+        } : null;
 
-      if (!copy) return;
+        if (!copy) return;
 
-      document.getElementById('page-title').textContent = copy.title;
-      document.getElementById('page-h1').textContent = copy.h1;
-      document.getElementById('page-date').textContent = copy.date;
-      document.getElementById('page-intro').textContent = copy.intro;
-      document.getElementById('page-h2-1').textContent = copy.h2_1;
-      document.getElementById('page-list-1-1').textContent = copy.list1_1;
-      document.getElementById('page-list-1-2').textContent = copy.list1_2;
-      document.getElementById('page-list-1-3').textContent = copy.list1_3;
-      document.getElementById('page-h2-2').textContent = copy.h2_2;
-      document.getElementById('page-content').textContent = copy.content;
-      document.getElementById('page-h2-3').textContent = copy.h2_3;
-      document.getElementById('page-ip').textContent = copy.ip;
-      document.getElementById('page-h2-4').textContent = copy.h2_4;
-      document.getElementById('page-termination').textContent = copy.termination;
-      document.getElementById('page-h2-5').textContent = copy.h2_5;
-      document.getElementById('page-disclaimer').textContent = copy.disclaimer;
-      document.getElementById('page-h2-6').textContent = copy.h2_6;
-      document.getElementById('page-liability').textContent = copy.liability;
-      document.getElementById('page-h2-7').textContent = copy.h2_7;
-      document.getElementById('page-changes').textContent = copy.changes;
-      document.getElementById('page-h2-8').textContent = copy.h2_8;
-      document.getElementById('page-email').textContent = copy.email;
+        document.getElementById('page-title').textContent = copy.title;
+        document.getElementById('page-h1').textContent = copy.h1;
+        document.getElementById('page-date').textContent = copy.date;
+        document.getElementById('page-intro').textContent = copy.intro;
+        document.getElementById('page-h2-1').textContent = copy.h2_1;
+        document.getElementById('page-list-1-1').textContent = copy.list1_1;
+        document.getElementById('page-list-1-2').textContent = copy.list1_2;
+        document.getElementById('page-list-1-3').textContent = copy.list1_3;
+        document.getElementById('page-h2-2').textContent = copy.h2_2;
+        document.getElementById('page-content').textContent = copy.content;
+        document.getElementById('page-h2-3').textContent = copy.h2_3;
+        document.getElementById('page-ip').textContent = copy.ip;
+        document.getElementById('page-h2-4').textContent = copy.h2_4;
+        document.getElementById('page-termination').textContent = copy.termination;
+        document.getElementById('page-h2-5').textContent = copy.h2_5;
+        document.getElementById('page-disclaimer').textContent = copy.disclaimer;
+        document.getElementById('page-h2-6').textContent = copy.h2_6;
+        document.getElementById('page-liability').textContent = copy.liability;
+        document.getElementById('page-h2-7').textContent = copy.h2_7;
+        document.getElementById('page-changes').textContent = copy.changes;
+        document.getElementById('page-h2-8').textContent = copy.h2_8;
+        document.getElementById('page-email').textContent = copy.email;
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyCopy, { once: true });
+      } else {
+        applyCopy();
+      }
     })();
   </script>
 </head>
