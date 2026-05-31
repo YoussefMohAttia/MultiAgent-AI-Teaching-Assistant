@@ -24,19 +24,16 @@ def summarize_text(
 
     Returns the summary string.
     """
-    prompt = (
-        "You are a summarization assistant.\n"
-        "Please summarize the article below.\n\n"
-        "Requirements:\n"
-        "- Keep the key ideas only\n"
-        "- Remove redundancies\n"
-        "- Use clear academic language\n"
-        "- Maintain chronological order\n\n"
-        f"Article:\n{text}"
-    )
+    prompt = f"Document:\n{text}"
     return chat_completion(
         prompt,
-        system="You are an expert summarization assistant.",
+        system=(
+            "You are an expert technical summarizer. Summarize the following document "
+            "into a concise, structured summary. Provide the key points as bullet points, "
+            "preserving all important technical details. Avoid adding any information not "
+            "present in the source text.bullets each no more than 2 sentences. "
+            "Use clear, professional language and maintain logical order."
+        ),
         model=model or settings.AI_MODEL_NAME,
         temperature=temperature,
         max_tokens=max_tokens,

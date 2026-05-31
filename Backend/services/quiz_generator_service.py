@@ -14,36 +14,36 @@ from services.openrouter_client import get_ai_client
 from Core.config import settings
 
 SYSTEM_PROMPT = (
-    "You are an expert instructional designer. "
-    "Generate rigorous multiple-choice quizzes. Return ONLY JSON."
+    "You are an expert educator. Generate {n_items} multiple-choice quiz\n"
+    "questions from the following text, aligned with these learning objectives.\n"
+    "Return ONLY a valid JSON array with this exact structure:\n"
+    '[{"stem": "...", "options": ["A", "B", "C", "D"], "answer_index": 0}]\n'.replace('{', '{{').replace('}', '}}') +
+    "Make distractors plausible but clearly incorrect. Vary difficulty."
 )
 
 USER_TEMPLATE = (
     "Source passage:\n{passage}\n\n"
     "Learning objectives:\n{objectives}\n\n"
     "Requirements:\n"
-    "- Produce {n_items} multiple-choice questions.\n"
-    "- Each question needs `stem`, `options` (exactly {n_options}), and `answer_index`.\n"
-    "- Options must be concise sentences without explanations.\n"
+    "- Options must be exactly {n_options}.\n"
     "- Ensure only one option is correct.\n"
-    "- Return a JSON array under the key `items`.\n"
 )
 
 
-def _extract_first_json_object(text: str) -> str:
-    """Return the first balanced JSON object embedded in arbitrary text."""
+def _extract_first_json_array(text: str) -> str:
+    """Return the first balanced JSON array embedded in arbitrary text."""
     stack = 0
     start_idx = -1
     for idx, char in enumerate(text):
-        if char == "{":
+        if char == "[":
             if stack == 0:
                 start_idx = idx
             stack += 1
-        elif char == "}" and stack:
+        elif char == "]" and stack:
             stack -= 1
             if stack == 0 and start_idx != -1:
                 return text[start_idx : idx + 1]
-    raise ValueError("No JSON object found in LLM response")
+    raise ValueError("No JSON array found in LLM response")
 
 
 def generate_quiz(
@@ -64,10 +64,10 @@ def generate_quiz(
     objective_block = (
         "\n".join(f"- {obj}" for obj in objectives) if objectives else "- General comprehension"
     )
+    formatted_system = SYSTEM_PROMPT.format(n_items=n_items)
     user_prompt = USER_TEMPLATE.format(
         passage=passage,
         objectives=objective_block,
-        n_items=n_items,
         n_options=n_options,
     )
 
@@ -78,11 +78,11 @@ def generate_quiz(
     _models_without_system = {"gemma"}
     model_lower = resolved_model.lower()
     if any(tag in model_lower for tag in _models_without_system):
-        merged_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
+        merged_prompt = f"{formatted_system}\n\n{user_prompt}"
         messages = [{"role": "user", "content": merged_prompt}]
     else:
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": formatted_system},
             {"role": "user", "content": user_prompt},
         ]
 
@@ -103,13 +103,13 @@ def generate_quiz(
     if "```" in content:
         segments = [s.strip() for s in content.split("```") if s.strip()]
         for segment in segments:
-            if segment.lstrip().startswith("{"):
+            if segment.lstrip().startswith("["):
                 content = segment
                 break
 
-    content_json = _extract_first_json_object(content)
+    content_json = _extract_first_json_array(content)
     parsed = json.loads(content_json)
-    items = parsed.get("items", [])
+    items = parsed if isinstance(parsed, list) else []
 
     quiz_items: List[Dict] = []
     for item in items:

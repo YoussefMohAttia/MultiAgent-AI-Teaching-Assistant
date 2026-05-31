@@ -228,7 +228,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                     value={form.email}
                     onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
                     placeholder="Email"
-                    className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                    className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                     required
                   />
                 </label>
@@ -242,7 +242,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                     value={form.password}
                     onChange={(e) => setForm((current) => ({ ...current, password: e.target.value }))}
                     placeholder="Password"
-                    className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                    className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                     required
                   />
                 </label>
@@ -328,7 +328,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                       value={form.email}
                       onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
                       placeholder="Your email address"
-                      className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                      className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                       required
                       disabled={otpSent && !otpVerified}
                     />
@@ -367,7 +367,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="000000"
                       maxLength={6}
-                      className="w-full rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-center text-2xl tracking-widest font-mono text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                      className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-4 py-3 text-center text-2xl tracking-widest font-mono text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                       required
                       autoFocus
                     />
@@ -419,7 +419,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                       value={form.name}
                       onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
                       placeholder="Your name"
-                      className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                      className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                       required
                     />
                   </label>
@@ -433,7 +433,7 @@ export function SplineSceneBasic({ onSignIn }: SplineSceneBasicProps) {
                       value={form.password}
                       onChange={(e) => setForm((current) => ({ ...current, password: e.target.value }))}
                       placeholder="Password"
-                      className="w-full rounded-xl border border-white/10 bg-black/60 px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-white/30"
+                      className="w-full rounded-xl border border-[#ffffff1a] bg-[#00000099] px-10 py-3 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-[#ffffff4d]"
                       required
                     />
                   </label>

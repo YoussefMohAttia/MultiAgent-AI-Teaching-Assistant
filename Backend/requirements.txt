@@ -22,6 +22,8 @@ httpx==0.28.1
 pydantic>=2.9.0
 pydantic-settings==2.0.3
 PyMuPDF==1.24.10
+pytesseract>=0.3.10
+Pillow>=10.0.0
 # Form data handling
 python-multipart==0.0.9
 

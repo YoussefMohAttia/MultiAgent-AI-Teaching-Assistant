@@ -702,36 +702,38 @@ export default function Profile() {
               <Settings className="w-5 h-5 text-slate-500 dark:text-slate-300" /> {t('profileSettings')}
             </h2>
             <div className="flex flex-col gap-4">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">{t('automationTitle')}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{t('automationBody')}</p>
+              {!isLocalAccount && (courses.length > 0 || coursesLoading) && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">{t('automationTitle')}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">{t('automationBody')}</p>
+                    </div>
+                    {automationSaved && (
+                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t('automationSaved')}</span>
+                    )}
                   </div>
-                  {automationSaved && (
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t('automationSaved')}</span>
+                  {coursesLoading ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-500">{t('profileLoadingCourses')}</p>
+                  ) : (
+                    <CourseAutomationSelector
+                      courses={courses}
+                      selectedCourseIds={automationSelection}
+                      onChange={setAutomationSelection}
+                    />
                   )}
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={handleSaveAutomation}
+                      disabled={!automationCanSave || automationSyncing}
+                      className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {automationSyncing ? t('syncing') : t('automationSave')}
+                    </button>
+                  </div>
                 </div>
-                {coursesLoading ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-500">{t('profileLoadingCourses')}</p>
-                ) : (
-                  <CourseAutomationSelector
-                    courses={courses}
-                    selectedCourseIds={automationSelection}
-                    onChange={setAutomationSelection}
-                  />
-                )}
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSaveAutomation}
-                    disabled={!automationCanSave || automationSyncing}
-                    className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {automationSyncing ? t('syncing') : t('automationSave')}
-                  </button>
-                </div>
-              </div>
+              )}
               <button
                 type="button"
                 onClick={toggle}
@@ -764,6 +766,17 @@ export default function Profile() {
                 />
               </label>
             </div>
+          </div>
+
+          {/* ── Legal Links ── */}
+          <div className="flex items-center justify-center gap-4 text-xs legal-footer-react mt-4 pb-2">
+            <a href="/privacy/index.html">
+              {t('footerPrivacy')}
+            </a>
+            <span>•</span>
+            <a href="/terms/index.html">
+              {t('footerTerms')}
+            </a>
           </div>
         </div>
       </section>

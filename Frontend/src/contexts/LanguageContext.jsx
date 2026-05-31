@@ -639,6 +639,8 @@ const COPY = {
     profileRankLegend: 'Legend',
     profileLanguageEnglish: 'English',
     profileLanguageArabic: 'Arabic',
+    footerPrivacy: 'Privacy Policy',
+    footerTerms: 'Terms of Service',
   },
   ar: {
     greetingMorning: 'صباح الخير',
@@ -1271,6 +1273,8 @@ const COPY = {
     profileRankLegend: 'أسطوري',
     profileLanguageEnglish: 'الإنجليزية',
     profileLanguageArabic: 'العربية',
+    footerPrivacy: 'سياسة الخصوصية',
+    footerTerms: 'شروط الاستخدام',
   },
 };
 

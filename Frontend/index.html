@@ -10,7 +10,7 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 16px;
+        bottom: 0;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -19,23 +19,27 @@
         color: rgba(255, 255, 255, 0.85);
         z-index: 9999;
         pointer-events: auto;
+        padding: 10px 0;
+        background: transparent;
+      }
+      .static-legal-footer.hidden {
+        display: none !important;
       }
       .static-legal-footer a {
         color: #ffffff;
         text-decoration: none;
-        transition: color 0.2s ease;
+        transition: opacity 0.2s ease;
+        opacity: 0.85;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
       }
       .static-legal-footer a:hover {
-        color: rgba(255, 255, 255, 0.8);
+        opacity: 1;
+        text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
       }
-      [data-theme="light"] .static-legal-footer {
-        color: rgba(15, 23, 42, 0.8);
-      }
-      [data-theme="light"] .static-legal-footer a {
-        color: #1e293b;
-      }
-      [data-theme="light"] .static-legal-footer a:hover {
-        color: #0f172a;
+      .static-legal-footer span {
+        color: #ffffff;
+        opacity: 0.6;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
       }
     </style>
     <script>
@@ -49,12 +53,12 @@
   <body>
     <div id="root"></div>
     <div id="static-legal-footer" class="static-legal-footer" aria-label="Legal">
-      <a id="legal-link-privacy" href="/privacy">Privacy Policy</a>
+      <a id="legal-link-privacy" href="/privacy/index.html">Privacy Policy</a>
       <span aria-hidden="true">•</span>
-      <a id="legal-link-terms" href="/terms">Terms of Service</a>
+      <a id="legal-link-terms" href="/terms/index.html">Terms and Conditions</a>
     </div>
     <script>
-      // Keep legal links synced with the selected language.
+      // Keep legal links synced with the selected language + route-based visibility.
       (function () {
         const root = document.documentElement;
         const footer = document.getElementById('static-legal-footer');
@@ -62,6 +66,18 @@
         const termsLink = document.getElementById('legal-link-terms');
 
         if (!footer || !privacyLink || !termsLink) return;
+
+        // The static HTML footer only shows on the login page.
+        // Main layout pages render their own in-flow footer via React.
+        const VISIBLE_ROUTES = [
+          '/',           // Login page
+        ];
+
+        function updateFooterVisibility() {
+          const path = window.location.pathname.replace(/\/+$/, '') || '/';
+          const shouldShow = VISIBLE_ROUTES.includes(path);
+          footer.classList.toggle('hidden', !shouldShow);
+        }
 
         const applyLegalCopy = () => {
           const lang = (root.getAttribute('lang') || localStorage.getItem('lang') || 'en').toLowerCase();
@@ -73,7 +89,9 @@
         };
 
         applyLegalCopy();
+        updateFooterVisibility();
 
+        // Observe language changes
         const observer = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
             if (mutation.type === 'attributes' && mutation.attributeName === 'lang') {
@@ -82,8 +100,20 @@
             }
           }
         });
-
         observer.observe(root, { attributes: true, attributeFilter: ['lang'] });
+
+        // Listen for SPA route changes (pushState / popstate)
+        const origPushState = history.pushState;
+        history.pushState = function () {
+          origPushState.apply(this, arguments);
+          updateFooterVisibility();
+        };
+        const origReplaceState = history.replaceState;
+        history.replaceState = function () {
+          origReplaceState.apply(this, arguments);
+          updateFooterVisibility();
+        };
+        window.addEventListener('popstate', updateFooterVisibility);
       })();
     </script>
     <script type="module" src="/src/main.jsx"></script>

@@ -16,6 +16,10 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
 
+  // Routes where the in-flow legal footer should appear
+  const FOOTER_ROUTES = ['/dashboard', '/courses', '/ai-agents', '/pomodoro', '/mini-games', '/user-manual'];
+  const showLegalFooter = FOOTER_ROUTES.includes(pathname);
+
   const navItems = [
     { to: '/dashboard', icon: Home, label: t('navHome') },
     { to: '/courses', icon: Library, label: t('navCourses') },
@@ -136,6 +140,21 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <Outlet />
+
+          {/* In-flow legal footer — scrolls with content, only on main pages */}
+          {showLegalFooter && (
+            <footer className="mt-12 pb-4">
+              <div className="flex justify-center items-center gap-4 text-xs legal-footer-react">
+                <a href="/privacy/index.html" className="transition-colors">
+                  {t('footerPrivacy') || 'Privacy Policy'}
+                </a>
+                <span>•</span>
+                <a href="/terms/index.html" className="transition-colors">
+                  {t('footerTerms') || 'Terms of Service'}
+                </a>
+              </div>
+            </footer>
+          )}
         </main>
       </div>
     </div>

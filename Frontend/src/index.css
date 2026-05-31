@@ -174,3 +174,20 @@ body {
   min-height: 100vh;
 }
 
+/* Theme-aware legal footer for inner app pages */
+.legal-footer-react {
+  color: var(--footer-color);
+}
+.legal-footer-react a {
+  color: var(--footer-link) !important;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  opacity: 0.85;
+}
+.legal-footer-react a:hover {
+  color: var(--footer-link-hover) !important;
+  opacity: 1;
+}
+.legal-footer-react span {
+  opacity: 0.6;
+}
+

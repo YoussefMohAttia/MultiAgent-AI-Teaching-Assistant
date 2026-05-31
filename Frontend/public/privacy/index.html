@@ -70,6 +70,7 @@
           choices: 'يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها عبر التواصل معنا على البريد الإلكتروني أدناه.',
           h2_6: 'تواصل معنا',
           email: 'البريد الإلكتروني: squeelearn@gmail.com',
+          back: 'العودة',
         } : null;
 
         if (!copy) return;
@@ -99,6 +100,9 @@
         document.getElementById('page-choices').textContent = copy.choices;
         document.getElementById('page-h2-6').textContent = copy.h2_6;
         document.getElementById('page-email').textContent = copy.email;
+        if (document.getElementById('page-back-text')) {
+          document.getElementById('page-back-text').textContent = copy.back;
+        }
       };
 
       if (document.readyState === 'loading') {
@@ -111,6 +115,12 @@
 </head>
 <body>
   <main>
+    <a href="javascript:history.back()" style="display: inline-flex; align-items: center; gap: 8px; color: #a5b4fc; text-decoration: none; margin-bottom: 24px; font-weight: 500; padding: 8px 12px; background: rgba(165, 180, 252, 0.1); border-radius: 8px; transition: background 0.2s;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span id="page-back-text">Back</span>
+    </a>
     <h1 id="page-h1">Privacy Policy</h1>
     <p id="page-date">Effective date: May 25, 2026</p>
 

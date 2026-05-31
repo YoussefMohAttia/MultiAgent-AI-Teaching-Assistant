@@ -151,6 +151,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!automationPrefsLoaded || coursesLoading || !user?.id) return;
     if (!hasAutomationPrefs(user.id)) {
+      if (isLocalAccount || courses.length === 0) return;
       setAutomationModalOpen(true);
       return;
     }
@@ -159,7 +160,7 @@ export default function Dashboard() {
     if (courseIds.length === 0) return;
 
     setAutomationSelection((prev) => prev.filter((id) => courseIds.includes(id)));
-  }, [automationPrefsLoaded, coursesLoading, courses, user?.id]);
+  }, [automationPrefsLoaded, coursesLoading, courses, user?.id, isLocalAccount]);
 
   function scheduleSummaryPolling(items, scheduledIds = null) {
     if (summaryPollRef.current) {

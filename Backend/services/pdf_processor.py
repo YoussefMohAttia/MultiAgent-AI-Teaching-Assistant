@@ -5,9 +5,13 @@ Extracted from Ai Team/Main/chatbot.ipynb — sections 4 & 5.
 
 Uses ChromaDB's built-in default embedding function (onnxruntime-based
 all-MiniLM-L6-v2) to avoid heavy torch/sentence-transformers dependency.
+
+OCR fallback: When a PDF page has no extractable text layer (e.g. scanned
+slides, image-based lecture PDFs), Tesseract OCR is used automatically.
 """
 
 import hashlib
+import io
 import os
 import time
 from typing import List
@@ -20,18 +24,107 @@ from langchain_core.documents import Document
 
 from Core.config import settings
 
+# ── OCR helpers ────────────────────────────────────────────────────────────────
+
+# Minimum characters a page must yield from get_text() to be considered
+# truly text-based.  Pages below this threshold are sent through OCR.
+MIN_TEXT_CHARS = 50
+
+_OCR_AVAILABLE: bool | None = None  # lazy-checked once
+
+
+def _check_ocr_available() -> bool:
+    """Check if Tesseract OCR is installed and usable."""
+    global _OCR_AVAILABLE
+    if _OCR_AVAILABLE is not None:
+        return _OCR_AVAILABLE
+    try:
+        import pytesseract
+        pytesseract.get_tesseract_version()
+        _OCR_AVAILABLE = True
+    except Exception:
+        _OCR_AVAILABLE = False
+        print("⚠️  Tesseract OCR not available — image-based PDF pages will be skipped.")
+    return _OCR_AVAILABLE
+
+
+def _sanitize_text(text: str) -> str:
+    """Remove null bytes and other problematic characters that PostgreSQL rejects."""
+    if not text:
+        return text
+    # PostgreSQL TEXT/VARCHAR cannot store null bytes
+    return text.replace("\x00", "")
+
+
+def _ocr_page(page: fitz.Page, dpi: int = 300) -> str:
+    """Render a PDF page to an image and run Tesseract OCR on it.
+
+    Returns the OCR'd text, or an empty string on failure.
+    """
+    if not _check_ocr_available():
+        return ""
+    try:
+        import pytesseract
+        from PIL import Image
+
+        # Render page at high resolution for better OCR accuracy
+        mat = fitz.Matrix(dpi / 72, dpi / 72)
+        pix = page.get_pixmap(matrix=mat)
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        text = pytesseract.image_to_string(img)
+        return _sanitize_text(text.strip())
+    except Exception as e:
+        print(f"⚠️  OCR failed on page {page.number}: {e}")
+        return ""
+
+
+# ── PDF loading ────────────────────────────────────────────────────────────────
 
 def load_pdf(pdf_path: str) -> List[Document]:
-    """Load a PDF and return a list of LangChain Document objects (one per page)."""
+    """Load a PDF and return a list of LangChain Document objects (one per page).
+
+    Falls back to PyMuPDF + OCR for pages where PyPDFLoader returns no text.
+    """
     loader = PyPDFLoader(pdf_path)
-    return loader.load()
+    docs = loader.load()
+
+    # Check if any pages came back empty — if so, try fitz + OCR for those
+    sparse_pages = [
+        i for i, d in enumerate(docs)
+        if len(d.page_content.strip()) < MIN_TEXT_CHARS
+    ]
+    if sparse_pages:
+        try:
+            with fitz.open(pdf_path) as pdf_doc:
+                for page_idx in sparse_pages:
+                    if page_idx < len(pdf_doc):
+                        page = pdf_doc[page_idx]
+                        text = _sanitize_text(page.get_text().strip())
+                        if len(text) < MIN_TEXT_CHARS:
+                            # Not enough text — fall back to OCR
+                            ocr_text = _ocr_page(page)
+                            text = ocr_text or text  # prefer OCR, keep native as fallback
+                        if text:
+                            docs[page_idx].page_content = text
+        except Exception as e:
+            print(f"⚠️  Fitz/OCR fallback failed for {pdf_path}: {e}")
+
+    return docs
 
 def load_pdf_from_bytes(file_bytes: bytes) -> List[Document]:
-    """Load a PDF from bytes and return a list of LangChain Document objects."""
+    """Load a PDF from bytes and return a list of LangChain Document objects.
+
+    Automatically applies OCR for pages with no extractable text layer.
+    """
     docs = []
     with fitz.open(stream=file_bytes, filetype="pdf") as doc:
         for i, page in enumerate(doc):
-            docs.append(Document(page_content=page.get_text(), metadata={"page": i}))
+            text = _sanitize_text(page.get_text().strip())
+            if len(text) < MIN_TEXT_CHARS:
+                # Page text is below threshold — try OCR
+                ocr_text = _ocr_page(page)
+                text = ocr_text or text  # prefer OCR, keep native as fallback
+            docs.append(Document(page_content=text, metadata={"page": i}))
     return docs
 
 def split_documents(

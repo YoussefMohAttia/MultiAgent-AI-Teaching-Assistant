@@ -67,6 +67,7 @@
           changes: 'قد نقوم بتحديث هذه الشروط من وقت لآخر. ويعني استمرار استخدام الخدمة أنك تقبل الشروط المحدّثة.',
           h2_8: 'تواصل معنا',
           email: 'البريد الإلكتروني: squeelearn@gmail.com',
+          back: 'العودة',
         } : null;
 
         if (!copy) return;
@@ -93,6 +94,9 @@
         document.getElementById('page-changes').textContent = copy.changes;
         document.getElementById('page-h2-8').textContent = copy.h2_8;
         document.getElementById('page-email').textContent = copy.email;
+        if (document.getElementById('page-back-text')) {
+          document.getElementById('page-back-text').textContent = copy.back;
+        }
       };
 
       if (document.readyState === 'loading') {
@@ -105,6 +109,12 @@
 </head>
 <body>
   <main>
+    <a href="javascript:history.back()" style="display: inline-flex; align-items: center; gap: 8px; color: #a5b4fc; text-decoration: none; margin-bottom: 24px; font-weight: 500; padding: 8px 12px; background: rgba(165, 180, 252, 0.1); border-radius: 8px; transition: background 0.2s;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span id="page-back-text">Back</span>
+    </a>
     <h1 id="page-h1">Terms of Service</h1>
     <p id="page-date">Effective date: May 25, 2026</p>
 

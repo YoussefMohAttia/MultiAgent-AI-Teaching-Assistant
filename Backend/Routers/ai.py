@@ -24,7 +24,7 @@ from DB.schemas import (
 )
 from DB import crud
 from security.auth_dependency import get_optional_user, CurrentUser
-from services.pdf_processor import extract_text_from_pdf, load_pdf, split_documents
+from services.pdf_processor import extract_text_from_pdf, extract_text_from_pdf_bytes, load_pdf, load_pdf_from_bytes, split_documents
 from services.summarizer_service import summarize_text
 from services.quiz_generator_service import generate_quiz as gen
 from services.quiz_utils import find_quiz_by_doc_and_criteria, build_quiz_items
@@ -113,14 +113,17 @@ async def _extract_text_from_uploaded_pdf(file: UploadFile) -> tuple[str, str]:
     if not payload:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
+    # Use PyMuPDF (fitz) with OCR fallback — same robust engine as the course
+    # documents pipeline. Handles image-based slides automatically.
+    text = extract_text_from_pdf_bytes(payload)
+    if not text or not text.strip():
+        raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
+
+    # Still write temp file for callers that need it (e.g. evaluate-upload)
     temp_path = None
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(payload)
         temp_path = tmp.name
-
-    text = extract_text_from_pdf(temp_path)
-    if not text or not text.strip():
-        raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
 
     return text, temp_path
 
@@ -451,17 +454,13 @@ async def chat_upload(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-    temp_path = None
     try:
         payload = await file.read()
         if not payload:
             raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(payload)
-            temp_path = tmp.name
-
-        docs = load_pdf(temp_path)
+        # Use PyMuPDF (fitz) with OCR fallback for image-based slides
+        docs = load_pdf_from_bytes(payload)
         if not docs:
             raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
 
@@ -523,8 +522,6 @@ async def chat_upload(
             await file.close()
         except Exception:
             pass
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  2. QUIZ GENERATION
@@ -610,19 +607,20 @@ async def generate_quiz_from_upload(
     n_options: int = Form(4),
     user: CurrentUser | None = _auth
 ):
-    temp_path = None
     try:
         payload = await file.read()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(payload)
-            temp_path = tmp.name
-        text = extract_text_from_pdf(temp_path)
+        if not payload:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        # Use PyMuPDF (fitz) with OCR fallback for image-based slides
+        text = extract_text_from_pdf_bytes(payload)
+        if not text or not text.strip():
+            raise HTTPException(status_code=422, detail="Could not extract text from uploaded PDF.")
         # Use Pydantic model for validation before returning
         raw_items = gen(passage=text[:10000], objectives=objectives, n_items=n_items, n_options=n_options)
         validated = [QuizItem(**i) for i in raw_items]
         return {"items": validated}
     finally:
-        if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+        pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════

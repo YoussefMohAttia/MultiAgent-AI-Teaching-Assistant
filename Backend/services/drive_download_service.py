@@ -93,6 +93,8 @@ async def ensure_document_text(doc, db: AsyncSession) -> str:
     file_bytes = await _download_bytes(file_id, is_gdoc, access_token)
     text = _extract_text_from_bytes(file_bytes)
     if not text or not text.strip():
+        print(f"⚠️  No extractable text found in Drive document (id={file_id}), "
+              "even after OCR fallback. The document may be a non-text file.")
         raise ValueError("No extractable text found in Drive document.")
 
     doc.raw_text = text
