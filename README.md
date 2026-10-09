@@ -20,9 +20,7 @@
 
 ### 🎬 Demo Video
 
-[![Watch the SQUEE-Learn demo](https://img.youtube.com/vi/-egvmEQ0LW0/maxresdefault.jpg)](https://youtu.be/-egvmEQ0LW0)
-
-*Click the image to watch the full walkthrough on YouTube.*
+[![Watch the demo on YouTube](https://img.shields.io/badge/▶_Watch_the_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/-egvmEQ0LW0)
 
 </div>
 
