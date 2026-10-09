@@ -351,18 +351,6 @@ Supervised by **Dr. Salah Selim** and **Dr. Ayman Khalafallah**.
 | Youssef Awad |
 | Mohamed Morsy |
 
-<!-- TODO: link each name to a GitHub profile -->
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-> Add a `LICENSE` file to the repository, and check with your teammates and university that MIT is acceptable.
-
----
-
 <div align="center">
 
 ⭐ If you find this project useful, consider giving it a star!
