@@ -16,6 +16,16 @@
 
 </div>
 
+<div align="center">
+
+### 🎬 Demo Video
+
+[![Watch the SQUEE-Learn demo](https://img.youtube.com/vi/-egvmEQ0LW0/maxresdefault.jpg)](https://youtu.be/-egvmEQ0LW0)
+
+*Click the image to watch the full walkthrough on YouTube.*
+
+</div>
+
 ---
 
 ## 📖 Table of Contents
@@ -96,8 +106,6 @@ A fine-tuned transformer (built on `Kevintu/Engessay_grading_ML`, originally tra
 - 🌓 **Light and dark themes**
 - 🔐 **Google OAuth 2.0 and email OTP** authentication
 - 🐳 **Dockerized**, with CI/CD to Azure Container Apps
-
-<!-- TODO: add a screenshot grid (chat, quiz, summarizer, evaluator, essay grader, progress) -->
 
 ---
 
