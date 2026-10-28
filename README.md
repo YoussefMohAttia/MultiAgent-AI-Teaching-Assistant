@@ -16,13 +16,16 @@
 
 </div>
 
+
 <div align="center">
 
-### 🎬 Demo Video
+### 🚀 Live Platform & Demo
 
-[![Watch the demo on YouTube](https://img.shields.io/badge/▶_Watch_the_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/-egvmEQ0LW0)
+[![Live Platform](https://img.shields.io/badge/🌐_Live_Platform-28A745?style=for-the-badge&logo=googlechrome&logoColor=white)](https://squeelearn.me/)
+[![Watch the Demo](https://img.shields.io/badge/▶_Watch_the_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/-egvmEQ0LW0)
 
 </div>
+
 
 ---
 
